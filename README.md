@@ -1,4 +1,4 @@
-#AutomatedCellularImageAnalysis
+# AutomatedCellularImageAnalysis
 
 [![coverage report](https://jugit.fz-juelich.de/j.seiffarth/acia/badges/master/coverage.svg)](https://jugit.fz-juelich.de/j.seiffarth/acia/-/commits/master)
 
