@@ -11,7 +11,7 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    "shapely @ git+ssh://git@github.com/someorgname/pkg-repo-name@1.8a2#egg=shapely",
+    "shapely@git+https://github.com/Toblerity/Shapely.git@1.8a2#egg=shapely",
     "tqdm>=4.61.2"
 ]
 
