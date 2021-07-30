@@ -5,8 +5,6 @@ from acia.base import Contour, ImageSequenceSource, Overlay
 from .shapeUtils import create_polygon
 import numpy as np
 
-from io import BytesIO
-from PIL import Image
 
 # We have a helper function for creating an ROI and linking it to new shapes
 def create_roi(updateService, img, shapes):
@@ -26,11 +24,12 @@ def create_roi(updateService, img, shapes):
     # Save the ROI (saves any linked shapes too)
     return updateService.saveAndReturnObject(roi)
 
+
 class OmeroRoIStorer:
     '''
         Stores and loads overlay results in the roi format (readable by ImageJ)
     '''
-    
+
     @staticmethod
     def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064):
         '''
@@ -90,6 +89,7 @@ class OmeroRoIStorer:
         # return the overlay
         return overlay
 
+
 class OmeroSequenceSource(ImageSequenceSource):
     '''
         Uses omero server as a source for images
@@ -124,7 +124,7 @@ class OmeroSequenceSource(ImageSequenceSource):
             # set grayscale mode
             image.setGreyscaleRenderingModel()
 
-            size_c = image.getSizeC()
+            # size_c = image.getSizeC()
             size_t = image.getSizeT()
             z = self.z
 
@@ -138,7 +138,7 @@ class OmeroSequenceSource(ImageSequenceSource):
                 rendered_image = rendered_image.convert("RGB")
                 # convert to numpy
                 numpy_image = np.asarray(rendered_image, dtype=np.uint8)
-                #rendered_image.save('test.jpg')
+                # rendered_image.save('test.jpg')
 
                 # eject numpy image
                 yield numpy_image

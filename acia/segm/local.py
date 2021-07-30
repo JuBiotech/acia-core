@@ -4,6 +4,7 @@ import tifffile
 from acia.base import ImageSequenceSource, Overlay, Contour
 import roifile
 
+
 class LocalSequenceSource(ImageSequenceSource):
     def __init__(self, tif_file, normalize_image=True):
         self.filename = tif_file
@@ -25,15 +26,16 @@ class LocalSequenceSource(ImageSequenceSource):
 
             if len(image.shape) == 2:
                 # make it artificially rgb
-                image = np.repeat(image[:,:,None], 3, axis=-1)
+                image = np.repeat(image[:, :, None], 3, axis=-1)
 
             yield image
+
 
 class RoiStorer:
     '''
         Stores and loads overlay results in the roi format (readable by ImageJ)
     '''
-    
+
     @staticmethod
     def store(overlay: Overlay, filename: str, append=False):
         '''

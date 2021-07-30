@@ -30,9 +30,8 @@ class OnlineModel(Processor):
                 self.port = 443
             else:
                 logging.warn('Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?')
-            
 
-    def predict(self, source: ImageSequenceSource, params = {}):
+    def predict(self, source: ImageSequenceSource, params={}):
         import requests
         from io import BytesIO
         from PIL import Image
@@ -40,7 +39,7 @@ class OnlineModel(Processor):
         contours = []
 
         # iterate over images from image source
-        for frame,image in tqdm.tqdm(enumerate(source)):
+        for frame, image in tqdm.tqdm(enumerate(source)):
 
             # convert image into a binary png stream
             byte_io = BytesIO()
@@ -64,7 +63,7 @@ class OnlineModel(Processor):
             content = body
 
             for detection in content:
-                label = detection['label']
+                # label = detection['label']
                 contour_lists = detection['contours'][0]
                 contour = list(zip(contour_lists['x'], contour_lists['y']))
                 score = detection['score']

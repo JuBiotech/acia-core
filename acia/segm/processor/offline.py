@@ -1,5 +1,5 @@
 from acia.base import Contour, ImageSequenceSource, Overlay, Processor
-from mmdet.apis import init_detector, inference_detector
+from mmdet.apis import init_detector
 from mmcv.runner import wrap_fp16_model
 
 import tqdm
@@ -40,7 +40,6 @@ class OfflineModel(Processor):
             # make it 16-bit
             wrap_fp16_model(self.model)
 
-
     def predict(self, source: ImageSequenceSource, tiling=False) -> Overlay:
         '''
             Predicts the overlay for an image sequence
@@ -67,4 +66,3 @@ class OfflineModel(Processor):
             overlay.add_contours(contours)
 
         return overlay
-
