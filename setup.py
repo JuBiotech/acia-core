@@ -12,7 +12,8 @@ with open('HISTORY.rst') as history_file:
 
 requirements = [
     "shapely==1.8a2",
-    "tqdm>=4.61.2"
+    "tqdm>=4.61.2",
+    "omero-py>=5.9.3"
 ]
 
 test_requirements = ['pytest>=3', ]
