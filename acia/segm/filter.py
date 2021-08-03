@@ -31,6 +31,12 @@ class NMSFilter:
                 index = j + i + 1
                 if sorted_contours[i].frame != sorted_contours[index].frame:
                     continue
+
+                # zero area stuff is not considered
+                if p_i.area <= 0:
+                    keep = False
+                    break
+
                 # compute iou
                 if mode == 'i':
                     iou = p_i.intersection(p_j).area / p_i.area  # (p_i.union(p_j).area)
