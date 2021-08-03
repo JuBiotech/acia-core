@@ -39,7 +39,7 @@ class OnlineModel(Processor):
         contours = []
 
         # iterate over images from image source
-        for frame, image in tqdm.tqdm(enumerate(source)):
+        for frame, image in enumerate(tqdm.tqdm(source)):
 
             # convert image into a binary png stream
             byte_io = BytesIO()
