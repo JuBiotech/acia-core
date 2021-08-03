@@ -31,7 +31,7 @@ class OmeroRoIStorer:
     '''
 
     @staticmethod
-    def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064):
+    def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False):
         '''
             Stores overlay results in omero
 
@@ -43,10 +43,16 @@ class OmeroRoIStorer:
             port: omero port (default: 4064)
         '''
 
-        with BlitzGateway(username, password, host=serverUrl, port=port) as conn:
+        with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
             # retrieve omero objects
             updateService = conn.getUpdateService()
             image = conn.getObject("Image", imageId)
+
+            userId = conn.getUser().getId()
+            imageOwnerId = image.getOwner().getId()
+
+            if not force and userId != imageOwnerId:
+                raise ValueError("You try to write to non-owned data. Enable 'force' option if you are sure to do that.")
 
             shapes = [
                 create_polygon(cont.coordinates, z=0, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
@@ -55,7 +61,7 @@ class OmeroRoIStorer:
             create_roi(updateService, image, shapes)
 
     @staticmethod
-    def load(imageId: int, username: str, password: str, serverUrl: str, port=4064) -> Overlay:
+    def load(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None) -> Overlay:
         '''
             Loads overlay from omero. Only considers polygons.
 
@@ -67,13 +73,17 @@ class OmeroRoIStorer:
         '''
         overlay = Overlay()
         # open connection to omero
-        with BlitzGateway(username, password, host=serverUrl, port=port) as conn:
+        with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
             # get the roi service
             roi_service = conn.getRoiService()
             result = roi_service.findByImage(imageId, None)
 
             # loop rois
             for roi in result.rois:
+                if (not roiId is None) and roi.getId() != roiId:
+                    # if the roiId is specified, check whether we have the right one
+                    continue
+
                 # loop shapes inside roi
                 for s in roi.copyShapes():
                     if type(s) == omero.model.PolygonI:
@@ -89,12 +99,26 @@ class OmeroRoIStorer:
         # return the overlay
         return overlay
 
+class BlitzConn(object):
+    '''
+        Encapsulates standard omero behavior
+    '''
+    def __init__(self, username, password, serverUrl, port=4064, secure=True):
+        self.username = username
+        self.password = password
+        self.serverUrl = serverUrl
+        self.port = port
+        self.secure = secure
 
-class OmeroSequenceSource(ImageSequenceSource):
+    def make_connection(self):
+        return BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+
+
+class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
     '''
         Uses omero server as a source for images
     '''
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True):
         '''
             imageId: id of the image sequence
             username: omero username
@@ -106,19 +130,36 @@ class OmeroSequenceSource(ImageSequenceSource):
             imageQuality: quality of the rendered images (1.0=no compression, 0.0=super compression)
         '''
 
+        super(BlitzConn, self).__init__(username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+
         self.imageId = imageId
         self.channels = channels
         self.z = z
         self.imageQuality = imageQuality
 
-        # omero
-        self.username = username
-        self.password = password
-        self.serverUrl = serverUrl
-        self.port = port
+    def imageName(self) -> str:
+        '''
+            returns the name of the image
+        '''
+        with self.make_connection() as conn:
+            return conn.getObject('Image', self.imageId).getName()
+
+    def datasetName(self) -> str:
+        '''
+            returns the name of the dataset
+        '''
+        with self.make_connection() as conn:
+            return conn.getObject('Image', self.imageId).getParent().getName()
+
+    def projectName(self) -> str:
+        '''
+            returns the name of the associated project
+        '''
+        with self.make_connection() as conn:
+            return conn.getObject('Image', self.imageId).getProject().getName()
 
     def __iter__(self):
-        with BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port) as conn:
+        with self.make_connection() as conn:
             # get the specified image
             image = conn.getObject("Image", self.imageId)
             # set grayscale mode
@@ -142,3 +183,48 @@ class OmeroSequenceSource(ImageSequenceSource):
 
                 # eject numpy image
                 yield numpy_image
+
+    def __len__(self):
+        with self.make_connection() as conn:
+            return int(conn.getObject('Image', self.imageId).getSizeT())
+
+
+class OmeroRoISource(BlitzConn):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: rois[0]):
+        super(BlitzConn, self).__init__(username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+
+        self.imageId = imageId
+
+        self.roiSelector = roiSelector
+
+    def __iter__(self):
+        # create connection to omero
+        with self.make_connection() as conn:
+            roi_service = conn.getRoiService()
+
+            # find all rois for the image
+            result = roi_service.findByImage(self.imageId, None)
+            rois = result.rois
+
+
+            if len(rois) == 0:
+                # no rois found
+                raise ValueError(f"No rois found for image {self.imageId}")
+
+            # select a subset of rois
+            rois = self.roiSelector(rois)
+
+            # compose an overlay from the rois
+            overlay = Overlay()
+            for roi in rois:
+                overlay += OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
+                                    serverUrl=self.serverUrl, port=self.port, secure=self.secure, roiId=roi.getId())
+
+            # return overlay iterator over time
+            return overlay.timeIterator()
+
+    def __len__(self) -> int:
+        with self.make_connection() as conn:
+            image = conn.getObject('Image', self.imageId)
+
+            return image.getSizeT()
