@@ -10,11 +10,9 @@ with open('README.md') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = [
-    "shapely==1.8a2",
-    "tqdm>=4.61.2",
-    "omero-py>=5.9.3"
-]
+
+with open('requirements.txt') as req_file:
+    requirements = req_file.read().splitlines()
 
 test_requirements = ['pytest>=3', ]
 
