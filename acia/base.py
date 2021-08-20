@@ -43,7 +43,7 @@ class Overlay:
         # iterate frames
         for frame in range(startFrame, endFrame+1):
             # filter sub overlay with all contours in the frame
-            yield Overlay(list(filter(lambda contour: contour.frame == frame, self.overlay)))
+            yield Overlay(list(filter(lambda contour: contour.frame == frame, self.contours)))
 
 
 class Processor(object):
