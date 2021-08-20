@@ -1,4 +1,5 @@
 from typing import List
+import numpy as np
 
 
 class Contour:
@@ -25,6 +26,12 @@ class Overlay:
     def __add__(self, other):
         jointContours = self.contours + other.contours
         return Overlay(jointContours)
+
+    def __len__(self):
+        return len(self.contours)
+
+    def numFrames(self):
+        return len(np.unique([c.frame for c in self.contours]))
 
     def timeIterator(self, startFrame=0, endFrame=None):
         '''

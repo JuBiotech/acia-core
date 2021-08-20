@@ -1,9 +1,11 @@
+import logging
 from acia.segm.omero.shapeUtils import make_coordinates
 import omero
 from omero.gateway import BlitzGateway
-from acia.base import Contour, ImageSequenceSource, Overlay
+from acia.base import Contour, ImageSequenceSource, Overlay, RoISource
 from .shapeUtils import create_polygon
 import numpy as np
+from itertools import product
 
 
 # We have a helper function for creating an ROI and linking it to new shapes
@@ -31,7 +33,7 @@ class OmeroRoIStorer:
     '''
 
     @staticmethod
-    def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False):
+    def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False, z=0):
         '''
             Stores overlay results in omero
 
@@ -54,9 +56,20 @@ class OmeroRoIStorer:
             if not force and userId != imageOwnerId:
                 raise ValueError("You try to write to non-owned data. Enable 'force' option if you are sure to do that.")
 
-            shapes = [
-                create_polygon(cont.coordinates, z=0, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
-            ]
+            size_t = image.getSizeT()
+            size_z = image.getSizeZ()
+
+            if overlay.numFrames() == size_t * size_z:
+                # this is a linearized overlay
+                logging.info('Linearized overlay: Use t and z')
+                shapes = [
+                    create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in overlay
+                ]
+
+            else:
+                shapes = [
+                    create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
+                ]
 
             create_roi(updateService, image, shapes)
 
@@ -78,6 +91,12 @@ class OmeroRoIStorer:
             roi_service = conn.getRoiService()
             result = roi_service.findByImage(imageId, None)
 
+            image = image = conn.getObject("Image", imageId)
+
+            size_t = image.getSizeT()
+            size_z = image.getSizeZ()
+
+
             # loop rois
             for roi in result.rois:
                 if (not roiId is None) and roi.getId() != roiId:
@@ -91,6 +110,9 @@ class OmeroRoIStorer:
                         t = s.getTheT().getValue()
                         points = make_coordinates(s.getPoints().getValue())
                         score = -1.
+
+                        if size_z > 1:
+                            t = t * size_z + s.getTheZ().getValue()
 
                         # add contour element to overlay
                         cont = Contour(points, score, t)
@@ -130,7 +152,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             imageQuality: quality of the rendered images (1.0=no compression, 0.0=super compression)
         '''
 
-        super(BlitzConn, self).__init__(username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
 
         self.imageId = imageId
         self.channels = channels
@@ -167,10 +189,10 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
 
             # size_c = image.getSizeC()
             size_t = image.getSizeT()
-            z = self.z
+            size_z = image.getSizeZ()
 
             # iterate over time
-            for t in range(size_t):
+            for t,z in product(range(size_t), range(size_z)):
                 # set active channels
                 image.setActiveChannels(self.channels)
                 # render the image
@@ -186,12 +208,13 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
 
     def __len__(self):
         with self.make_connection() as conn:
-            return int(conn.getObject('Image', self.imageId).getSizeT())
+            image = conn.getObject('Image', self.imageId)
+            return int(image.getSizeT() * image.getSizeZ())
 
 
-class OmeroRoISource(BlitzConn):
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: rois[0]):
-        super(BlitzConn, self).__init__(username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+class OmeroRoISource(BlitzConn, RoISource):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]]):
+        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
 
         self.imageId = imageId
 
@@ -227,4 +250,4 @@ class OmeroRoISource(BlitzConn):
         with self.make_connection() as conn:
             image = conn.getObject('Image', self.imageId)
 
-            return image.getSizeT()
+            return image.getSizeT() * image.getSizeZ()
