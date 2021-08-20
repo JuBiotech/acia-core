@@ -1,0 +1,15 @@
+name: cellsium
+channels:
+  - defaults
+  - conda-forge
+  - conda-forge/label/shapely_dev
+  - ome
+dependencies:
+  - python>=3.8
+  - opencv>=4.5.2
+  - omero-py>=5.9.1
+  - tqdm>=4.61.1
+  - shapely>=1.8a1
+  - pip
+  - pip:
+    - numpy

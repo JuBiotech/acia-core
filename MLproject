@@ -1,0 +1,12 @@
+name: Acia
+
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      projectId: {type: str}
+      user: {type: str}
+      serverUrl: {type: str}
+
+    command: "python setup.py install && python examples/onlineProjectPrediction.py --project-id {projectId} --user {user} --server-url {serverUrl}"
