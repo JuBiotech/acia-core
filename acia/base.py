@@ -52,3 +52,17 @@ class Processor(object):
 
 class ImageSequenceSource(object):
     pass
+
+class RoISource(object):
+    pass
+
+class ImageRoISource(object):
+    '''
+        Contains both, the image and the RoI Source. Provides a joint iterator
+    '''
+    def __init__(self, imageSource: ImageSequenceSource, roiSource: RoISource):
+        self.imageSource = imageSource
+        self.roiSource = roiSource
+
+    def __iter__(self):
+        return zip(iter(self.imageSource), iter(self.roiSource))
