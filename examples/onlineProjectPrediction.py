@@ -7,20 +7,29 @@ import tqdm
 import getpass
 
 import logging
+import argparse
 
 if __name__ == '__main__':
     '''
         Simple example to use the apis
     '''
 
-    username = "root"
-    serverUrl = "ibt056"
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--project-id', required=True, help="Omero Id of the project to segment.")
+    parser.add_argument('--user', required=True)
+    parser.add_argument('--server-url', required=True)
+    args = parser.parse_args()
+
+    projectId = args.project_id
+
+    username = args.user
+    serverUrl = args.server_url
     password = getpass.getpass(f'Password for {username}@{serverUrl}: ')
 
     # connect to remote machine learning model
     model = OnlineModel('http://ibt056/pt/predictions/cellcmaskrcnn/')
 
-    projectId = 151
+    #projectId = 151
 
     print("Connect to omero...")
     with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
