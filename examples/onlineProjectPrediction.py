@@ -68,6 +68,7 @@ if __name__ == '__main__':
             # store detections in omero
             print("Save results...")
             OmeroRoIStorer.store(result, imageId, username, password, serverUrl)
-        except:
+        except Exception as e:
             logging.error(f"Error while processing {projectName} > {datasetName} > {imageName}")
+            print(e)
         #RoiStorer.store(result, 'rois.zip')
