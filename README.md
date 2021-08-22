@@ -44,7 +44,7 @@ conda activate mlflow
 To perform the segmentation you need your omero server url (e.g. ibt056), your username (e.g. root), and the project id (e.g. 4) of the project you want to segment. If you have everything at hand you can run the segmentation (the example uses the exemplary server url, username and project id. Please use your's!).
 
 ```
-mlflow run https://jugit.fz-juelich.de/j.seiffarth/acia.git serverUrl=ibt056 -P user=root -projectId=4
+mlflow run https://jugit.fz-juelich.de/j.seiffarth/acia.git -P serverUrl=ibt056 -P user=root -P projectId=4
 ```
 
 If you are asked for credentials you have to enter your credentials for `jugit.fz-juelich.de`
