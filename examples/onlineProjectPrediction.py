@@ -18,16 +18,18 @@ if __name__ == '__main__':
     parser.add_argument('--project-id', required=True, help="Omero Id of the project to segment.")
     parser.add_argument('--user', required=True)
     parser.add_argument('--server-url', required=True)
+    parser.add_argument('--model-url', default='http://ibt056/pt/predictions/cellcmaskrcnn/', help="Web address of the prediction model")
     args = parser.parse_args()
 
     projectId = args.project_id
 
     username = args.user
     serverUrl = args.server_url
+    modelUrl = args.model_url
     password = getpass.getpass(f'Password for {username}@{serverUrl}: ')
 
     # connect to remote machine learning model
-    model = OnlineModel('http://ibt056/pt/predictions/cellcmaskrcnn/')
+    model = OnlineModel(modelUrl)
 
     #projectId = 151
 
