@@ -5,7 +5,7 @@ from typing import List
 import tqdm
 
 from acia.base import ImageSequenceSource, Overlay, Processor, Contour
-
+from urllib.parse import urlparse
 
 class OnlineModel(Processor):
     '''
@@ -22,11 +22,16 @@ class OnlineModel(Processor):
         self.username = username
         self.password = password
 
-        # try to autodetermine port
         if not self.port:
-            if self.url.startswith('http'):
+            # try to parse port from url
+            self.port = urlparse(url).port
+
+        if not self.port:
+            # autodetermine port from protocol
+            scheme = urlparse(url).scheme
+            if scheme == 'http':
                 self.port = 80
-            elif self.url.startswith('https'):
+            elif scheme == 'https':
                 self.port = 443
             else:
                 logging.warn('Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?')
