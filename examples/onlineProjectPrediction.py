@@ -42,7 +42,9 @@ if __name__ == '__main__':
         print(get_image_name(conn, 1))
         print(conn.getObject('Image', 1).getProject())
 
-    #exit(1)
+    print(f'We have discovered {len(image_list)} image sequences in the project "{projectName}"!')
+    print(f'We are performing cell segmentation with the model "{modelUrl}"')
+    print(f'Please lean back...')
 
     print(image_list)
     print(len(image_list))
@@ -50,6 +52,7 @@ if __name__ == '__main__':
 
     for imageId in tqdm.tqdm(image_list):
         try:
+            print()
             # create local image data source
             source = OmeroSequenceSource(imageId, username, password, serverUrl)
             #source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
@@ -58,12 +61,15 @@ if __name__ == '__main__':
             projectName = source.projectName()
             datasetName = source.datasetName()
             imageName = source.imageName()
+
             print(f"Predict {projectName} > {datasetName} > {imageName}")
             result = model.predict(source, params={'test_cfg.rcnn.nms.iou_threshold': 0.8, 'test_cfg.rcnn.score_thr': 0.25})
+            print()
 
             # filter cell detections
             print("Filter detections")
             result = NMSFilter.filter(result, iou_thr=0.2, mode='i')
+            print()
 
             # store detections in omero
             print("Save results...")
