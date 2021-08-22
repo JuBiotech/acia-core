@@ -46,10 +46,6 @@ if __name__ == '__main__':
     print(f'We are performing cell segmentation with the model "{modelUrl}"')
     print(f'Please lean back...')
 
-    print(image_list)
-    print(len(image_list))
-    #exit(1)
-
     for imageId in tqdm.tqdm(image_list):
         try:
             print()
