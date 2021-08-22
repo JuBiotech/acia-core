@@ -35,12 +35,12 @@ if __name__ == '__main__':
 
     print("Connect to omero...")
     with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
-        print("Connection established!")
+        print("Connection to OMERO established!")
         projectName = get_project_name(conn, projectId)
-        print(f"Scanning project'{projectName}'")
+        print(f"Scanning project'{projectName}...'")
         image_list = list_images_in_project(conn, projectId)
         print(get_image_name(conn, 1))
-        print(conn.getObject('Image', 1).getProject())
+        #print(conn.getObject('Image', 1).getProject())
 
     print(f'We have discovered {len(image_list)} image sequences in the project "{projectName}"!')
     print(f'We are performing cell segmentation with the model "{modelUrl}"')
