@@ -11,7 +11,7 @@ class OnlineModel(Processor):
     '''
         The model is not running locally on the computer but in a remote location
     '''
-    def __init__(self, url: str, username=None, password=None, timeout=10):
+    def __init__(self, url: str, username=None, password=None, timeout=20):
         '''
             url: remote model executer (can also contain a port definition)
             username: username
