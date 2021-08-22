@@ -11,7 +11,7 @@ class OnlineModel(Processor):
     '''
         The model is not running locally on the computer but in a remote location
     '''
-    def __init__(self, url: str, username=None, password=None):
+    def __init__(self, url: str, username=None, password=None, timeout=10):
         '''
             url: remote model executer (can also contain a port definition)
             username: username
@@ -20,6 +20,7 @@ class OnlineModel(Processor):
         self.url = url
         self.username = username
         self.password = password
+        self.timeout = timeout
 
         # try to parse port from url
         self.port = urlparse(url).port
@@ -55,7 +56,7 @@ class OnlineModel(Processor):
             }
 
             # send a request to the server
-            response = requests.post(self.url, files=multipart_form_data, params=params)
+            response = requests.post(self.url, files=multipart_form_data, params=params, timeout=timeout)
 
             # raise an error if the response is not as expected
             if response.status_code != 200:
