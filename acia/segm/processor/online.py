@@ -11,20 +11,18 @@ class OnlineModel(Processor):
     '''
         The model is not running locally on the computer but in a remote location
     '''
-    def __init__(self, url: str, port: int = None, username=None, password=None):
+    def __init__(self, url: str, username=None, password=None):
         '''
-            url: remote model executer
+            url: remote model executer (can also contain a port definition)
             username: username
             password: password
         '''
         self.url = url
-        self.port = port
         self.username = username
         self.password = password
 
-        if not self.port:
-            # try to parse port from url
-            self.port = urlparse(url).port
+        # try to parse port from url
+        self.port = urlparse(url).port
 
         if not self.port:
             # autodetermine port from protocol
