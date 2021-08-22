@@ -56,7 +56,7 @@ class OnlineModel(Processor):
             }
 
             # send a request to the server
-            response = requests.post(self.url, files=multipart_form_data, params=params, timeout=timeout)
+            response = requests.post(self.url, files=multipart_form_data, params=params, timeout=self.timeout)
 
             # raise an error if the response is not as expected
             if response.status_code != 200:
