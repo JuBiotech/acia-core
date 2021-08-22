@@ -16,6 +16,27 @@ Features
 
 * TODO
 
+Quickstart Guide (3-steps)
+--------
+
+1. Make sure you have [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html#regular-installation) installed. You can check a valid installation by entering "anaconda" into your windows search. This should open a command line and the command
+
+```
+conda --version
+```
+shows you the version information.
+If this. works without any error, you're ready to go on.
+
+2. Create a new environment using
+
+```
+conda create -n mlflow -c conda-forge -y mlflow
+conda activate mlflow
+```
+
+Developer installation
+-------
+
 Credits
 -------
 
