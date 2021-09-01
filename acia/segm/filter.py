@@ -1,7 +1,16 @@
+from typing import Tuple
+from numpy.lib.polynomial import poly
 import tqdm
 import shapely
 from shapely.validation import make_valid
 from acia.base import Overlay
+from shapely.geometry import Polygon
+from rtree import index
+
+
+def bbox_to_rectangle(bbox: Tuple[float]):
+    minx, miny, maxx, maxy = bbox
+    return Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
 
 
 class NMSFilter:
@@ -15,27 +24,39 @@ class NMSFilter:
         # make (valid) shapely polygons
         polygons = [make_valid(shapely.geometry.polygon.Polygon(contour.coordinates)) for contour in sorted_contours]
 
-        # for i, poly in enumerate(polygons):
-        #    if not isinstance(poly, shapely.geometry.polygon.Polygon):
-        #        sorted_geoms = sorted(polygons, key=lambda p: -p.area)
-        #        polygons[i] = sorted_geoms[i]
-        #
-        #        if isinstance(polygons[i], shapely.geometry.MultiPolygon):
-        #            polygons[i] = sorted(polygons[i].geoms, keay=lambda p: -p.area)[0]
-
         keep_list = []
 
-        for i, p_i in tqdm.tqdm(enumerate(polygons)):
-            keep = True
-            for j, p_j in enumerate(polygons[i + 1:]):
-                index = j + i + 1
-                if sorted_contours[i].frame != sorted_contours[index].frame:
-                    continue
+        # build an rtree with bounding boxes
+        idx = index.Index()
+        for i, p_i in enumerate(polygons):
+            minx, miny, maxx, maxy = p_i.bounds
+            left = minx
+            right = maxx
+            top = maxy
+            bottom = miny
+            idx.insert(i, (left, bottom, right, top))
 
-                # zero area stuff is not considered
-                if p_i.area <= 0:
-                    keep = False
-                    break
+        for i, p_i in tqdm.tqdm(enumerate(polygons), total=len(polygons)):
+            keep = True
+
+            # zero area stuff is not considered
+            if p_i.area <= 0:
+                keep = False
+                break
+
+            # get the intersection candidates by querying the rtree (overlapping bboxes)
+            minx, miny, maxx, maxy = p_i.bounds
+            left = minx
+            right = maxx
+            top = maxy
+            bottom = miny
+            candidate_idx_list = idx.intersection((left, bottom, right, top))
+
+            candidate_idx_list = list(filter(lambda index: index > i and sorted_contours[i].frame == sorted_contours[index].frame, candidate_idx_list))
+
+            # for those candidates we will compute the intersections in details
+            for j in candidate_idx_list:
+                p_j = polygons[j]
 
                 # compute iou
                 if mode == 'i':
@@ -48,6 +69,7 @@ class NMSFilter:
                     # print("iou: %.2f" % iou)
                     keep = False
                     break
+
             keep_list.append(keep)
 
         overlay = Overlay([cont for i, cont in enumerate(sorted_contours) if keep_list[i]])
