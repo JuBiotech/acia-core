@@ -62,16 +62,17 @@ class OmeroRoIStorer:
             if overlay.numFrames() == size_t * size_z:
                 # this is a linearized overlay
                 logging.info('Linearized overlay: Use t and z')
-                shapes = [
-                    create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in overlay
-                ]
+                shapes = [[
+                    create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in time_overlay
+                ] for time_overlay in overlay.timeIterator()]
 
             else:
-                shapes = [
-                    create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
-                ]
+                shapes = [[
+                    create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in time_overlay
+                ] for time_overlay in overlay.timeIterator()]
 
-            create_roi(updateService, image, shapes)
+            for roi_shapes in shapes:
+                create_roi(updateService, image, roi_shapes)
 
     @staticmethod
     def load(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None) -> Overlay:
@@ -238,10 +239,8 @@ class OmeroRoISource(BlitzConn, RoISource):
             rois = self.roiSelector(rois)
 
             # compose an overlay from the rois
-            overlay = Overlay()
-            for roi in rois:
-                overlay += OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
-                                    serverUrl=self.serverUrl, port=self.port, secure=self.secure, roiId=roi.getId())
+            overlay = OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
+                                    serverUrl=self.serverUrl, port=self.port, secure=self.secure)
 
             # return overlay iterator over time
             return overlay.timeIterator()
