@@ -179,3 +179,33 @@ class CocoDataset:
 
         with open(os.path.join(annotation_file), 'w') as output_json_file:
             json.dump(coco_output, output_json_file)
+
+'''
+    Wrapper for opencv video writer. Simplifies usage
+'''
+class VideoExporter:
+
+    def __init__(self, filename, framerate):
+        self.filename = filename
+        self.framerate = framerate
+        self.out = None
+
+    def __del__(self):
+        if self.out:
+            self.out.close()
+
+    def write(self, image):
+        if self.out is None:
+            frame_height, frame_width = image.shape[:2]
+            self.out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M','J','P','G'), self.framerate, (frame_width,frame_height))
+        self.out.write(image)
+
+    def close(self):
+        self.out.close()
+        self.out = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close()
