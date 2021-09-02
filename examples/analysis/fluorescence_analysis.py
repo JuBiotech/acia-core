@@ -1,3 +1,4 @@
+from acia.segm.output import VideoExporter
 from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
 from acia.base import ImageRoISource
 import cv2
@@ -24,10 +25,12 @@ if __name__ == '__main__':
         OmeroRoISource(image_id, **credentials)
     )
 
-    print('Loading data from server...')
-    for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
-        mask = overlay.toMasks(*image.shape[:2])[0]
+    with VideoExporter('outpy.avi', framerate=3) as ve:
+        print('Loading data from server...')
+        for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
+            mask = overlay.toMasks(*image.shape[:2])[0]
 
-        masked_image = image * mask[:,:,None] 
-
-        cv2.imwrite(osp.join('images', '%02d.png' % i), cv2.cvtColor(masked_image, cv2.COLOR_BGR2RGB))
+            masked_image = image * mask[:,:,None] 
+            masked_image = cv2.cvtColor(masked_image, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(osp.join('images', '%02d.png' % i), masked_image)
+            ve.write(masked_image)
