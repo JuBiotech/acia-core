@@ -162,6 +162,8 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
         self.imageQuality = imageQuality
         self.colorList = colorList
 
+        assert len(self.channels) <= len(self.colorList), f"you must specify a color for every channel! You have {len(self.channels)} channels ({self.channels}) but only {len(self.colorList)} color(s) ({self.colorList}). Please update your colorList!"
+
     def imageName(self) -> str:
         '''
             returns the name of the image
