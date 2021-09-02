@@ -52,8 +52,8 @@ def make_polystr(points):
     return rstring(' '.join('%d,%d' % (int(round(x)), int(round(y))) for x, y in points))
 
 
-def make_coordinates(polystr: str) -> List[Tuple[int]]:
-    return [tuple(map(int, textCoord.split(','))) for textCoord in polystr.split(' ')]
+def make_coordinates(polystr: str) -> List[Tuple[float]]:
+    return [tuple(map(float, textCoord.split(','))) for textCoord in polystr.split(' ')]
 
 
 def create_polygon(points: List, z: int, t: int, fillColor=(255, 0, 255, 50), strokeColor=(255, 255, 0), description=""):
