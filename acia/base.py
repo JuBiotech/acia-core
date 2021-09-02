@@ -122,5 +122,5 @@ class ImageRoISource(object):
         self.imageSource = imageSource
         self.roiSource = roiSource
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[np.array, Overlay]]:
         return zip(iter(self.imageSource), iter(self.roiSource))
