@@ -141,7 +141,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
     '''
         Uses omero server as a source for images
     '''
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True, colorList=['FFFFFF', None, None]):
         '''
             imageId: id of the image sequence
             username: omero username
@@ -151,6 +151,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             channels: list of image channels to activate (e.g. include fluorescence channels)
             z: focus plane
             imageQuality: quality of the rendered images (1.0=no compression, 0.0=super compression)
+            base_channel: id of the phase contrast channel (visualized over all rgb channels)
         '''
 
         BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
@@ -159,6 +160,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
         self.channels = channels
         self.z = z
         self.imageQuality = imageQuality
+        self.colorList = colorList
 
     def imageName(self) -> str:
         '''
@@ -194,18 +196,12 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
 
             # iterate over time
             for t,z in product(range(size_t), range(size_z)):
-                # set active channels
-                image.setActiveChannels(self.channels)
-                # render the image
-                rendered_image = image.renderImage(z, t, compression=self.imageQuality)
-                # convert to rgb
-                rendered_image = rendered_image.convert("RGB")
-                # convert to numpy
-                numpy_image = np.asarray(rendered_image, dtype=np.uint8)
-                # rendered_image.save('test.jpg')
 
-                # eject numpy image
-                yield numpy_image
+                image.setColorRenderingModel()
+                image.setActiveChannels(self.channels, colors=self.colorList)
+                rendered_image = image.renderImage(z, t, compression=self.imageQuality)
+
+                yield np.asarray(rendered_image, dtype=np.uint8)
 
     def __len__(self):
         with self.make_connection() as conn:

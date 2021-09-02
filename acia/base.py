@@ -1,12 +1,38 @@
-from typing import List
+from typing import Iterator, List, Tuple
 import numpy as np
-
+from PIL import Image, ImageDraw
 
 class Contour:
     def __init__(self, coordinates, score, frame):
         self.coordinates = coordinates
         self.score = score
         self.frame = frame
+
+    '''
+        Render contour mask onto existing image
+
+        img: pillow image
+        fillValue: mask values inside the contour
+        outlineValues: mask values on the outline (border)
+    '''
+    def _toMask(self, img, maskValue=1, outlineValue=1):
+        ImageDraw.Draw(img).polygon(self.coordinates, outline=outlineValue, fill=maskValue)
+        mask = np.array(img, np.bool)
+
+        return mask
+
+    '''
+        Render contour mask onto new image
+
+        height: height of the image
+        width: width of the image
+        fillValue: mask values inside the contour
+        outlineValues: mask values on the outline (border)
+    '''
+    def toMask(self, height, width, fillValue=1, outlineValue=1):
+        img = Image.new('L', (width, height), 0)
+
+        return self.__toMask(img, maskValue=fillValue, outlineValue=outlineValue)
 
 
 class Overlay:
@@ -51,6 +77,25 @@ class Overlay:
         for frame in range(startFrame, endFrame+1):
             # filter sub overlay with all contours in the frame
             yield Overlay(list(filter(lambda contour: contour.frame == frame, self.contours)))
+
+    '''
+        Turn the individual overlays into masks. For every time point we create a mask of all contours.
+
+        returns: List of masks (np.array[bool])
+
+        height: height of the image
+        width: width of the image
+    '''
+    def toMasks(self, height, width) -> List[np.array]:
+        masks = []
+        for timeOverlay in self.timeIterator():
+            img = Image.new('L', (width, height), 0)
+            for cont in timeOverlay:
+                cont._toMask(img, maskValue=1, outlineValue=1)
+            mask = np.array(img, np.bool)
+            masks.append(mask)
+
+        return masks
 
 
 class Processor(object):
