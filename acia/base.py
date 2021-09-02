@@ -57,21 +57,27 @@ class Overlay:
         return len(self.contours)
 
     def numFrames(self):
-        return len(np.unique([c.frame for c in self.contours]))
+        return len(self.frames())
 
-    def timeIterator(self, startFrame=0, endFrame=None):
+    def frames(self):
+        return np.unique([c.frame for c in self.contours])
+
+    def timeIterator(self, startFrame=None, endFrame=None):
         '''
             Creates an iterator that returns an Overlay for every frame between starFrame and endFrame
 
             startFrame: first frame number
             endFrame: last frame number
         '''
-        assert startFrame >= 0
+        if startFrame is None:
+            startFrame = np.min(self.frames())
+
         if endFrame is None:
-            # automatically determine the max endTime
-            endFrame = max([c.frame for c in self.contours])
-        else:
-            assert endFrame >= 0
+            endFrame = np.max(self.frames())
+
+        assert startFrame >= 0
+        assert endFrame >= 0
+        assert endFrame <= np.max(self.frames())
 
         # iterate frames
         for frame in range(startFrame, endFrame+1):
