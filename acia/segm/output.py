@@ -189,23 +189,29 @@ class VideoExporter:
         self.filename = filename
         self.framerate = framerate
         self.out = None
+        self.frame_height = None
+        self.frame_width = None
 
     def __del__(self):
         if self.out:
-            self.out.close()
+            self.close()
 
     def write(self, image):
+        height, width = image.shape[:2]
         if self.out is None:
-            frame_height, frame_width = image.shape[:2]
-            self.out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M','J','P','G'), self.framerate, (frame_width,frame_height))
+            self.frame_height, self.frame_width = image.shape[:2]
+            self.out = cv2.VideoWriter(self.filename, cv2.VideoWriter_fourcc('M','J','P','G'), self.framerate, (self.frame_width, self.frame_height))
+        if self.frame_height != height or self.frame_width != width:
+            logging.warning('You add images of different resolution to the VideoExporter. This may cause problems (e.g. black video output)!')
         self.out.write(image)
 
     def close(self):
-        self.out.close()
-        self.out = None
+        if self.out:
+            self.out.release()
+            self.out = None
 
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
         self.close()
