@@ -73,7 +73,7 @@ def analyze_fluorescence(image, overlay):
         average_green = np.mean(masked_cell[:,:,1].compressed())
 
         # store the extracted data
-        datapoints.append((average_red, average_green, (masked_cell[:,:,0].compressed(), masked_cell[:,:,1].compressed(), masked_cell[:,:,2].compressed(), roi.id)))
+        datapoints.append((average_red, average_green, (masked_cell[:,:,0].compressed(), masked_cell[:,:,1].compressed(), masked_cell[:,:,2].compressed()), roi.id))
 
     # return extracted data per point
     return datapoints
