@@ -184,3 +184,6 @@ class ImageRoISource(object):
                 #    break
 
         return list(tqdm.tqdm(map(function, limit())))
+
+    def apply_star(self, function):
+        return list(tqdm.tqdm(map(partial(unpack, function=function), self)))
