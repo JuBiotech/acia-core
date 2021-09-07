@@ -32,37 +32,16 @@ irs = ImageRoISource(
 
 # read dataset
 df = pd.read_pickle('datapoints.pkl')
-
-# perform standardization
-std_slc = StandardScaler()
-transform = std_slc.fit(df[['red', 'green']])
-
-# transform data
-X_std = transform.transform(df[['red', 'green']])
-
-# execute kmeans with 3 clusters on transformed data
-cluster = KMeans(3)
-kmeans = cluster.fit(X_std)
-
-# get indices of meaningful clusters
-red_index = np.argmax(kmeans.cluster_centers_[:,0])
-green_index = np.argmax(kmeans.cluster_centers_[:,1])
-
-# prepare colors for clusters
-color = np.array(['yellow'] * 3)
-color[red_index] = 'red'
-color[green_index] = 'green'
-
-# append clustering result to dataframe
-df['label'] = kmeans.labels_
-df['color'] = color[kmeans.labels_]
+cell_index = 0
 
 with VideoExporter('cell_clustering.avi', framerate=3) as ve:
     print('Loading data from server...')
     for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
         # draw all cell countours with their respective cluster color
         pil_image = Image.fromarray(image, 'RGB')
-        overlay.draw(pil_image, outlineColor = lambda r: df[df['id'] == r.id]['color'])
+        for roi in overlay:
+            roi.draw(pil_image, outlineColor = df['color'][cell_index])
+            cell_index += 1
 
         # convert to raw image
         raw_image = np.asarray(pil_image)
