@@ -22,6 +22,8 @@ X_std = transform.transform(df[['red', 'green']])
 cluster = KMeans(3)
 kmeans = cluster.fit(X_std)
 
+df['label'] = kmeans.labels_
+
 # get indices of meaningful clusters
 red_index = np.argmax(kmeans.cluster_centers_[:,0])
 green_index = np.argmax(kmeans.cluster_centers_[:,1])
@@ -30,6 +32,10 @@ green_index = np.argmax(kmeans.cluster_centers_[:,1])
 color = np.array(['yellow'] * 3)
 color[red_index] = 'red'
 color[green_index] = 'green'
+
+df['color'] = color[kmeans.labels_]
+
+df.to_pickle('datapoints.pkl')
 
 #print('Clustering...')
 #clustering = DBSCAN(eps=0.1, min_samples=2).fit(df[['red', 'green']])
