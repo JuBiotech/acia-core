@@ -57,7 +57,7 @@ with VideoExporter('datapoints.avi', 3) as ve:
             # scatter data with correct colors
             plt.scatter(frame_df['red'], frame_df['green'], c= color[prediction], s=50, alpha=0.5)
             # scatter cluster centers
-            plt.scatter(centroids[:, 0], centroids[:, 1], c='black', s=50, shape='+')
+            plt.scatter(centroids[:, 0], centroids[:, 1], c='black', s=50, marker='+')
             # make figure
             plt.title('Frame: %03d' % frame)
             plt.xlabel('red')
