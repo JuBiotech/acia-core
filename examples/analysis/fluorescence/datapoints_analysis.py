@@ -56,8 +56,8 @@ def main():
     counts_green = []
     counts_red = []
 
-    with VideoExporter('datapoints.avi', 3) as ve:
-        with VideoExporter('clusters.avi', 3) as veC:
+    with VideoExporter(osp.join(basepath, 'datapoints.avi'), 3) as ve:
+        with VideoExporter(osp.join(basepath, 'clusters.avi'), 3) as veC:
             for frame in tqdm.tqdm(range(df['frame'].max())):
                 frame_df = df[df['frame'] == frame]
 
@@ -107,7 +107,7 @@ def main():
     plt.savefig(osp.join(basepath, 'cell_count.png'))
 
     # compute rel counts
-    total_count = np.array(counts_red) + np.array(counts_green)
+    '''total_count = np.array(counts_red) + np.array(counts_green)
 
     counts_red_rel = np.array(counts_red) / total_count
     counts_green_rel = np.array(counts_green) / total_count
@@ -115,7 +115,7 @@ def main():
     plt.close('all')
     plt.fill(counts_red_rel)
     plt.fill_between(list(enumerate(counts_red_rel)), counts_red_rel, counts_green_rel + counts_red_rel)
-    plt.savefig(osp.join(basepath, 'cell_count_rel.png'))
+    plt.savefig(osp.join(basepath, 'cell_count_rel.png'))'''
 
 if __name__ == '__main__':
     main()
