@@ -45,6 +45,8 @@ df.to_pickle('datapoints.pkl')
 inv_centroids = transform.inverse_transform(kmeans.cluster_centers_)
 centroids = inv_centroids
 
+counts_green = []
+counts_red = []
 
 with VideoExporter('datapoints.avi', 3) as ve:
     with VideoExporter('clusters.avi', 3) as veC:
@@ -81,3 +83,27 @@ with VideoExporter('datapoints.avi', 3) as ve:
             img = cv2.imread('datapoints.png')
 
             ve.write(image=img)
+
+            counts_green.append(len(frame_df[frame_df['label'] == green_index]))
+            counts_red.append(len(frame_df[frame_df['label'] == red_index]))
+
+plt.close('all')
+
+# plot absolute counts
+plt.plot(counts_green, label='green cells', color='green')
+plt.plot(counts_red, label='red cells', color='red')
+plt.title('Absolute cell counts')
+plt.xlabel('Frame')
+plt.ylabel('Cell count')
+plt.legend()
+plt.savefig('cell_count.png')
+
+total_count = np.array(counts_red) + np.array(counts_green)
+
+counts_red_rel = np.array(counts_red) / total_count
+counts_green_rel = np.array(counts_green) / total_count
+
+plt.close('all')
+plt.fill(counts_red_rel)
+plt.fill_between(list(enumerate(counts_red_rel)), counts_red_rel, counts_green_rel + counts_red_rel)
+plt.savefig('cell_count_rel.png')
