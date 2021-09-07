@@ -1,3 +1,4 @@
+from scipy.sparse import base
 from acia.segm.output import VideoExporter
 from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
 from acia.base import ImageRoISource
@@ -9,9 +10,10 @@ import numpy.ma as ma
 from PIL import Image, ImageDraw
 import pandas as pd
 
+from config import basepath
 
 def exportVideo(irs: ImageRoISource):
-    with VideoExporter('outpy.avi', framerate=3) as ve:
+    with VideoExporter(osp.join(basepath, 'outpy.avi'), framerate=3) as ve:
         print('Loading data from server...')
         for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
             mask = overlay.toMasks(*image.shape[:2])[0]
@@ -36,8 +38,8 @@ def exportFluorescence(irs: ImageRoISource):
     df = pd.DataFrame(datapoints, columns=['frame', 'red', 'green', 'r', 'g', 'b', 'id'])
 
     # store to files
-    df.to_csv('datapoints.csv')
-    df.to_pickle('datapoints.pkl')
+    df.to_csv(osp.join(basepath, 'datapoints.csv'))
+    df.to_pickle(osp.join(basepath, 'datapoints.pkl'))
 
 '''
     Take image and overlay and extract the fluorescence signal of the individual cell objects
@@ -78,25 +80,24 @@ def analyze_fluorescence(image, overlay):
     return datapoints
 
 
-if __name__ == '__main__':
-    # omero id of the image (Image ID)
-    image_id = 470
-    # fluorescence channels you want to monitor (usually 1 is the phase contrast)
-    fluorescence_channels = [2, 3]
+# omero id of the image (Image ID)
+image_id = 470
+# fluorescence channels you want to monitor (usually 1 is the phase contrast)
+fluorescence_channels = [2, 3]
 
-    # your user credentials for omero
-    credentials = dict(
-        username='root',
-        password='omero',
-        serverUrl='ibt056',
-    )
+# your user credentials for omero
+credentials = dict(
+    username='root',
+    password='omero',
+    serverUrl='ibt056',
+)
 
-    # combine images and rois
-    irs = ImageRoISource(
-        OmeroSequenceSource(image_id, **credentials, channels=fluorescence_channels, colorList=['FF0000', '00FF00']),
-        OmeroRoISource(image_id, **credentials)
-    )
+# combine images and rois
+irs = ImageRoISource(
+    OmeroSequenceSource(image_id, **credentials, channels=fluorescence_channels, colorList=['FF0000', '00FF00']),
+    OmeroRoISource(image_id, **credentials)
+)
 
-    # run applications
-    exportFluorescence(irs)
-    #exportVideo(irs)
+# run applications
+exportFluorescence(irs)
+#exportVideo(irs)

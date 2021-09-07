@@ -1,3 +1,4 @@
+from scipy.sparse import base
 from acia.segm.output import VideoExporter
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,9 +8,13 @@ import tqdm as tqdm
 import cv2
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import StandardScaler
+import os.path as osp
+from config import basepath
+
+datapath = osp.join(basepath, 'datapoints.pkl')
 
 # read dataset
-df = pd.read_pickle('datapoints.pkl')
+df = pd.read_pickle(datapath)
 
 # perform standardization
 std_slc = StandardScaler()
@@ -35,7 +40,8 @@ color[green_index] = 'green'
 
 df['color'] = color[kmeans.labels_]
 
-df.to_pickle('datapoints.pkl')
+# store pickle with color information
+df.to_pickle(datapath)
 
 #print('Clustering...')
 #clustering = DBSCAN(eps=0.1, min_samples=2).fit(df[['red', 'green']])
@@ -65,9 +71,9 @@ with VideoExporter('datapoints.avi', 3) as ve:
             plt.xlabel('red')
             plt.ylabel('green')
             plt.tight_layout()
-            plt.savefig('cluster.png')
+            plt.savefig(osp.join(basepath, 'cluster.png'))
             # read figure from file
-            img = cv2.imread('cluster.png')
+            img = cv2.imread(osp.join(basepath, 'cluster.png'))
             # write figure into video
             veC.write(image=img)
             plt.close('all')
@@ -77,10 +83,10 @@ with VideoExporter('datapoints.avi', 3) as ve:
             sns.displot(frame_df, x='red', y='green')
             plt.title('Frame: %03d' % frame)
             plt.tight_layout()
-            plt.savefig('datapoints.png')
+            plt.savefig(osp.join(basepath, 'datapoints.png'))
             plt.close('all')
 
-            img = cv2.imread('datapoints.png')
+            img = cv2.imread(osp.join(basepath, 'datapoints.png'))
 
             ve.write(image=img)
 
@@ -96,8 +102,9 @@ plt.title('Absolute cell counts')
 plt.xlabel('Frame')
 plt.ylabel('Cell count')
 plt.legend()
-plt.savefig('cell_count.png')
+plt.savefig(osp.join(basepath, 'cell_count.png'))
 
+# compute rel counts
 total_count = np.array(counts_red) + np.array(counts_green)
 
 counts_red_rel = np.array(counts_red) / total_count
@@ -106,4 +113,4 @@ counts_green_rel = np.array(counts_green) / total_count
 plt.close('all')
 plt.fill(counts_red_rel)
 plt.fill_between(list(enumerate(counts_red_rel)), counts_red_rel, counts_green_rel + counts_red_rel)
-plt.savefig('cell_count_rel.png')
+plt.savefig(osp.join(basepath, 'cell_count_rel.png'))

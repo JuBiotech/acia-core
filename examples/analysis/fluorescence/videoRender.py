@@ -1,3 +1,4 @@
+from scipy.sparse import base
 from acia.segm.output import VideoExporter
 import numpy as np
 import pandas as pd
@@ -13,7 +14,8 @@ import cv2
 import numpy as np
 from PIL import Image
 import pandas as pd
-
+import os.path as osp
+from config import basepath
 
 image_id = 470
 
@@ -31,10 +33,10 @@ irs = ImageRoISource(
 )
 
 # read dataset
-df = pd.read_pickle('datapoints.pkl')
+df = pd.read_pickle(osp.join(basepath, 'datapoints.pkl'))
 cell_index = 0
 
-with VideoExporter('cell_clustering.avi', framerate=3) as ve:
+with VideoExporter(osp.join(basepath, 'cell_clustering.avi'), framerate=3) as ve:
     print('Loading data from server...')
     for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
         # draw all cell countours with their respective cluster color
