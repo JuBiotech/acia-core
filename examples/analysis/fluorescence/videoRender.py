@@ -17,39 +17,44 @@ import pandas as pd
 import os.path as osp
 from config import basepath
 
-image_id = 470
+def main():
 
-# your user credentials
-credentials = dict(
-    username='root',
-    password='omero',
-    serverUrl='ibt056',
-)
+    image_id = 470
 
-# combine images and rois
-irs = ImageRoISource(
-    OmeroSequenceSource(image_id, **credentials, channels=[1,2,3], colorList=['FFFFFF', 'FF0000', '00FF00']),
-    OmeroRoISource(image_id, **credentials)
-)
+    # your user credentials
+    credentials = dict(
+        username='root',
+        password='omero',
+        serverUrl='ibt056',
+    )
 
-# read dataset
-df = pd.read_pickle(osp.join(basepath, 'datapoints.pkl'))
-cell_index = 0
+    # combine images and rois
+    irs = ImageRoISource(
+        OmeroSequenceSource(image_id, **credentials, channels=[1,2,3], colorList=['FFFFFF', 'FF0000', '00FF00']),
+        OmeroRoISource(image_id, **credentials)
+    )
 
-with VideoExporter(osp.join(basepath, 'cell_clustering.avi'), framerate=3) as ve:
-    print('Loading data from server...')
-    for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
-        # draw all cell countours with their respective cluster color
-        pil_image = Image.fromarray(image, 'RGB')
-        for roi in overlay:
-            roi.draw(pil_image, outlineColor = df['color'][cell_index])
-            cell_index += 1
+    # read dataset
+    df = pd.read_pickle(osp.join(basepath, 'datapoints.pkl'))
+    cell_index = 0
 
-        # convert to raw image
-        raw_image = np.asarray(pil_image)
+    with VideoExporter(osp.join(basepath, 'cell_clustering.avi'), framerate=3) as ve:
+        print('Loading data from server...')
+        for i, (image, overlay) in enumerate(tqdm.tqdm(irs)):
+            # draw all cell countours with their respective cluster color
+            pil_image = Image.fromarray(image, 'RGB')
+            for roi in overlay:
+                roi.draw(pil_image, outlineColor = df['color'][cell_index])
+                cell_index += 1
 
-        # convert to bgr (for opencv output)
-        raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
+            # convert to raw image
+            raw_image = np.asarray(pil_image)
 
-        # add frame to video
-        ve.write(raw_image)
+            # convert to bgr (for opencv output)
+            raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
+
+            # add frame to video
+            ve.write(raw_image)
+
+if __name__ == '__main__':
+    main()

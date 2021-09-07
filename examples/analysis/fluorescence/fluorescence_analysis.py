@@ -1,4 +1,3 @@
-from scipy.sparse import base
 from acia.segm.output import VideoExporter
 from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
 from acia.base import ImageRoISource
@@ -53,7 +52,7 @@ def analyze_fluorescence(image, overlay):
     draw = ImageDraw.Draw(img)
 
     # iterate all rois in the overlay
-    for roi in enumerate(overlay):
+    for roi in overlay:
         # clear mask image
         draw.rectangle((0, 0, width, height), fill=(0,))
 
@@ -80,24 +79,29 @@ def analyze_fluorescence(image, overlay):
     return datapoints
 
 
-# omero id of the image (Image ID)
-image_id = 470
-# fluorescence channels you want to monitor (usually 1 is the phase contrast)
-fluorescence_channels = [2, 3]
+def main():
 
-# your user credentials for omero
-credentials = dict(
-    username='root',
-    password='omero',
-    serverUrl='ibt056',
-)
+    # omero id of the image (Image ID)
+    image_id = 470
+    # fluorescence channels you want to monitor (usually 1 is the phase contrast)
+    fluorescence_channels = [2, 3]
 
-# combine images and rois
-irs = ImageRoISource(
-    OmeroSequenceSource(image_id, **credentials, channels=fluorescence_channels, colorList=['FF0000', '00FF00']),
-    OmeroRoISource(image_id, **credentials)
-)
+    # your user credentials for omero
+    credentials = dict(
+        username='root',
+        password='omero',
+        serverUrl='ibt056',
+    )
 
-# run applications
-exportFluorescence(irs)
-#exportVideo(irs)
+    # combine images and rois
+    irs = ImageRoISource(
+        OmeroSequenceSource(image_id, **credentials, channels=fluorescence_channels, colorList=['FF0000', '00FF00']),
+        OmeroRoISource(image_id, **credentials)
+    )
+
+    # run applications
+    exportFluorescence(irs)
+    #exportVideo(irs)
+
+if __name__ == '__main__':
+    main()
