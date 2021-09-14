@@ -165,7 +165,7 @@ class CocoDataset:
                 skimage.io.imsave(image_path, image)
 
                 image_info = pycococreatortools.create_image_info(
-                    image_id, os.path.basename(image_filename), (width, height))
+                    image_id, os.path.basename(image_filename), (width, height), date_captured=datetime.datetime(2021, 1, 1))
 
                 image_infos.append(image_info)
 
