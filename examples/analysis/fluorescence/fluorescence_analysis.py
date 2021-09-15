@@ -59,21 +59,21 @@ def analyze_fluorescence(image, overlay):
         # draw cell mask
         roi_mask = roi._toMask(img, draw=draw)
 
-        # mask image
-        masked_image = image * roi_mask[:,:,None]
+        # create cell mask for image
+        mask = np.broadcast_to(~roi_mask[:,:,None], (*roi_mask.shape, 3))
 
         # create masked array
-        masked_cell = ma.masked_array(masked_image, mask=np.repeat(~roi_mask[:,:,None], 3, axis=-1))
-
-        # norm the channel values
-        masked_cell = masked_cell.astype(np.float32) / 255
+        masked_cell = ma.masked_array(image, mask=mask)
 
         # compute average fluorescence responses
-        average_red = np.mean(masked_cell[:,:,0].compressed())
-        average_green = np.mean(masked_cell[:,:,1].compressed())
+        red_values = masked_cell[:,:,0].compressed() / 255
+        green_values = masked_cell[:,:,1].compressed() / 255
+        blue_values = masked_cell[:,:,2].compressed() / 255
+        average_red = np.mean(red_values)
+        average_green = np.mean(green_values)
 
         # store the extracted data
-        datapoints.append((average_red, average_green, (masked_cell[:,:,0].compressed(), masked_cell[:,:,1].compressed(), masked_cell[:,:,2].compressed()), roi.id))
+        datapoints.append((average_red, average_green, (red_values, green_values, blue_values), roi.id))
 
     # return extracted data per point
     return datapoints
