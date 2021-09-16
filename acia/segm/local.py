@@ -30,6 +30,20 @@ class LocalSequenceSource(ImageSequenceSource):
 
             yield image
 
+class ImageJRoISource(RoISource):
+    def __init__(self, filename, range=None):
+        self.overlay = RoiStorer.load(filename)
+        self.range = range
+
+    def __iter__(self):
+        return self.overlay.timeIterator(frame_range=self.range)
+
+
+    def __len__(self) -> int:
+            if self.range:
+                min(len(self.overlay), len(self.range))
+            return len(self.overlay)
+
 
 class RoiStorer:
     '''
