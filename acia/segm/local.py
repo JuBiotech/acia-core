@@ -76,8 +76,9 @@ class RoiStorer:
         # read the imagej rois from file
         rois = roifile.roiread(filename)
 
+        id = -1
         # convert them into contours (recover time position)
-        contours = [Contour(roi.coordinates(), -1., roi.t_position) for roi in rois]
+        contours = [Contour(roi.coordinates(), -1., roi.position-1, id=id) for roi in rois]
 
         # return the overlay
         return Overlay(contours)

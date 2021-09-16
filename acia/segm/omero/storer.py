@@ -115,8 +115,10 @@ class OmeroRoIStorer:
                         if size_z > 1:
                             t = t * size_z + s.getTheZ().getValue()
 
+                        id = s.getId().getValue()
+
                         # add contour element to overlay
-                        cont = Contour(points, score, t)
+                        cont = Contour(points, score, t, id=id)
                         overlay.add_contour(cont)
 
         # return the overlay
