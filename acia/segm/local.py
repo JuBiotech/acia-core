@@ -1,7 +1,7 @@
 import numpy as np
 import tifffile
 
-from acia.base import ImageSequenceSource, Overlay, Contour
+from acia.base import ImageSequenceSource, Overlay, Contour, RoISource
 import roifile
 
 
