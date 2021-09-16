@@ -141,7 +141,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
     '''
         Uses omero server as a source for images
     '''
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True, colorList=['FFFFFF', None, None]):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True, colorList=['FFFFFF', None, None], range=None):
         '''
             imageId: id of the image sequence
             username: omero username
@@ -161,6 +161,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
         self.z = z
         self.imageQuality = imageQuality
         self.colorList = colorList
+        self.range = range
 
         assert len(self.channels) <= len(self.colorList), f"you must specify a color for every channel! You have {len(self.channels)} channels ({self.channels}) but only {len(self.colorList)} color(s) ({self.colorList}). Please update your colorList!"
 
@@ -199,6 +200,11 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             # iterate over time
             for t,z in product(range(size_t), range(size_z)):
 
+                index = t * size_z + z
+
+                if self.range and not index in self.range:
+                    continue
+
                 image.setColorRenderingModel()
                 image.setActiveChannels(self.channels, colors=self.colorList)
                 rendered_image = image.renderImage(z, t, compression=self.imageQuality)
@@ -208,16 +214,19 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
     def __len__(self):
         with self.make_connection() as conn:
             image = conn.getObject('Image', self.imageId)
+            if self.range:
+                return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return int(image.getSizeT() * image.getSizeZ())
 
 
 class OmeroRoISource(BlitzConn, RoISource):
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]]):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]], range=None):
         BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
 
         self.imageId = imageId
 
         self.roiSelector = roiSelector
+        self.range = range
 
     def __iter__(self):
         # create connection to omero
@@ -241,10 +250,11 @@ class OmeroRoISource(BlitzConn, RoISource):
                                     serverUrl=self.serverUrl, port=self.port, secure=self.secure)
 
             # return overlay iterator over time
-            return overlay.timeIterator()
+            return overlay.timeIterator(frame_range=self.range)
 
     def __len__(self) -> int:
         with self.make_connection() as conn:
             image = conn.getObject('Image', self.imageId)
-
+            if self.range:
+                min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return image.getSizeT() * image.getSizeZ()

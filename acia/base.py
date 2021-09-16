@@ -77,7 +77,7 @@ class Overlay:
     def frames(self):
         return np.unique([c.frame for c in self.contours])
 
-    def timeIterator(self, startFrame=None, endFrame=None):
+    def timeIterator(self, startFrame=None, endFrame=None, frame_range=None):
         '''
             Creates an iterator that returns an Overlay for every frame between starFrame and endFrame
 
@@ -96,6 +96,8 @@ class Overlay:
 
         # iterate frames
         for frame in range(startFrame, endFrame+1):
+            if frame_range and not frame in frame_range:
+                continue
             # filter sub overlay with all contours in the frame
             yield Overlay(list(filter(lambda contour: contour.frame == frame, self.contours)))
 
