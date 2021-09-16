@@ -49,7 +49,7 @@ def create_ellipse(x: float, y: float, width: float, height: float, z: int, t: i
 
 
 def make_polystr(points):
-    return rstring(' '.join('%d,%d' % (int(round(x)), int(round(y))) for x, y in points))
+    return rstring(' '.join('%s,%s' % (str(x), str(y)) for x, y in points))
 
 
 def make_coordinates(polystr: str) -> List[Tuple[float]]:
