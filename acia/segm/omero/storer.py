@@ -62,17 +62,17 @@ class OmeroRoIStorer:
             if overlay.numFrames() == size_t * size_z:
                 # this is a linearized overlay
                 logging.info('Linearized overlay: Use t and z')
-                shapes = [[
-                    create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in time_overlay
-                ] for time_overlay in overlay.timeIterator()]
+                shapes = [
+                    create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in overlay
+                ]
 
             else:
-                shapes = [[
-                    create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in time_overlay
-                ] for time_overlay in overlay.timeIterator()]
+                shapes = [
+                    create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
+                ]
 
-            for roi_shapes in shapes:
-                create_roi(updateService, image, roi_shapes)
+            for shape in shapes:
+                create_roi(updateService, image, [shape])
 
     @staticmethod
     def load(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None) -> Overlay:
