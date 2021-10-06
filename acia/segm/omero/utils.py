@@ -1,6 +1,8 @@
-def list_images_in_dataset(conn, datasetId: int):
+def list_image_ids_in_dataset(conn, datasetId: int):
     return [image.getId() for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
+def list_images_in_dataset(conn, datasetId: int):
+    return [image for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
 def list_images_in_project(conn, projectId: int):
     return [image.getId() for dataset in conn.getObjects('Dataset', opts={'project': projectId}) for image in dataset.listChildren()]
