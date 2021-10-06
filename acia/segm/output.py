@@ -90,7 +90,7 @@ class CocoDataset:
             "version": "0.1.0",
             "year": 2021,
             "contributor": "JojoDevel",
-            "date_created": datetime.datetime.utcnow().isoformat(' ')
+            #"date_created": datetime.datetime.utcnow().isoformat(' ')
         }
 
         LICENSES = [
@@ -164,8 +164,9 @@ class CocoDataset:
                 image_path = os.path.join(image_dir, image_filename)
                 skimage.io.imsave(image_path, image)
 
+                # TODO: fix date issue
                 image_info = pycococreatortools.create_image_info(
-                    image_id, os.path.basename(image_filename), (width, height), date_captured=datetime.datetime(2021, 1, 1))
+                    image_id, os.path.basename(image_filename), (width, height), date_captured=datetime.datetime(2021, 1, 1).isoformat())
 
                 image_infos.append(image_info)
 
