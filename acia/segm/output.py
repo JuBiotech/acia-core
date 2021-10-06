@@ -162,7 +162,7 @@ class CocoDataset:
                 image_id = int('%04d%04d' % (input_index, image_index))
                 image_filename = '%04d_%04d.png' % (input_index, image_index)
                 image_path = os.path.join(image_dir, image_filename)
-                skimage.io.imsave(image_path, image)
+                skimage.io.imsave(image_path, image, check_contrast=False)
 
                 # TODO: fix date issue
                 image_info = pycococreatortools.create_image_info(
