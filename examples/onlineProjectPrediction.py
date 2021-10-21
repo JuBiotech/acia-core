@@ -38,7 +38,7 @@ if __name__ == '__main__':
         print("Connection to OMERO established!")
         projectName = get_project_name(conn, projectId)
         print(f"Scanning project'{projectName}...'")
-        image_list = list_images_in_project(conn, projectId)
+        image_list = map(lambda im: im.getId(), list_images_in_project(conn, projectId))
         print(get_image_name(conn, 1))
         #print(conn.getObject('Image', 1).getProject())
 
