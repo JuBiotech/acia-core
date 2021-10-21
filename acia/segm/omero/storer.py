@@ -15,8 +15,9 @@ def create_roi(updateService, img, shapes):
         updateService: omero update Service
         img: omero image object (not the id)
         shapes: list of omero.model shapes
+
+        returns: RoI object
     '''
-    import omero
     # create an ROI, link it to Image
     roi = omero.model.RoiI()
     # use the omero.model.ImageI that underlies the 'image' wrapper
@@ -26,11 +27,59 @@ def create_roi(updateService, img, shapes):
     # Save the ROI (saves any linked shapes too)
     return updateService.saveAndReturnObject(roi)
 
+# We have a helper function for creating an ROI and linking it to new shapes
+def create_roi_fast(updateService, img, shapes):
+    '''
+        Helper function to create the roi object (without waiting)
+        updateService: omero update Service
+        img: omero image object (not the id)
+        shapes: list of omero.model shapes
+    '''
+    # create an ROI, link it to Image
+    roi = omero.model.RoiI()
+    # use the omero.model.ImageI that underlies the 'image' wrapper
+    roi.setImage(img._obj)
+    for shape in shapes:
+        roi.addShape(shape)
+    # Save the ROI (saves any linked shapes too)
+    updateService.saveObject(roi)
 
 class OmeroRoIStorer:
     '''
         Stores and loads overlay results in the roi format (readable by ImageJ)
     '''
+
+    @staticmethod
+    def storeWithConn(overlay, imageId: int, conn, force=False, z=0):
+        # retrieve omero objects
+        updateService = conn.getUpdateService()
+        image = conn.getObject("Image", imageId)
+
+        userId = conn.getUser().getId()
+        imageOwnerId = image.getOwner().getId()
+
+        if not force and userId != imageOwnerId:
+            raise ValueError("You try to write to non-owned data. Enable 'force' option if you are sure to do that.")
+
+        #OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+
+        size_t = image.getSizeT()
+        size_z = image.getSizeZ()
+
+        if overlay.numFrames() == size_t * size_z:
+            # this is a linearized overlay
+            logging.info('Linearized overlay: Use t and z')
+            shapes = [
+                create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in overlay
+            ]
+
+        else:
+            shapes = [
+                create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
+            ]
+
+        for shape in shapes:
+            create_roi_fast(updateService, image, [shape])
 
     @staticmethod
     def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False, z=0):
@@ -46,33 +95,7 @@ class OmeroRoIStorer:
         '''
 
         with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
-            # retrieve omero objects
-            updateService = conn.getUpdateService()
-            image = conn.getObject("Image", imageId)
-
-            userId = conn.getUser().getId()
-            imageOwnerId = image.getOwner().getId()
-
-            if not force and userId != imageOwnerId:
-                raise ValueError("You try to write to non-owned data. Enable 'force' option if you are sure to do that.")
-
-            size_t = image.getSizeT()
-            size_z = image.getSizeZ()
-
-            if overlay.numFrames() == size_t * size_z:
-                # this is a linearized overlay
-                logging.info('Linearized overlay: Use t and z')
-                shapes = [
-                    create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in overlay
-                ]
-
-            else:
-                shapes = [
-                    create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
-                ]
-
-            for shape in shapes:
-                create_roi(updateService, image, [shape])
+            OmeroRoIStorer.storeWithConn(overlay, imageId, conn, force, z)
 
     @staticmethod
     def load(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None) -> Overlay:
@@ -124,26 +147,58 @@ class OmeroRoIStorer:
         # return the overlay
         return overlay
 
+    @staticmethod
+    def clear(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None):
+        # open connection to omero
+        with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
+            # get the roi service
+            roi_service = conn.getRoiService()
+            result = roi_service.findByImage(imageId, None)
+
+            print(f"Deleting {len(result.rois)} rois...")
+
+            # delete all RoIs in the image
+            conn.deleteObjects("Roi", [roi.getId().getValue() for roi in result.rois], deleteAnns=True, deleteChildren=True, wait=True)        
+
+class IngoreWithWrapper:
+    def __init__(self, object):
+        self.object = object
+
+    def __getattr__(self,attr):
+        return self.object.__getattribute__(attr)
+
+    def __enter__(self):
+        return self.object
+    def __exit__(self, type, value, traceback):
+        pass
+
 class BlitzConn(object):
     '''
         Encapsulates standard omero behavior
     '''
-    def __init__(self, username, password, serverUrl, port=4064, secure=True):
+    def __init__(self, username, password, serverUrl, port=4064, secure=True, conn=None):
         self.username = username
         self.password = password
         self.serverUrl = serverUrl
         self.port = port
         self.secure = secure
 
+        self.conn = conn
+
     def make_connection(self):
-        return BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+        if self.conn:
+            # we already have an existing conn object
+            return IngoreWithWrapper(self.conn)
+        else:
+            # return a new connection
+            return BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
 
 
 class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
     '''
         Uses omero server as a source for images
     '''
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True, colorList=['FFFFFF', None, None], range=None):
+    def __init__(self, imageId: int, username: str = None, password: str = None, serverUrl: str = None, port=4064, channels=[1], z=0, imageQuality=1.0, secure=True, colorList=['FFFFFF', None, None], range=None, conn=None):
         '''
             imageId: id of the image sequence
             username: omero username
@@ -156,7 +211,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             base_channel: id of the phase contrast channel (visualized over all rgb channels)
         '''
 
-        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn)
 
         self.imageId = imageId
         self.channels = channels
