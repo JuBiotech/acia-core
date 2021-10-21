@@ -4,12 +4,23 @@ from numpy import integer
 from omero.gateway import BlitzGateway
 from acia.base import Processor
 from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
+from acia.segm.omero.utils import list_images_in_dataset, list_images_in_project
 from acia.segm.processor.offline import OfflineModel
 from acia.segm.filter import NMSFilter
 from examples.training_dataset.exportDataset import has_all_tags
 import time
 import omero
-import functools
+import itertools
+
+def image_iterator(conn, object):
+    if object.OMERO_CLASS == 'Image':
+        yield object
+    if object.OMERO_CLASS == 'Dataset':
+        for image in list_images_in_dataset(conn, object.getId()):
+            yield image
+    if object.OMERO_CLASS == 'Project':
+        for image in list_images_in_project(conn, object.getId()):
+            yield image
 
 def get_tags(conn, object):
     """Obtain all tags associated with an omero object
@@ -41,7 +52,7 @@ def remove_tag(conn, object, tag_name: str):
     for tag in tags:
         if tag.getTextValue() == tag_name:
             # delete tag
-            conn.deleteObjects('Annotation', [tag.getId()], wait=True)
+            conn.deleteObjects('Annotation', [tag.link.getId()], wait=True)
 
             # work done
             return
@@ -66,7 +77,7 @@ def predict(imageId: integer, model: Processor, conn):
 
     # perform overlay prediction
     print("Perform Prediction...")
-    result = model.predict(source)
+    result = model.predict(source, tiling=True)
 
     # filter cell detections
     print("Filter detections")
@@ -106,21 +117,23 @@ if __name__ == '__main__':
 
         logging.info("Connect to omero...")
         with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
-            conn.c.enableKeepAlive(600)
-            images = conn.getObjects("Image")
+            omero_objects = itertools.chain(conn.getObjects("Image"), conn.getObjects("Dataset"), conn.getObjects("Project"))
 
-            for image in images:
-                
-                if has_all_tags(image, tag_filter):
+            # iterate over any kind of omero object (Image, Dataset, Project)
+            for obj in omero_objects:
+                if has_all_tags(obj, tag_filter):
                     print(f'Found segmentation for {image.getName()}')
 
-                    # TODO: do the segmentation here
-                    predict(image.getId(), get_model(), conn)
-                    print("Segmentation successfull!")
+                    # iterate over the image(s) in there
+                    for image in image_iterator(conn, obj):
+                        
+                            # do the segmentation here
+                            predict(image.getId(), get_model(), conn)
+                            print("Segmentation successfull!")
 
-                    # if everything worked well: remove the tag that triggers the execution
-                    for tag in request_tags:
-                        remove_tag(conn, image, tag)
+                # if everything worked well: remove the tag that triggers the execution
+                for tag in request_tags:
+                    remove_tag(conn, obj, tag)
 
         print('Sleep')
         time.sleep(30)
