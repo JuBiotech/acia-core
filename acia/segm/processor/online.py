@@ -11,7 +11,7 @@ class OnlineModel(Processor):
     '''
         The model is not running locally on the computer but in a remote location
     '''
-    def __init__(self, url: str, username=None, password=None, timeout=20):
+    def __init__(self, url: str, username=None, password=None, timeout=30):
         '''
             url: remote model executer (can also contain a port definition)
             username: username
@@ -72,7 +72,7 @@ class OnlineModel(Processor):
                 contour = list(zip(contour_lists['x'], contour_lists['y']))
                 score = detection['score']
 
-                contours.append(Contour(contour, score, frame))
+                contours.append(Contour(contour, score, frame, -1))
 
         return Overlay(contours)
 
