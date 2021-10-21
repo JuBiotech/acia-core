@@ -52,7 +52,7 @@ def remove_tag(conn, object, tag_name: str):
     for tag in tags:
         if tag.getTextValue() == tag_name:
             # delete tag
-            conn.deleteObjects('Annotation', [tag.link.getId()], wait=True)
+            conn.deleteObjects('ImageAnnotationLink', [tag.link.getId()], wait=True)
 
             # work done
             return
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         'password': password
     }
 
-    tag_filter = ['require-segm'] # e.g. add E. coli here
+    tag_filter = ['request-segm'] # e.g. add E. coli here
 
     request_tags = tag_filter
 
@@ -122,18 +122,18 @@ if __name__ == '__main__':
             # iterate over any kind of omero object (Image, Dataset, Project)
             for obj in omero_objects:
                 if has_all_tags(obj, tag_filter):
-                    print(f'Found segmentation for {image.getName()}')
+                    print(f'Found segmentation for {obj.getName()}')
 
                     # iterate over the image(s) in there
                     for image in image_iterator(conn, obj):
                         
-                            # do the segmentation here
-                            predict(image.getId(), get_model(), conn)
-                            print("Segmentation successfull!")
+                        # do the segmentation here
+                        predict(image.getId(), get_model(), conn)
+                        print("Segmentation successfull!")
 
-                # if everything worked well: remove the tag that triggers the execution
-                for tag in request_tags:
-                    remove_tag(conn, obj, tag)
+                    # if everything worked well: remove the tag that triggers the execution
+                    for tag in request_tags:
+                        remove_tag(conn, obj, tag)
 
         print('Sleep')
         time.sleep(30)
