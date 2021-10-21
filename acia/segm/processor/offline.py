@@ -35,10 +35,13 @@ class OfflineModel(Processor):
             cfg_options: overwrite configuration options e.g. {'test_cfg.rpn.nms_thr': 0.7}
         '''
         # init model
-        self.model = init_detector(self.config_file, self.parameter_file, device='cuda', cfg_options=cfg_options)
-        if half:
-            # make it 16-bit
-            wrap_fp16_model(self.model)
+        if self.model is None:
+            self.model = init_detector(self.config_file, self.parameter_file, device='cuda', cfg_options=cfg_options)
+            if half:
+                # make it 16-bit
+                wrap_fp16_model(self.model)
+
+        return self.model
 
     def predict(self, source: ImageSequenceSource, tiling=False) -> Overlay:
         '''
