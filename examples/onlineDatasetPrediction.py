@@ -1,6 +1,6 @@
 from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
 from acia.deploy import OnlineModel, LocalSequenceSource, RoiStorer, NMSFilter
-from acia.segm.omero.utils import list_images
+from acia.segm.omero.utils import list_image_ids_in_dataset
 
 from omero.gateway import BlitzGateway
 import tqdm
@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     username = "root"
     password = "omero"
-    serverUrl = "ibt056"
+    serverUrl = "ibtomero"
 
     # connect to remote machine learning model
     model = OnlineModel('http://ibt056/pt/predictions/cellcmaskrcnn/')
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     datasetId = 201
 
     with BlitzGateway(username, password, host=serverUrl) as conn:
-        image_list = list_images(conn, datasetId)
+        image_list = list_image_ids_in_dataset(conn, datasetId)
 
     print(image_list)
 

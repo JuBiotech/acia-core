@@ -11,8 +11,10 @@ if __name__ == '__main__':
     # connect to remote machine learning model
     model = OnlineModel('http://ibt056/pt/predictions/cellcmaskrcnn/')
 
+    imageId = 740
+
     # create local image data source
-    source = OmeroSequenceSource(2, "root", "omero", "ibt056")
+    source = OmeroSequenceSource(imageId, "root", "omero", "ibt056")
     #source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
 
     # perform overlay prediction
@@ -25,5 +27,5 @@ if __name__ == '__main__':
 
     # store detections in omero
     print("Save results...")
-    OmeroRoIStorer.store(result, 2, "root", "omero", 'ibt056')
+    OmeroRoIStorer.store(result, imageId, "root", "omero", 'ibt056')
     #RoiStorer.store(result, 'rois.zip')

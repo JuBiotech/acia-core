@@ -58,6 +58,8 @@ if __name__ == '__main__':
             datasetName = source.datasetName()
             imageName = source.imageName()
 
+            #OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl)
+
             print(f"Predict {projectName} > {datasetName} > {imageName}")
             result = model.predict(source, params={'test_cfg.rcnn.nms.iou_threshold': 0.8, 'test_cfg.rcnn.score_thr': 0.25})
             print()
