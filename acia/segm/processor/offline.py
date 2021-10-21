@@ -47,13 +47,13 @@ class OfflineModel(Processor):
             source: image sequence source
             tiling: whether to enable tiling
         '''
-        self.load_model(half=self.half, device=self.device, cfg_options={'test_cfg.rcnn.nms.iou_threshold': 0.3, 'test_cfg.rcnn.score_thr': 0.5})
+        self.load_model(half=self.half, device=self.device)#, cfg_options={'test_cfg.rcnn.nms.iou_threshold': 0.3, 'test_cfg.rcnn.score_thr': 0.5})
 
         overlay = Overlay()
 
         for frame_id, image in tqdm.tqdm(enumerate(source)):
-            from predict import contour_from_mask
-            from predict import prediction
+            from .predict import contour_from_mask
+            from .predict import prediction
 
             pred_result = prediction(image, self.model, tiling=tiling)
 
@@ -62,7 +62,7 @@ class OfflineModel(Processor):
             # drop non-sense contours
             all_contours = list(filter(lambda contour: len(contour) >= 5, all_contours))
 
-            contours = [Contour(cont, 0., frame_id) for cont in all_contours]
+            contours = [Contour(cont, 0., frame_id, id=-1) for cont in all_contours]
             overlay.add_contours(contours)
 
         return overlay

@@ -30,6 +30,26 @@ class LocalSequenceSource(ImageSequenceSource):
 
             yield image
 
+    def slice(self, start, end):
+        images = tifffile.imread(self.filename)
+
+        for image in images[start:end]:
+            # normalize image space
+            if self.normalize_image:
+                min_val = np.min(image)
+                max_val = np.max(image)
+                image = np.floor((image - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+
+            if len(image.shape) > 2:
+                # select only the first channel
+                image = image[0]
+
+            if len(image.shape) == 2:
+                # make it artificially rgb
+                image = np.repeat(image[:, :, None], 3, axis=-1)
+
+            yield image
+
 class ImageJRoISource(RoISource):
     def __init__(self, filename, range=None):
         self.overlay = RoiStorer.load(filename)
