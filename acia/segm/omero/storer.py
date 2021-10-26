@@ -148,9 +148,9 @@ class OmeroRoIStorer:
         return overlay
 
     @staticmethod
-    def clear(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None):
+    def clear(imageId: int, username: str = None, password: str = None, serverUrl: str = None, port=4064, secure=True, roiId=None, conn=None):
         # open connection to omero
-        with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
+        with BlitzConn(username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn).make_connection() as conn:
             # get the roi service
             roi_service = conn.getRoiService()
             result = roi_service.findByImage(imageId, None)
@@ -192,6 +192,12 @@ class BlitzConn(object):
         else:
             # return a new connection
             return BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+
+    def __enter__(self):
+        self.make_connection()
+
+    def __exit__(self, type, value, traceback):
+        pass
 
 
 class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
