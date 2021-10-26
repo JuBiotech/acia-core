@@ -10,7 +10,7 @@ class OfflineModel(Processor):
     '''
         Model that runs on the local computer
     '''
-    def __init__(self, config_file, parameter_file, half=False, device='cuda'):
+    def __init__(self, config_file, parameter_file, half=False, device='cuda', tiling=None):
         '''
             config_file: model configuration file
             parameter_file: model checkpoint file
@@ -26,6 +26,8 @@ class OfflineModel(Processor):
         self.half = half
         # determine the device
         self.device = device
+
+        self.tiling = tiling
 
     def load_model(self, device=None, cfg_options=None, half=False):
         '''
@@ -43,7 +45,7 @@ class OfflineModel(Processor):
 
         return self.model
 
-    def predict(self, source: ImageSequenceSource, tiling=False) -> Overlay:
+    def predict(self, source: ImageSequenceSource) -> Overlay:
         '''
             Predicts the overlay for an image sequence
 
@@ -58,7 +60,7 @@ class OfflineModel(Processor):
             from .predict import contour_from_mask
             from .predict import prediction
 
-            pred_result = prediction(image, self.model, tiling=tiling)
+            pred_result = prediction(image, self.model, tiling=self.tiling)
 
             all_masks = np.stack([det['mask'] for det in pred_result])
             all_contours = [contour_from_mask(mask, 0.5) for mask in all_masks]
