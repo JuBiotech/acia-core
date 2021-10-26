@@ -172,12 +172,12 @@ def tiled_inference(image, model, x_shift=256-128, y_shift=256-128, tile_width=2
     height, width = image.shape[:2]
 
     # iterate over top coordinate of tile
-    ys = list(range(int(np.ceil(height / y_shift))))
+    ys = list(range(max(1, int(np.ceil((height - tile_height) / y_shift)))))
     for iY in ys:
         y = y_start + iY * y_shift
         y_pd = (iY == 0) + (iY == ys[-1])
         # iterate over left coordinate of tile
-        xs = list(range(int(np.ceil(width / x_shift))))
+        xs = list(range(max(1, int(np.ceil((width - tile_width) / x_shift)))))
         for iX in xs:
             x = x_start + iX * x_shift
             x_pd = (iX == 0) + (iX == xs[-1])
@@ -492,16 +492,16 @@ def mask_nms(masks, bboxes, scores, bbox_iou_threshold=.1, mask_iou_threshold=.4
 
     return np.arange(len(masks))[filter_mask]
 
-def prediction(image, model, min_score=0.0, tiling=False):
+def prediction(image, model, min_score=0.0, tiling=None):
     # apply tiled inference
     if tiling:
-        all_detections = tiled_inference(image, model)
+        all_detections = tiled_inference(image, model, **tiling)
         # filter by score
         all_detections = list(filter(lambda det: det['score'] > min_score, all_detections))
         # perform non-max supressions (due to tiling this is needed)
         if len(all_detections) > 0:
             filter_mask = torch_mask_nms(np.stack([det['mask'] for det in all_detections]), np.stack([det['bbox'] for det in all_detections]), np.stack([det['score'] for det in all_detections]),
-                                    score_threshold=min_score)
+                                    score_threshold=min_score, mask_iou_threshold=0.6)
 
             all_detections = list(np.array(all_detections)[filter_mask])
     else:
