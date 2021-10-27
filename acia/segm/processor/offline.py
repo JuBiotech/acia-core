@@ -65,9 +65,9 @@ class OfflineModel(Processor):
             all_masks = np.stack([det['mask'] for det in pred_result])
             all_contours = [contour_from_mask(mask, 0.5) for mask in all_masks]
             # drop non-sense contours
-            all_contours = list(filter(lambda contour: len(contour) >= 5, all_contours))
+            all_contours = list(filter(lambda comb: len(comb[1]) >= 5, zip(pred_result, all_contours)))
 
-            contours = [Contour(cont, 0., frame_id, id=-1) for cont in all_contours]
+            contours = [Contour(cont, pred['score'], frame_id, id=-1) for pred,cont in all_contours]
             overlay.add_contours(contours)
 
         return overlay
