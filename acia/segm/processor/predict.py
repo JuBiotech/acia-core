@@ -172,12 +172,12 @@ def tiled_inference(image, model, x_shift=256-128, y_shift=256-128, tile_width=2
     height, width = image.shape[:2]
 
     # iterate over top coordinate of tile
-    ys = list(range(max(1, int(np.ceil((height - tile_height) / y_shift)))))
+    ys = list(range(max(1, 1+int(np.ceil((height - tile_height) / y_shift)))))
     for iY in ys:
         y = y_start + iY * y_shift
         y_pd = (iY == 0) + (iY == ys[-1])
         # iterate over left coordinate of tile
-        xs = list(range(max(1, int(np.ceil((width - tile_width) / x_shift)))))
+        xs = list(range(max(1, 1+int(np.ceil((width - tile_width) / x_shift)))))
         for iX in xs:
             x = x_start + iX * x_shift
             x_pd = (iX == 0) + (iX == xs[-1])
