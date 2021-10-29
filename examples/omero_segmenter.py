@@ -95,7 +95,7 @@ def segmentation(username, password, serverUrl):
         # iterate over any kind of omero object (Image, Dataset, Project)
         for obj in omero_objects:
             if has_all_tags(obj, tag_filter):
-                print(f'Found segmentation deletion request for {obj.getName()}')
+                print(f'Found segmentation request for {obj.getName()}')
 
                 # iterate over the image(s) in there
                 for image in image_iterator(conn, obj):
@@ -120,7 +120,7 @@ def del_segmentations(username, password, serverUrl):
         # iterate over any kind of omero object (Image, Dataset, Project)
         for obj in omero_objects:
             if has_all_tags(obj, tag_filter):
-                print(f'Found segmentation for {obj.getName()}')
+                print(f'Found segmentation deletion request for {obj.getName()}')
                 # iterate over the image(s) in there
                 for image in image_iterator(conn, obj):
                     OmeroRoIStorer.clear(image.getId(), conn=conn)
