@@ -37,6 +37,9 @@ setup(
         ],
     },
     install_requires=requirements,
+    extras_require={
+        "omero": ["omero-py>=5.9.3"],
+    },
     license="MIT license",
     long_description=readme + '\n\n' + history,
     include_package_data=True,

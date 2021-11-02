@@ -1,6 +1,5 @@
 shapely==1.8a2
 tqdm>=4.61.2
-omero-py>=5.9.3
 #pycococreator@git+https://github.com/waspinator/pycococreator.git
 opencv-python>=4.5.3.56
 rtree>=0.9.7
