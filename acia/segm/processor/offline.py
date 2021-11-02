@@ -62,6 +62,10 @@ class OfflineModel(Processor):
 
             pred_result = prediction(image, self.model, tiling=self.tiling)
 
+            if len(pred_result) == 0:
+                # no predictions
+                continue
+
             all_masks = np.stack([det['mask'] for det in pred_result])
             all_contours = [contour_from_mask(mask, 0.5) for mask in all_masks]
             # drop non-sense contours
