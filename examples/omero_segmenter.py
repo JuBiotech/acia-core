@@ -1,3 +1,5 @@
+print('Loading...')
+
 import getpass
 import logging
 from numpy import integer
@@ -12,7 +14,7 @@ import time
 import omero
 import itertools
 
-def get_tags(conn, object):
+def get_tags(conn, object) -> list:
     """Obtain all tags associated with an omero object
 
     Args:
@@ -29,30 +31,54 @@ def get_tags(conn, object):
 
     return tags
 
-
-def remove_tag(conn, object, tag_name: str):
+def remove_tag(conn, object, tag_name: str, tag_owner_id = None):
     """ Removes the named tag from the omero object using the omero connection.
 
     Args:
         conn ([type]): omero connection
         object ([type]): omero object
         tag_name (str): tag name
+
+        Adapted from: https://github.com/ome/omero-web/blob/86640b8e7f0580066059b1dae26041cbace41585/omeroweb/webclient/controller/container.py#L819
     """
+    toDelete = []
+
+    dtype = object.OMERO_CLASS.lower()
+
     tags = get_tags(conn, object)
     for tag in tags:
         if tag.getTextValue() == tag_name:
-            # delete tag
-            conn.deleteObjects('ImageAnnotationLink', [tag.link.getId()], wait=True)
+            # TODO: get dtype from object
+            for al in tag.getParentLinks(dtype, [object.getId()]):
+                if (
+                    al is not None
+                    and al.canDelete()
+                    and (
+                        tag_owner_id is None
+                        or unwrap(al.details.owner.id) == tag_owner_id
+                    )
+                ):
+                    toDelete.append(al._obj)
 
-            # work done
-            return
+    # Need to group objects by class then batch delete
+    linksByType = {}
+    for obj in toDelete:
+        objType = obj.__class__.__name__.rstrip("I")
+        if objType not in linksByType:
+            linksByType[objType] = []
+        linksByType[objType].append(obj.id.val)
+    for linkType, ids in linksByType.items():
+        conn.deleteObjects(linkType, ids, wait=True)
+    #if len(notFound) > 0:
+    #    raise AttributeError("Attribute not specified. Cannot be removed.")
 
-    # war user that the tag could not be found
-    logging.warn(f'tag "{tag_name}" not found in object "{object.getName()}"')
+    if len(toDelete) == 0:
+        # warn user that the tag could not be found
+        logging.warn(f'tag "{tag_name}" not found in object "{object.getName()}"')
 
 def create_model():
     # create local machine learning model
-    return OfflineModel('model_zoo/htc/htc_tuned.py', 'model_zoo/htc/latest.pth', half=True, tiling={'x_shift': 768-128, 'y_shift': 768-128, 'tile_height': 768, 'tile_width': 768})
+    return OfflineModel('model_zoo/htc/version3/htc_like_def_detr_tuned.py', 'model_zoo/htc/version3/latest.pth', half=True, tiling={'x_shift': 768-128, 'y_shift': 768-128, 'tile_height': 768, 'tile_width': 768})
 
 def predict(imageId: integer, model: Processor, conn):
     """[summary]
@@ -66,7 +92,7 @@ def predict(imageId: integer, model: Processor, conn):
     source = OmeroSequenceSource(imageId, conn=conn)
 
     # perform overlay prediction
-    print("Perform Prediction...")
+    print(f"Perform Prediction on {imageId}...")
     result = model.predict(source)
 
     # filter cell detections
@@ -90,23 +116,47 @@ def segmentation(username, password, serverUrl):
 
     logging.info("Connect to omero...")
     with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
-        omero_objects = itertools.chain(conn.getObjects("Image"), conn.getObjects("Dataset"), conn.getObjects("Project"))
+        # TODO: get really all objects!
+
+        # Querying across omero groups
+        conn.SERVICE_OPTS.setOmeroGroup('-1')
+
+        omero_objects = itertools.chain(conn.getObjects("Project"), conn.getObjects("Image"), conn.getObjects("Dataset"))#*all_objects)
+        
 
         # iterate over any kind of omero object (Image, Dataset, Project)
         for obj in omero_objects:
             if has_all_tags(obj, tag_filter):
                 print(f'Found segmentation request for {obj.getName()}')
+                request_segm_tag = list(filter(lambda tag: tag.OMERO_TYPE == omero.model.TagAnnotationI and tag.getTextValue() == 'request-segm', get_tags(conn, obj)))
+                assert len(request_segm_tag) == 1
+                request_segm_tag = request_segm_tag[0]
+                owner = request_segm_tag.link.getDetails().getOwner().getName()
+
+                # make a user connection the lives for 10 minutes
+                # TODO: make a user connection the lives for 24 hours (seems to be strangely counted...)
+                user_connection = conn.suConn(owner, ttl=24*60*60000)
 
                 # iterate over the image(s) in there
                 for image in image_iterator(conn, obj):
+
+                    # TODO: define shapeType
+                    roi_count = image.getROICount()
+
+                    if roi_count > 0:
+                        #TODO: add a force/overwrite option
+                        logging.info(f"Skip {image.getName()} because it already has {roi_count} RoIs detected.")
+                        continue
                     
                     # do the segmentation here
-                    predict(image.getId(), get_model(), conn)
+                    predict(image.getId(), get_model(), user_connection)
                     print("Segmentation successfull!")
 
                 # if everything worked well: remove the tag that triggers the execution
                 for tag in request_tags:
-                    remove_tag(conn, obj, tag)
+                    remove_tag(user_connection, obj, tag)
+
+                user_connection.close()
 
 
 def del_segmentations(username, password, serverUrl):
@@ -115,19 +165,35 @@ def del_segmentations(username, password, serverUrl):
     request_tags = tag_filter
 
     with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
+
+        # Querying across omero groups
+        conn.SERVICE_OPTS.setOmeroGroup('-1')
+
         omero_objects = itertools.chain(conn.getObjects("Image"), conn.getObjects("Dataset"), conn.getObjects("Project"))
 
         # iterate over any kind of omero object (Image, Dataset, Project)
         for obj in omero_objects:
             if has_all_tags(obj, tag_filter):
                 print(f'Found segmentation deletion request for {obj.getName()}')
+
+                request_del_segm_tag = list(filter(lambda tag: tag.OMERO_TYPE == omero.model.TagAnnotationI and tag.getTextValue() == 'request-del-segm', get_tags(conn, obj)))
+                assert len(request_del_segm_tag) == 1
+                request_del_segm_tag = request_del_segm_tag[0]
+                owner = request_del_segm_tag.link.getDetails().getOwner().getName()
+
+                # make a user connection the lives for 10 minutes
+                # TODO: same strange user connection init
+                user_connection = conn.suConn(owner, ttl=24*60*60000)
+
                 # iterate over the image(s) in there
                 for image in image_iterator(conn, obj):
-                    OmeroRoIStorer.clear(image.getId(), conn=conn)
+                    OmeroRoIStorer.clear(image.getId(), conn=user_connection)
 
                 # if everything worked well: remove the tag that triggers the execution
                 for tag in request_tags:
-                    remove_tag(conn, obj, tag)
+                    remove_tag(user_connection, obj, tag)
+
+                user_connection.close()
 
 
 if __name__ == '__main__':
