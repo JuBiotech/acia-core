@@ -2,6 +2,10 @@ from acia.base import Contour, ImageSequenceSource, Overlay, Processor
 from mmdet.apis import init_detector
 from mmcv.runner import wrap_fp16_model
 
+
+from .predict import contour_from_mask
+from .predict import prediction
+
 import tqdm
 import numpy as np
 
@@ -58,8 +62,6 @@ class OfflineModel(Processor):
         overlay = Overlay([])
 
         for frame_id, image in tqdm.tqdm(enumerate(source)):
-            from .predict import contour_from_mask
-            from .predict import prediction
 
             pred_result = prediction(image, self.model, tiling=self.tiling)
 
