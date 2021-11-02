@@ -6,6 +6,7 @@ from acia.base import Contour, ImageSequenceSource, Overlay, RoISource
 from .shapeUtils import create_polygon
 import numpy as np
 from itertools import product
+import tqdm
 
 
 # We have a helper function for creating an ROI and linking it to new shapes
@@ -78,8 +79,10 @@ class OmeroRoIStorer:
                 create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
             ]
 
-        for shape in shapes:
+        for shape in tqdm.tqdm(shapes):
             create_roi_fast(updateService, image, [shape])
+
+        logging.info(f"Stored overlay with {len(overlay)} rois for image '{image.getName()}'")
 
     @staticmethod
     def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False, z=0):
