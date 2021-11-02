@@ -54,7 +54,8 @@ class OfflineModel(Processor):
         '''
         self.load_model(half=self.half, device=self.device)#, cfg_options={'test_cfg.rcnn.nms.iou_threshold': 0.3, 'test_cfg.rcnn.score_thr': 0.5})
 
-        overlay = Overlay()
+        # TODO: super strange without [] it takes some other list as initialization. This leads to detected cells from other images...
+        overlay = Overlay([])
 
         for frame_id, image in tqdm.tqdm(enumerate(source)):
             from .predict import contour_from_mask
