@@ -156,12 +156,22 @@ class OmeroRoIStorer:
         with BlitzConn(username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn).make_connection() as conn:
             # get the roi service
             roi_service = conn.getRoiService()
+            updateService = conn.getUpdateService()
             result = roi_service.findByImage(imageId, None)
 
             print(f"Deleting {len(result.rois)} rois...")
 
+            for roi in result.rois:
+                shapes = roi.copyShapes()
+                if len(shapes) > 1:
+                    for s in roi.copyShapes():
+                        roi.removeShape(s)
+                    roi = updateService.saveAndReturnObject(roi)
+
+
             # delete all RoIs in the image
-            conn.deleteObjects("Roi", [roi.getId().getValue() for roi in result.rois], deleteAnns=True, deleteChildren=True, wait=True)        
+            if len(result.rois) > 0:
+                conn.deleteObjects("Roi", [roi.getId().getValue() for roi in result.rois], deleteAnns=True, deleteChildren=True, wait=True)        
 
 class IngoreWithWrapper:
     def __init__(self, object):
