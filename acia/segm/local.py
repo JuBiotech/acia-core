@@ -22,9 +22,10 @@ def prepare_image(image, normalize_image=True):
         max_val = np.max(image)
         image = np.floor((image - min_val) / (max_val - min_val) * 255).astype(np.uint8)
 
-    if len(image.shape) > 2:
-        # select only the first channel
-        image = image[0]
+    # TODO: Remove code
+    #if len(image.shape) > 2:
+    #    # select only the first channel
+    #    image = image[0]
 
     if len(image.shape) == 2:
         # make it artificially rgb
