@@ -42,7 +42,8 @@ class NMSFilter:
             # zero area stuff is not considered
             if p_i.area <= 0:
                 keep = False
-                break
+                keep_list.append(keep)
+                continue
 
             # get the intersection candidates by querying the rtree (overlapping bboxes)
             minx, miny, maxx, maxy = p_i.bounds
