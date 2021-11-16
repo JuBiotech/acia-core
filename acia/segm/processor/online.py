@@ -97,6 +97,7 @@ class FlexibleOnlineModel(Processor):
         self.url = executorUrl
         self.timeout = timeout
         self.modelDesc = modelDesc
+        self.batch_size = batch_size
 
         # try to parse port from url
         self.port = urlparse(self.url).port
