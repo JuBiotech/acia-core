@@ -127,9 +127,10 @@ class FlexibleOnlineModel(Processor):
 
         # iterate over images from image source
         for frame, image in enumerate(tqdm.tqdm(source)):
+            # predict contours and collect them in a large array
             contours += self.predict_single(frame, image, params)
             
-
+        # create new overlay based on all contours
         return Overlay(contours)
 
     def predict_single(self, frame_id, image, params):
