@@ -105,6 +105,8 @@ if __name__ == '__main__':
     #    all_lengths.append(lengths)
     #    all_areas.append(area)
 
+    df = pd.DataFrame(np.array(cell_counts), columns=['count'])
+    df.to_csv(osp.join(basepath, 'counts.csv'))
 
     with VideoExporter(osp.join(basepath, 'area_distributions.avi'), 3) as ve:
         for frame, frame_areas in enumerate(tqdm.tqdm(all_areas)):
