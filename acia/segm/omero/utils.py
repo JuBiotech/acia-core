@@ -1,13 +1,42 @@
-def getImage(conn, imageId: int):
+from omero.gateway import ImageWrapper, DatasetWrapper, ProjectWrapper, BlitzGateway
+
+def getImage(conn: BlitzGateway, imageId: int) -> ImageWrapper:
+    """Get omero image by id
+
+    Args:
+        conn (BlitzGateway): current omero connection
+        imageId (int): image id
+
+    Returns:
+        ImageWrapper: image object
+    """
     return conn.getObject('Image', imageId)
 
-def getDataset(conn, datasetId: int):
+def getDataset(conn: BlitzGateway, datasetId: int) -> DatasetWrapper:
+    """Get omero dataset by id
+
+    Args:
+        conn (BlitzGateway): active omero connection
+        datasetId (int): dataset id
+
+    Returns:
+        DatasetWrapper: dataset object
+    """
     return conn.getObject('Dataset', datasetId)
 
-def getProject(conn, projectId: int):
+def getProject(conn: BlitzGateway, projectId: int) -> ProjectWrapper:
+    """Get omero project by id
+
+    Args:
+        conn (BlitzGateway): active omero connection
+        projectId (int): project id
+
+    Returns:
+        ProjectWrapper: project object
+    """
     return conn.getObject('Project', projectId)
 
-def list_projects(conn):
+def list_projects(conn: BlitzGateway):
     """List projects in the current user group
 
     Args:
