@@ -11,19 +11,19 @@ if __name__ == '__main__':
 
     imageId = 1351
 
-    OmeroRoIStorer.clear(imageId, "bwollenhaupt", "bwollenhaupt", "localhost")
+    OmeroRoIStorer.clear(imageId, "bwollenhaupt", "bwollenhaupt", "ibt056")
 
     model_desc = ModelDescriptor(
         repo="https://gitlab+deploy-token-1:jzCPzEwRQacvqp8z2an9@jugit.fz-juelich.de/mlflow-executors/cellpose-executor.git",
         entry_point="main",
-        version="776aa31e67a65dd1078e271a40b99c1dad41caad"
+        version="main"
     )
 
     # connect to remote machine learning model
-    model = FlexibleOnlineModel('http://localhost:8080/segService/image-prediction/', model_desc)
+    model = FlexibleOnlineModel('http://ibt056/segService/batch-image-prediction/', model_desc, batch_size=10+1)
 
     # create local image data source
-    source = OmeroSequenceSource(imageId, "bwollenhaupt", "bwollenhaupt", "localhost", channels=[2], range=list(range(10)))
+    source = OmeroSequenceSource(imageId, "bwollenhaupt", "bwollenhaupt", "ibt056", channels=[2])#, range=list(range(50)))
     #source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
 
     # perform overlay prediction
@@ -36,5 +36,5 @@ if __name__ == '__main__':
 
     # store detections in omero
     print("Save results...")
-    OmeroRoIStorer.store(result, imageId, "bwollenhaupt", "bwollenhaupt", 'localhost')
+    OmeroRoIStorer.store(result, imageId, "bwollenhaupt", "bwollenhaupt", 'ibt056')
     #RoiStorer.store(result, 'rois.zip')
