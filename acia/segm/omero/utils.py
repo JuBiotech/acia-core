@@ -7,6 +7,17 @@ def getDataset(conn, datasetId: int):
 def getProject(conn, projectId: int):
     return conn.getObject('Project', projectId)
 
+def list_projects(conn):
+    """List projects in the current user group
+
+    Args:
+        conn ([type]): Current omero BlitzGateway connection
+
+    Returns:
+        [List]: List of project wrappers
+    """
+    return conn.getObjects('Project')
+
 def list_image_ids_in_dataset(conn, datasetId: int):
     return [image.getId() for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
