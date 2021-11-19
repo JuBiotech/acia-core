@@ -2,4 +2,4 @@
 
 __author__ = """Johannes Seiffarth"""
 __email__ = 'j.seiffarth@fz-juelich.de'
-__version__ = '0.1.6'
+__version__ = '0.1.7'
