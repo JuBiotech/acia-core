@@ -10,6 +10,7 @@ import os
 import cv2
 import tqdm
 import itertools
+import scipy
 from tqdm.contrib.concurrent import process_map
 from acia import base
 
@@ -91,6 +92,16 @@ if __name__ == '__main__':
     max_area = np.max(list(itertools.chain(*all_areas)))
 
 
+    exp_func = lambda t,a,b: a * np.exp(b*t)
+    x = np.array(range(len(cell_counts)))
+    y = np.array(cell_counts)
+    popt, pcov = fit = scipy.optimize.curve_fit(exp_func, x, y, p0=[1.,1. / len(cell_counts)])
+
+    sq_loss = np.sum((exp_func(x, *popt) - y)**2)
+    print(fit)
+    print(f"Squared loss: {sq_loss:.3f}")
+
+
     #for overlay in tqdm.tqdm(ors):
     #    cell_count = len(overlay)
     #    cell_counts.append(cell_count)
@@ -145,12 +156,17 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(1,1)
 
-    ax.plot(cell_counts)
+    ax.plot(cell_counts, label="Real")
+    N_0, k = popt
+    y = list(map(lambda t: N_0 * np.exp(k*t), range(len(cell_counts))))
+    ax.plot(y, label=f"Fit(N_0={N_0:.2f}, k={k:.5f}")
 
     ax.set_yscale('log')
     ax.set_xlabel('Frame')
     ax.set_ylabel('Cell Count [log]')
+    ax.legend()
     fig.suptitle(f'Cell Count over time, Total Count: {np.sum(cell_counts)}')
+    plt.tight_layout()
     plt.savefig(osp.join(basepath, "cell_count.png"))
 
     area_means = []
