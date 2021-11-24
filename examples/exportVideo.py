@@ -61,6 +61,7 @@ if __name__ == '__main__':
 
         # draw overlay on image
         # TODO: Draw float based contours
+        if draw_contours:
             image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.contours], -1, (255, 255, 0)) # RGB format
 
         cv2.putText(image, f'Frame: {frame}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
