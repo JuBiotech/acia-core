@@ -40,6 +40,7 @@ if __name__ == '__main__':
 
     draw_contours = True
     draw_frame_number = True
+    draw_scale_bar = True
 
     # load data from omero
     oss = OmeroSequenceSource(imageId, username=username, password=password, serverUrl=serverUrl, channels=[1, 2, 3], colorList=['FFFFFF', '770000', '007700'])
@@ -68,8 +69,8 @@ if __name__ == '__main__':
         if draw_frame_number:
             cv2.putText(image, f'Frame: {frame}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
-        # TODO: Draw a scalebar
-        image = scaleBar.draw(image, width - scaleBar.pixelWidth - 20, height - 20)
+        if draw_scale_bar:
+            image = scaleBar.draw(image, width - scaleBar.pixelWidth - 20, height - 20)
 
         # output images
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
