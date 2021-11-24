@@ -127,10 +127,11 @@ def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str)-> Data
 
 class ScaleBar:
 
-    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", color=(255, 255, 255)):
+    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", short_title=u"μm", color=(255, 255, 255)):
         self.width = width
         self.unit = unit
         self.color = color
+        self.short_title = short_title
 
         pixelSizes = oss.rawPixelSize
 
@@ -153,7 +154,7 @@ class ScaleBar:
         cv2.line(image, (xstart + self.pixelWidth, ystart - half_y), (xstart + self.pixelWidth, ystart + half_y), self.color)
 
         # draw size
-        unit_text = u"μm"
+        unit_text = self.short_title
         text = f'{self.width} {unit_text}'
         img_pil = Image.fromarray(image)
         draw = ImageDraw.Draw(img_pil)
