@@ -124,3 +124,41 @@ def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str)-> Data
     conn.getUpdateService().saveObject(link)
 
     return new_dataset
+
+class ScaleBar:
+
+    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", color=(255, 255, 255)):
+        self.width = width
+        self.unit = unit
+        self.color = color
+
+        pixelSizes = oss.rawPixelSize
+
+        pixelSize = omero.model.LengthI(pixelSizes[0], self.unit).getValue()
+
+        self.pixelWidth = int(np.round(self.width / pixelSize))
+
+        # TODO: make parameter
+        self.pixelHeight = 10
+
+        # TODO: no fixed font file
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
+
+    def draw(self, image, xstart, ystart):
+        # TODO: thickness parameter
+        # draw line
+        cv2.line(image, (xstart, ystart), (xstart + self.pixelWidth, ystart), self.color, 1)
+        half_y = int(np.round(self.pixelHeight / 2))
+        cv2.line(image, (xstart, ystart - half_y), (xstart, ystart + half_y), self.color)
+        cv2.line(image, (xstart + self.pixelWidth, ystart - half_y), (xstart + self.pixelWidth, ystart + half_y), self.color)
+
+        # draw size
+        unit_text = u"μm"
+        text = f'{self.width} {unit_text}'
+        img_pil = Image.fromarray(image)
+        draw = ImageDraw.Draw(img_pil)
+        text_x, text_y = draw.textsize(text, font=self.font)
+        draw.text(( xstart + self.pixelWidth / 2 - text_x / 2, ystart - text_y - 2), text, fill = self.color, font=self.font)
+        image = np.array(img_pil)
+
+        return image
