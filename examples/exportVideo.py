@@ -38,7 +38,7 @@ if __name__ == '__main__':
     password = getpass.getpass(f'Password for {username}@{serverUrl}: ')
     framerate = 3
 
-    imageId = 470
+    draw_contours = True
 
     # load data from omero
     oss = OmeroSequenceSource(imageId, username=username, password=password, serverUrl=serverUrl, channels=[1, 2, 3], colorList=['FFFFFF', '770000', '007700'])
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
         # draw overlay on image
         # TODO: Draw float based contours
-        image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.contours], -1, (255, 255, 0)) # RGB format
+            image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.contours], -1, (255, 255, 0)) # RGB format
 
         cv2.putText(image, f'Frame: {frame}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
