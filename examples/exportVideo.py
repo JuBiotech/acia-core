@@ -39,6 +39,7 @@ if __name__ == '__main__':
     framerate = 3
 
     draw_contours = True
+    draw_frame_number = True
 
     # load data from omero
     oss = OmeroSequenceSource(imageId, username=username, password=password, serverUrl=serverUrl, channels=[1, 2, 3], colorList=['FFFFFF', '770000', '007700'])
@@ -64,7 +65,8 @@ if __name__ == '__main__':
         if draw_contours:
             image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.contours], -1, (255, 255, 0)) # RGB format
 
-        cv2.putText(image, f'Frame: {frame}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+        if draw_frame_number:
+            cv2.putText(image, f'Frame: {frame}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
         # TODO: Draw a scalebar
         image = scaleBar.draw(image, width - scaleBar.pixelWidth - 20, height - 20)
