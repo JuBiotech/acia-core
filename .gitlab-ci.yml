@@ -41,7 +41,7 @@ test:
     - python setup.py install
     - python setup.py test
     - pip install tox flake8  # you can also use tox
-    - tox -e py39,flake8
+    - tox
     - pip install pytest pytest-cov
     - pytest --cov=acia/ tests/
     - coverage xml
