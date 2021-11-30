@@ -36,7 +36,6 @@ before_script:
 
 test:
   stage: test
-  image: python:3.8
   script:
     - python setup.py install
     - python setup.py test
