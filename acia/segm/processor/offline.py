@@ -42,7 +42,7 @@ class OfflineModel(Processor):
         '''
         # init model
         if self.model is None:
-            self.model = init_detector(self.config_file, self.parameter_file, device='cuda', cfg_options=cfg_options)
+            self.model = init_detector(self.config_file, self.parameter_file, device=device, cfg_options=cfg_options)
             if half:
                 # make it 16-bit
                 wrap_fp16_model(self.model)
