@@ -262,6 +262,45 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
         with self.make_connection() as conn:
             return conn.getObject('Image', self.imageId).getProject().getName()
 
+    @property
+    def rawPixelSize(self) -> Tuple[Length,Length]:
+        """Return the pixel size in omero objects
+
+        Returns:
+            Tuple[float,float]: x and y pixel size in omero objects
+        """
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+
+            size_x_obj = image.getPixelSizeX(units="MICROMETER")
+            print(" Pixel Size X:", size_x_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
+
+            size_y_obj = image.getPixelSizeX(units="MICROMETER")
+            print(" Pixel Size X:", size_y_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
+
+            return size_x_obj, size_y_obj
+
+
+    @property
+    def pixelSize(self) -> Tuple[float,float]:
+        """Return the pixel size in micron
+
+        Returns:
+            Tuple[float,float]: x and y pixel size in micron
+        """
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+
+            size_x_obj = image.getPixelSizeX(units="MICROMETER")
+            print(" Pixel Size X:", size_x_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
+
+            size_y_obj = image.getPixelSizeX(units="MICROMETER")
+            print(" Pixel Size X:", size_y_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
+
+            return size_x_obj.getValue(), size_y_obj.getValue()
+
+
+
     def __iter__(self):
         with self.make_connection() as conn:
             # get the specified image

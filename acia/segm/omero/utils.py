@@ -1,31 +1,95 @@
-def getImage(conn, imageId: int):
+from typing import List
+from omero.gateway import ImageWrapper, DatasetWrapper, ProjectWrapper, BlitzGateway
+import omero
+
+def getImage(conn: BlitzGateway, imageId: int) -> ImageWrapper:
+    """Get omero image by id
+        Note: only images in your current group are accessible
+
+    Args:
+        conn (BlitzGateway): current omero connection
+        imageId (int): image id
+
+    Returns:
+        ImageWrapper: image object
+    """
     return conn.getObject('Image', imageId)
 
-def getDataset(conn, datasetId: int):
+def getDataset(conn: BlitzGateway, datasetId: int) -> DatasetWrapper:
+    """Get omero dataset by id
+        Note: only datasets in your current group are accessible
+
+    Args:
+        conn (BlitzGateway): active omero connection
+        datasetId (int): dataset id
+
+    Returns:
+        DatasetWrapper: dataset object
+    """
     return conn.getObject('Dataset', datasetId)
 
-def getProject(conn, projectId: int):
+def getProject(conn: BlitzGateway, projectId: int) -> ProjectWrapper:
+    """Get omero project by id
+        Note: only projects in your current group are accessible
+
+    Args:
+        conn (BlitzGateway): active omero connection
+        projectId (int): project id
+
+    Returns:
+        ProjectWrapper: project object
+    """
     return conn.getObject('Project', projectId)
 
-def list_image_ids_in_dataset(conn, datasetId: int):
+def list_projects(conn: BlitzGateway) -> List[ProjectWrapper]:
+    """List projects in the current user group
+        Note: only projects in your current group are accessible
+
+    Args:
+        conn (BlitzGateway): Current omero BlitzGateway connection
+
+    Returns:
+        List[ProjectWrapper]: List of project wrappers
+    """
+    return conn.getObjects('Project')
+
+def list_image_ids_in_dataset(conn: BlitzGateway, datasetId: int) -> List[int]:
+    """[summary]
+
+    Args:
+        conn (BlitzGateway): active omero connection
+        datasetId (int): dataset id
+
+    Returns:
+        List[int]: array of all image ids of the dataset
+    """
     return [image.getId() for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
-def list_images_in_dataset(conn, datasetId: int):
+def list_images_in_dataset(conn: BlitzGateway, datasetId: int) -> List[ImageWrapper]:
+    """List all images in the omero dataset
+
+    Args:
+        conn (BlitzGateway): active omero connection
+        datasetId (int): dataset id
+
+    Returns:
+        List[ImageWrapper]: List of omero images
+    """
     return [image for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
-def list_datasets_in_project(conn, projectId: int):
+def list_datasets_in_project(conn: BlitzGateway, projectId: int) -> List[DatasetWrapper]:
     return conn.getObjects('Dataset', opts={'project': projectId})
 
-def list_images_in_project(conn, projectId: int):
+def list_images_in_project(conn: BlitzGateway, projectId: int) -> List[ImageWrapper]:
     return [image for dataset in list_datasets_in_project(conn, projectId=projectId) for image in dataset.listChildren()]
 
-def get_image_name(conn, imageId: int):
+def get_image_name(conn: BlitzGateway, imageId: int) -> str:
     return conn.getObject('Image', imageId).getName()
 
-def get_project_name(conn, projectId: int):
+def get_project_name(conn: BlitzGateway, projectId: int) -> str:
     return conn.getObject('Project', projectId).getName()
 
-def image_iterator(conn, object):
+def image_iterator(conn: BlitzGateway, object) -> ImageWrapper:
     if object.OMERO_CLASS == 'Image':
         yield object
     if object.OMERO_CLASS == 'Dataset':
@@ -34,3 +98,67 @@ def image_iterator(conn, object):
     if object.OMERO_CLASS == 'Project':
         for image in list_images_in_project(conn, object.getId()):
             yield image
+
+
+def create_project(conn: BlitzGateway, project_name: str)-> ProjectWrapper:
+    new_project = ProjectWrapper(conn, omero.model.ProjectI())
+    new_project.setName(project_name)
+    new_project.save()
+    return new_project
+
+def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str)-> DatasetWrapper:
+    # Use omero.gateway.DatasetWrapper:
+    new_dataset = DatasetWrapper(conn, omero.model.DatasetI())
+    new_dataset.setName(dataset_name)
+    new_dataset.save()
+    # Can get the underlying omero.model.DatasetI with:
+    dataset_obj = new_dataset._obj
+
+    # Create link to project
+    link = omero.model.ProjectDatasetLinkI()
+    # We can use a 'loaded' object, but we might get an Exception
+    # link.setChild(dataset_obj)
+    # Better to use an 'unloaded' object (loaded = False)
+    link.setChild(omero.model.DatasetI(dataset_obj.id.val, False))
+    link.setParent(omero.model.ProjectI(projectId, False))
+    conn.getUpdateService().saveObject(link)
+
+    return new_dataset
+
+class ScaleBar:
+
+    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", color=(255, 255, 255)):
+        self.width = width
+        self.unit = unit
+        self.color = color
+
+        pixelSizes = oss.rawPixelSize
+
+        pixelSize = omero.model.LengthI(pixelSizes[0], self.unit).getValue()
+
+        self.pixelWidth = int(np.round(self.width / pixelSize))
+
+        # TODO: make parameter
+        self.pixelHeight = 10
+
+        # TODO: no fixed font file
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
+
+    def draw(self, image, xstart, ystart):
+        # TODO: thickness parameter
+        # draw line
+        cv2.line(image, (xstart, ystart), (xstart + self.pixelWidth, ystart), self.color, 1)
+        half_y = int(np.round(self.pixelHeight / 2))
+        cv2.line(image, (xstart, ystart - half_y), (xstart, ystart + half_y), self.color)
+        cv2.line(image, (xstart + self.pixelWidth, ystart - half_y), (xstart + self.pixelWidth, ystart + half_y), self.color)
+
+        # draw size
+        unit_text = u"μm"
+        text = f'{self.width} {unit_text}'
+        img_pil = Image.fromarray(image)
+        draw = ImageDraw.Draw(img_pil)
+        text_x, text_y = draw.textsize(text, font=self.font)
+        draw.text(( xstart + self.pixelWidth / 2 - text_x / 2, ystart - text_y - 2), text, fill = self.color, font=self.font)
+        image = np.array(img_pil)
+
+        return image

@@ -89,6 +89,19 @@ class ModelDescriptor:
         self.version = version
         self.parameters = parameters
 
+def batch(iterable, size):
+    from itertools import islice, chain
+    sourceiter = iter(iterable)
+    while True:
+        batchiter = islice(sourceiter, size)
+        try:
+            print("Next batch...")
+            yield chain([next(batchiter)], batchiter)
+        except StopIteration:
+            # we have reached the end of the iterator
+            # --> leave loop
+            return
+
 class FlexibleOnlineModel(Processor):
     '''
         The model is not running locally on the computer but in a remote location
@@ -97,6 +110,7 @@ class FlexibleOnlineModel(Processor):
         self.url = executorUrl
         self.timeout = timeout
         self.modelDesc = modelDesc
+        self.batch_size = batch_size
 
         # try to parse port from url
         self.port = urlparse(self.url).port
@@ -124,11 +138,22 @@ class FlexibleOnlineModel(Processor):
             parameters = json.dumps(additional_parameters)
         )
 
-        # iterate over images from image source
-        for frame, image in enumerate(tqdm.tqdm(source)):
-            contours += self.predict_single(frame, image, params)
-            
+        if self.batch_size <= 1:
+            # iterate over images from image source
+            for frame, image in enumerate(tqdm.tqdm(source)):
+                # predict contours and collect them in a large array
+                contours += self.predict_single(frame, image, params)
+        else:
+            # Do batch prediction
+            for local_batch in batch(enumerate(tqdm.tqdm(source)), self.batch_size):
+                local_batch = np.array([item for item in local_batch], dtype=object)
 
+                frames = local_batch[:,0]
+                images = local_batch[:,1]
+
+                contours += self.predict_batch(frames, images, params)
+            
+        # create new overlay based on all contours
         return Overlay(contours)
 
     def predict_single(self, frame_id, image, params):
@@ -167,6 +192,63 @@ class FlexibleOnlineModel(Processor):
             contours.append(Contour(contour, score, frame_id, -1))
 
         return contours     
+
+    def predict_batch(self, frame_ids: List[int], images: List, params) -> Overlay:
+        """Predict segmentation for a batch of frames
+
+        Args:
+            frame_ids (List[int]): ids of the frames
+            images (List): numpy array for every image
+            params ([type]): dictionary of additional parameters
+
+        Raises:
+            ValueError: [description]
+
+        Returns:
+            [Overlay]: An overlay containing the segmentation information for the images
+        """
+        import requests
+        from io import BytesIO
+        from PIL import Image
+
+        contours = []
+
+        binary_images = []
+
+        for image in images:
+            # convert image into a binary png stream
+            byte_io = BytesIO()
+            Image.fromarray(image).save(byte_io, 'png')
+            byte_io.seek(0)
+
+            binary_images.append(byte_io)
+
+        multipart_form_data = [
+            ('files', ('data.png', bin_image, 'image/png')) for bin_image in binary_images
+        ]
+
+        # send a request to the server
+        response = requests.post(self.url, files=multipart_form_data, params=params, timeout=self.timeout)
+
+        # raise an error if the response is not as expected
+        if response.status_code != 200:
+            raise ValueError('HTTP request for prediction not successful. Status code: %d' % response.status_code)
+
+        body = response.json()
+
+        for i, frame_id in enumerate(frame_ids):
+            content = body[i]['segmentation']
+            for detection in content:
+                # label = detection['label']
+                contour = np.array(detection['contour_coordinates'], dtype=np.float32)
+                score = -1.
+
+                contours.append(Contour(contour, score, frame_id, -1))
+
+        print("Finished batch prediction")
+
+        return contours     
+
 
     @staticmethod
     def parseContours(response_body) -> List[Contour]:

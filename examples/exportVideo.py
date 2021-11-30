@@ -48,6 +48,8 @@ if __name__ == '__main__':
 
     out = None
 
+    scaleBar = ScaleBar(oss, 10, "MICROMETER")
+
     # join frame images and overlay
     for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(oss, ors))):
         if out is None:
@@ -55,8 +57,16 @@ if __name__ == '__main__':
             frame_height, frame_width = image.shape[:2]
             out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M','J','P','G'), framerate, (frame_width,frame_height))
 
+        height, width = image.shape[:2]
+
         # draw overlay on image
-        image = cv2.drawContours(image, [np.array(cont.coordinates) for cont in overlay.contours], -1, (255, 255, 0)) # RGB format
+        # TODO: Draw float based contours
+        image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.contours], -1, (255, 255, 0)) # RGB format
+
+        cv2.putText(image, f'Frame: {frame}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
+        # TODO: Draw a scalebar
+        image = scaleBar.draw(image, width - scaleBar.pixelWidth - 20, height - 20)
 
         # output images
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
