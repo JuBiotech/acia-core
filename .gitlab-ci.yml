@@ -62,7 +62,6 @@ run:
 
 deploy:
   stage: deploy
-  image: python:latest
   script:
     - pip install twine
     - python setup.py sdist bdist_wheel
