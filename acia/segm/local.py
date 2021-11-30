@@ -7,6 +7,7 @@ import logging
 from acia.base import ImageSequenceSource, Overlay, Contour, RoISource
 import roifile
 
+
 def prepare_image(image, normalize_image=True):
     """Normalize and convert image to RGB.
 
@@ -22,16 +23,12 @@ def prepare_image(image, normalize_image=True):
         max_val = np.max(image)
         image = np.floor((image - min_val) / (max_val - min_val) * 255).astype(np.uint8)
 
-    # TODO: Remove code
-    #if len(image.shape) > 2:
-    #    # select only the first channel
-    #    image = image[0]
-
     if len(image.shape) == 2:
         # make it artificially rgb
         image = np.repeat(image[:, :, None], 3, axis=-1)
 
     return image
+
 
 class LocalImageSource(ImageSequenceSource):
     def __init__(self, file_path: str, normalize_image=True):
@@ -48,6 +45,7 @@ class LocalImageSource(ImageSequenceSource):
 
     def __len__(self):
         return 1
+
 
 class LocalSequenceSource(ImageSequenceSource):
     def __init__(self, tif_file, normalize_image=True):
@@ -82,6 +80,7 @@ class LocalSequenceSource(ImageSequenceSource):
 
             yield image
 
+
 class ImageJRoISource(RoISource):
     def __init__(self, filename, range=None):
         self.overlay = RoiStorer.load(filename)
@@ -90,11 +89,10 @@ class ImageJRoISource(RoISource):
     def __iter__(self):
         return self.overlay.timeIterator(frame_range=self.range)
 
-
     def __len__(self) -> int:
-            if self.range:
-                min(len(self.overlay), len(self.range))
-            return len(self.overlay)
+        if self.range:
+            min(len(self.overlay), len(self.range))
+        return len(self.overlay)
 
 
 class RoiStorer:
@@ -130,7 +128,7 @@ class RoiStorer:
 
         id = -1
         # convert them into contours (recover time position)
-        contours = [Contour(roi.coordinates(), -1., roi.position-1, id=id) for roi in rois]
+        contours = [Contour(roi.coordinates(), -1., roi.position - 1, id=id) for roi in rois]
 
         # return the overlay
         return Overlay(contours)

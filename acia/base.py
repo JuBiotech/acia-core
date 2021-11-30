@@ -143,8 +143,10 @@ class Processor(object):
 class ImageSequenceSource(object):
     pass
 
+
 class RoISource(object):
     pass
+
 
 class ImageRoISource(object):
     '''

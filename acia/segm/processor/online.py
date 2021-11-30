@@ -9,6 +9,7 @@ import numpy as np
 from acia.base import ImageSequenceSource, Overlay, Processor, Contour
 from urllib.parse import urlparse
 
+
 class OnlineModel(Processor):
     '''
         The model is not running locally on the computer but in a remote location
@@ -82,12 +83,14 @@ class OnlineModel(Processor):
     def parseContours(response_body) -> List[Contour]:
         pass
 
+
 class ModelDescriptor:
-    def __init__(self, repo: str, entry_point: str, version: str, parameters = {}):
+    def __init__(self, repo: str, entry_point: str, version: str, parameters={}):
         self.repo = repo
         self.entry_point = entry_point,
         self.version = version
         self.parameters = parameters
+
 
 def batch(iterable, size):
     from itertools import islice, chain
@@ -101,6 +104,7 @@ def batch(iterable, size):
             # we have reached the end of the iterator
             # --> leave loop
             return
+
 
 class FlexibleOnlineModel(Processor):
     '''
@@ -132,10 +136,10 @@ class FlexibleOnlineModel(Processor):
         additional_parameters.update(**params)
 
         params = dict(
-            repo = self.modelDesc.repo,
-            entry_point = self.modelDesc.entry_point,
-            version = self.modelDesc.version,
-            parameters = json.dumps(additional_parameters)
+            repo=self.modelDesc.repo,
+            entry_point=self.modelDesc.entry_point,
+            version=self.modelDesc.version,
+            parameters=json.dumps(additional_parameters)
         )
 
         if self.batch_size <= 1:
@@ -148,11 +152,11 @@ class FlexibleOnlineModel(Processor):
             for local_batch in batch(enumerate(tqdm.tqdm(source)), self.batch_size):
                 local_batch = np.array([item for item in local_batch], dtype=object)
 
-                frames = local_batch[:,0]
-                images = local_batch[:,1]
+                frames = local_batch[:, 0]
+                images = local_batch[:, 1]
 
                 contours += self.predict_batch(frames, images, params)
-            
+
         # create new overlay based on all contours
         return Overlay(contours)
 
@@ -191,7 +195,7 @@ class FlexibleOnlineModel(Processor):
 
             contours.append(Contour(contour, score, frame_id, -1))
 
-        return contours     
+        return contours
 
     def predict_batch(self, frame_ids: List[int], images: List, params) -> Overlay:
         """Predict segmentation for a batch of frames
@@ -247,8 +251,7 @@ class FlexibleOnlineModel(Processor):
 
         print("Finished batch prediction")
 
-        return contours     
-
+        return contours
 
     @staticmethod
     def parseContours(response_body) -> List[Contour]:

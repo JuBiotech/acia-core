@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import tqdm
 
+from acia.segm.omero.utils import ScaleBar
+
 def renderVideo(imageSource, roiSource, filename='output.avi', framerate=3):
     """[summary]
 
