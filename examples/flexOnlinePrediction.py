@@ -1,7 +1,6 @@
 from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
 from acia.segm.processor.online import FlexibleOnlineModel, ModelDescriptor, OnlineModel
 from acia.segm.filter import NMSFilter
-from acia.segm.local import LocalSequenceSource, RoiStorer
 
 
 if __name__ == '__main__':
@@ -11,7 +10,13 @@ if __name__ == '__main__':
 
     imageId = 1351
 
-    OmeroRoIStorer.clear(imageId, "bwollenhaupt", "bwollenhaupt", "ibt056")
+    credentials = dict(
+        username='root',
+        password='omero',
+        serverUrl='ibt056'
+    )
+
+    OmeroRoIStorer.clear(imageId, **credentials)
 
     model_desc = ModelDescriptor(
         repo="https://gitlab+deploy-token-1:jzCPzEwRQacvqp8z2an9@jugit.fz-juelich.de/mlflow-executors/cellpose-executor.git",
@@ -23,7 +28,7 @@ if __name__ == '__main__':
     model = FlexibleOnlineModel('http://ibt056/segService/batch-image-prediction/', model_desc, batch_size=10+1)
 
     # create local image data source
-    source = OmeroSequenceSource(imageId, "bwollenhaupt", "bwollenhaupt", "ibt056", channels=[2])#, range=list(range(50)))
+    source = OmeroSequenceSource(imageId, **credentials, channels=[2])#, range=list(range(50)))
     #source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
 
     # perform overlay prediction
@@ -36,5 +41,5 @@ if __name__ == '__main__':
 
     # store detections in omero
     print("Save results...")
-    OmeroRoIStorer.store(result, imageId, "bwollenhaupt", "bwollenhaupt", 'ibt056')
+    OmeroRoIStorer.store(result, imageId, **credentials)
     #RoiStorer.store(result, 'rois.zip')
