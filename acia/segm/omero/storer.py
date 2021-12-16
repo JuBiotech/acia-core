@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Tuple
 from acia.segm.omero.shapeUtils import make_coordinates
 import omero
 from omero.gateway import BlitzGateway
@@ -7,7 +8,7 @@ from .shapeUtils import create_polygon
 import numpy as np
 from itertools import product
 import tqdm
-
+from omero.model import LengthI as Length
 
 # We have a helper function for creating an ROI and linking it to new shapes
 def create_roi(updateService, img, shapes):
