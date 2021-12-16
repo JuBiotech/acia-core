@@ -5,6 +5,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 import tqdm
 from functools import partial
+from shapely.geometry import Polygon
+import copy
 
 def unpack(data, function):
     return function(*data)
@@ -49,6 +51,10 @@ class Contour:
             draw = ImageDraw.Draw(image)
         draw.polygon(self.coordinates, outline=outlineColor, fill=fillColor)
 
+    @property
+    def center(self):
+        return np.mean(self.coordinates, axis=0)
+
 
 class Overlay:
     def __init__(self, contours: List[Contour] = []):
@@ -76,6 +82,18 @@ class Overlay:
 
     def frames(self):
         return np.unique([c.frame for c in self.contours])
+
+    def croppedContours(self, cropping_parameters=Tuple[slice, slice]):
+        y,x = cropping_parameters
+        miny,maxy,minx,maxx = y.start, y.stop, x.start, x.stop
+
+        crop_rectangle = Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
+
+        for cont in filter(lambda cont: crop_rectangle.contains(Polygon(cont.coordinates)), self.contours):
+            new_cont = copy.deepcopy(cont)
+            new_cont.coordinates -= np.array([minx, miny])
+
+            yield new_cont
 
     def timeIterator(self, startFrame=None, endFrame=None, frame_range=None):
         '''
@@ -121,6 +139,7 @@ class Overlay:
         return masks
 
     def draw(self, image, outlineColor: str | Callable[[Contour], Tuple[int]] = None, fillColor: str | Callable[[Contour], Tuple[int]] = None):
+        imdraw = ImageDraw.Draw(image)
         for timeOverlay in self.timeIterator():
             for cont in timeOverlay:
                 oc_local = outlineColor
@@ -131,7 +150,7 @@ class Overlay:
                 if fc_local and isinstance(fc_local, Callable):
                     fc_local = fc_local(cont)
 
-                cont.draw(image, outlineColor=oc_local, fillColor=fc_local)
+                cont.draw(image, outlineColor=oc_local, fillColor=fc_local, draw=imdraw)
 
 
 class Processor(object):
