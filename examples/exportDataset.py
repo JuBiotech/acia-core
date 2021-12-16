@@ -3,6 +3,7 @@ from acia.base import ImageRoISource
 from typing import List
 from omero.gateway import BlitzGateway
 from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
+from acia.segm.omero.utils import has_all_tags
 import getpass
 import cv2
 import numpy as np
@@ -10,20 +11,7 @@ import omero
 
 import logging
 
-def has_all_tags(object, tag_list: List[str] = []):
-    tag_list = tag_list.copy()
-    for ann in object.listAnnotations():
-        if ann.OMERO_TYPE == omero.model.TagAnnotationI:
-            if ann.getTextValue() in tag_list:
-                del tag_list[tag_list.index(ann.getTextValue())]
 
-        if len(tag_list) == 0:
-            break
-
-    if len(tag_list) == 0:
-        return True
-    else:
-        return False
 
 if __name__ == '__main__':
     serverUrl = 'ibt056'
