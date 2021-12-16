@@ -1,4 +1,4 @@
-shapely==1.8a2
+shapely>=1.8.0
 tqdm>=4.61.2
 #pycococreator@git+https://github.com/waspinator/pycococreator.git
 opencv-python-headless>=4.5.3.56
