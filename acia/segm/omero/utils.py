@@ -1,6 +1,11 @@
 from typing import List
 from omero.gateway import ImageWrapper, DatasetWrapper, ProjectWrapper, BlitzGateway
 import omero
+import numpy as np
+from acia.segm.omero.storer import OmeroSequenceSource
+import cv2
+from PIL import ImageFont, ImageDraw, Image
+
 
 def getImage(conn: BlitzGateway, imageId: int) -> ImageWrapper:
     """Get omero image by id
@@ -127,11 +132,12 @@ def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str)-> Data
 
 class ScaleBar:
 
-    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", short_title=u"μm", color=(255, 255, 255)):
+    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", short_title=u"μm", color=(255, 255, 255), font_size=25):
         self.width = width
         self.unit = unit
         self.color = color
         self.short_title = short_title
+        self.font_size = font_size
 
         pixelSizes = oss.rawPixelSize
 
@@ -143,7 +149,7 @@ class ScaleBar:
         self.pixelHeight = 10
 
         # TODO: no fixed font file
-        self.font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", self.font_size)
 
     def draw(self, image, xstart, ystart):
         # TODO: thickness parameter
@@ -163,3 +169,19 @@ class ScaleBar:
         image = np.array(img_pil)
 
         return image
+
+
+def has_all_tags(object, tag_list: List[str] = []):
+    tag_list = tag_list.copy()
+    for ann in object.listAnnotations():
+        if ann.OMERO_TYPE == omero.model.TagAnnotationI:
+            if ann.getTextValue() in tag_list:
+                del tag_list[tag_list.index(ann.getTextValue())]
+
+        if len(tag_list) == 0:
+            break
+
+    if len(tag_list) == 0:
+        return True
+    else:
+        return False
