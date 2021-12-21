@@ -76,3 +76,29 @@ class NMSFilter:
         overlay = Overlay([cont for i, cont in enumerate(sorted_contours) if keep_list[i]])
 
         return overlay
+
+
+class SizeFilter:
+
+    @staticmethod
+    def filter(overlay: Overlay, min_area, max_area) -> Overlay:
+        """Filter an overlay based on contour sizes
+
+        Args:
+            overlay (Overlay): the overlay to filter
+            min_area ([type]): minimum area of a contour
+            max_area ([type]): maximum area of a contour
+
+        Returns:
+            Overlay: the filtered overlay
+        """
+        contour_shapes = [Polygon(cont.coordinates) for cont in overlay.contours]
+        result_overlay = Overlay([])
+        for cont, shape in zip(overlay.contours, contour_shapes):
+            area = shape.area
+
+            if area > min_area and area < max_area:
+                result_overlay.add_contour(cont)
+
+        return result_overlay
+
