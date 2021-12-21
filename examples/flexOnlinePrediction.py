@@ -8,7 +8,7 @@ if __name__ == '__main__':
         Simple example to use the apis
     '''
 
-    imageId = 1351
+    imageId = 464
 
     credentials = dict(
         username='root',
@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     model_desc = ModelDescriptor(
         repo="https://gitlab+deploy-token-1:jzCPzEwRQacvqp8z2an9@jugit.fz-juelich.de/mlflow-executors/cellpose-executor.git",
-        entry_point="main",
+        entry_point="omnipose",
         version="main"
     )
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     model = FlexibleOnlineModel('http://ibt056/segService/batch-image-prediction/', model_desc, batch_size=10+1)
 
     # create local image data source
-    source = OmeroSequenceSource(imageId, **credentials, channels=[2])#, range=list(range(50)))
+    source = OmeroSequenceSource(imageId, **credentials)#, range=list(range(50)))
     #source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
 
     # perform overlay prediction
