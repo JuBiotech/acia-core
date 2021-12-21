@@ -6,7 +6,8 @@ from shapely.validation import make_valid
 from acia.base import Overlay
 from shapely.geometry import Polygon
 from rtree import index
-
+import cv2
+import numpy as np
 
 def bbox_to_rectangle(bbox: Tuple[float]):
     minx, miny, maxx, maxy = bbox
