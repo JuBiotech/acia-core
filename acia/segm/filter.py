@@ -102,3 +102,61 @@ class SizeFilter:
 
         return result_overlay
 
+class EllipsoidFilter:
+    @staticmethod
+    def filter(overlay: Overlay, min_width_height_ratio, max_width_height_ratio) -> Overlay:
+        result_overlay = Overlay([])
+        for cont in overlay.contours:
+            if len(cont.coordinates) < 5:
+                # need 5 points for ellipsoid fit
+                continue
+            ellipse = cv2.fitEllipse(cont.coordinates)
+
+            center, (width, height), rotation = ellipse
+
+            width_height_ratio = width/height
+
+            from shapely.geometry.point import Point
+            from shapely.geometry import Polygon
+            import shapely.affinity
+            import matplotlib.pyplot as plt
+            from descartes import PolygonPatch
+            from matplotlib.patches import Polygon as PolygonP
+            #from shapely.figures import SIZE, GREEN, GRAY, set_limits
+
+            # Let create a circle of radius 1 around center point:
+            circ = shapely.geometry.Point(center).buffer(1)
+
+            # Let create the ellipse along x and y:
+            ell  = shapely.affinity.scale(circ, width/2, height/2)
+
+            # Let rotate the ellipse (clockwise, x axis pointing right):
+            ellr = shapely.affinity.rotate(ell,rotation)
+
+            # create shapely shape from contour coordinates
+            shape = Polygon(cont.coordinates)
+            # create minimal rotated rectangle
+            min_rect = shape.minimum_rotated_rectangle
+
+            rect_area_error = np.abs(shape.area - min_rect.area) / shape.area
+            ellipse_area_error = np.abs(ellr.area - shape.area) / shape.area
+
+            if min_width_height_ratio <= width_height_ratio and width_height_ratio <= max_width_height_ratio:
+                if ellipse_area_error < rect_area_error:
+                    # if an ellipse can better explain the cell detection than a rectangle
+                    result_overlay.add_contour(cont)
+
+
+            """
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            patch = PolygonPatch(ellr, fc='green', ec='gray', alpha=0.5, zorder=2)
+            ax.add_patch(patch)
+            ax.scatter(cont.coordinates[:,0], cont.coordinates[:,1]) 
+            polygon = Polygon(cont.coordinates, True)
+            ax.add_patch(polygon)
+            #set_limits(ax, -10, 10, -10, 10)
+            plt.savefig('ellipse_fit.png')"""
+
+
+        return result_overlay
