@@ -86,8 +86,8 @@ class Overlay:
         return np.unique([c.frame for c in self.contours])
 
     def croppedContours(self, cropping_parameters=Tuple[slice, slice]):
-        y,x = cropping_parameters
-        miny,maxy,minx,maxx = y.start, y.stop, x.start, x.stop
+        y, x = cropping_parameters
+        miny, maxy, minx, maxx = y.start, y.stop, x.start, x.stop
 
         crop_rectangle = Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
 

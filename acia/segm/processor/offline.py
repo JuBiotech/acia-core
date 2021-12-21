@@ -83,11 +83,12 @@ class OfflineModel(Processor):
 
         return overlay
 
+
 class PoseModel(Processor):
     '''
         Model that runs on the local computer
     '''
-    def __init__(self, model_name = 'bact_omni', omni=True, use_gpu = torch.cuda.is_available(), diameter=None, flow_threshold=None):
+    def __init__(self, model_name='bact_omni', omni=True, use_gpu=torch.cuda.is_available(), diameter=None, flow_threshold=None):
         '''
             config_file: model configuration file
             parameter_file: model checkpoint file
@@ -100,8 +101,6 @@ class PoseModel(Processor):
 
         self.diameter = diameter
         self.flow_threshold = flow_threshold
-        
-
 
     def load_model(self):
         '''
@@ -118,9 +117,7 @@ class PoseModel(Processor):
             tiling: whether to enable tiling
         '''
         self.load_model()
-        channels = [[0,0]]
-
-
+        channels = [[0, 0]]
 
         # TODO: super strange without [] it takes some other list as initialization. This leads to detected cells from other images...
         overlay = Overlay([])
@@ -130,7 +127,7 @@ class PoseModel(Processor):
                 masks, flows, styles, diams = self.model.eval([image], channels=channels, rescale=None, diameter=70, flow_threshold=.9, mask_threshold=.0, resample=True, diam_threshold=100)
             except:
                 print("Error in OmniPose prediction")
-                masks = [[],]
+                masks = [[], ]
 
             int_mask = masks[0]
 
@@ -138,7 +135,7 @@ class PoseModel(Processor):
             score_threshold = 0.5
             all_contours = []
 
-            for index in range(1, num_cells+1):
+            for index in range(1, num_cells + 1):
                 bool_mask = int_mask == index
 
                 contours, hierarchy = cv2.findContours(np.where(bool_mask > score_threshold, 1, 0).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -150,7 +147,5 @@ class PoseModel(Processor):
 
             for contour in all_contours:
                 overlay.add_contour(Contour(contour, -1, frame_id, -1))
-
-
 
         return overlay
