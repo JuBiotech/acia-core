@@ -10,7 +10,9 @@ import cv2
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import StandardScaler
 import os.path as osp
-from config import basepath, clustering, datapoints_path
+from config import basepath#, datapoints_path
+
+datapoints_path = osp.join(basepath, 'datapoints_labeled.pkl')
 
 def main():
 
@@ -54,6 +56,8 @@ def main():
                 # scatter data with correct colors
                 plt.scatter(frame_df['red'], frame_df['green'], c=frame_df['color'], s=50, alpha=0.5)
                 # make figure
+                plt.xlim((0, 0.7))
+                plt.ylim((0, 0.7))
                 plt.title('Frame: %03d' % frame)
                 plt.xlabel('red')
                 plt.ylabel('green')

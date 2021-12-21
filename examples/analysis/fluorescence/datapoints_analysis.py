@@ -13,6 +13,11 @@ from config import basepath
 
 datapath = osp.join(basepath, 'datapoints.pkl')
 
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"]})
+
 def main():
 
     # read dataset
@@ -69,11 +74,14 @@ def main():
                 # scatter cluster centers
                 plt.scatter(centroids[:, 0], centroids[:, 1], c='black', s=50, marker='+')
                 # make figure
+                plt.xlim((0.2, 0.7))
+                plt.ylim((0.2, 0.7))
                 plt.title('Frame: %03d' % frame)
                 plt.xlabel('red')
                 plt.ylabel('green')
+                plt.grid(True)
                 plt.tight_layout()
-                plt.savefig(osp.join(basepath, 'cluster.png'))
+                plt.savefig(osp.join(basepath, 'cluster.png'),  dpi=300)
                 # read figure from file
                 img = cv2.imread(osp.join(basepath, 'cluster.png'))
                 # write figure into video
@@ -97,14 +105,29 @@ def main():
 
     plt.close('all')
 
+    fig, ax1 = plt.subplots()
     # plot absolute counts
-    plt.plot(counts_green, label='green cells', color='green')
-    plt.plot(counts_red, label='red cells', color='red')
-    plt.title('Absolute cell counts')
+    plt.plot(counts_green, label='Green cells', color='green')
+    plt.plot(counts_red, label='Red cells', color='red')
+    plt.title('Cell Counts')
     plt.xlabel('Frame')
-    plt.ylabel('Cell count')
+    plt.ylabel('Absolute Cell Count')
+    plt.xlim((0, len(counts_green)))
+
+    ax1.grid(True)
+
+    #ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    #color = 'tab:blue'
+    #ax2.set_ylabel(r'Ratio $\frac{red}{red+green}$', color=color)  # we already handled the x-label with ax1
+    #ratio = np.array(counts_red) / (np.array(counts_green) + np.array(counts_red))
+    #trunc_ratio = ratio[30:]
+    #ax2.plot(np.array(range(len(trunc_ratio)))+30, trunc_ratio, color=color, label='Ratio')
+    #ax2.tick_params(axis='y', labelcolor=color)
+
+
     plt.legend()
-    plt.savefig(osp.join(basepath, 'cell_count.png'))
+    plt.savefig(osp.join(basepath, 'cell_count.png'), dpi=300)
 
     # compute rel counts
     '''total_count = np.array(counts_red) + np.array(counts_green)

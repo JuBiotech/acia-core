@@ -1,12 +1,22 @@
 from scipy.sparse import base
 from acia.segm.output import VideoExporter
-from examples.analysis.fluorescence.config import clustering
+#from examples.analysis.fluorescence.config import clustering
 import numpy as np
 from config import basepath
 import os.path as osp
 import matplotlib.pyplot as plt
 import cv2
 import tqdm
+import pandas as pd
+
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"],
+    'text.latex.preamble': [
+    r'\usepackage{amsmath}',
+    r'\usepackage{amssymb}']})
+
 
 def compute_area_bounds(data, color):
     areas = data[data['color'] == color]['area']
@@ -29,8 +39,9 @@ def area_distribution(data):
 if __name__ == '__main__':
 
     # get the clustering in red and green
-    df, transform, kmeans, red_index, green_index = clustering()
-
+    #df, transform, kmeans, red_index, green_index = clustering()
+    df = pd.read_pickle(osp.join(basepath, 'datapoints.pkl'))
+    
     # determine the individual frames
     frames = np.unique(df['frame'])
 
@@ -57,8 +68,14 @@ if __name__ == '__main__':
             ax[0].set_xlim((0, 500))
             ax[1].set_xlim((0, 500))
 
+            ax[0].set_title('Area distributions')
+            ax[1].set_xlabel(r'Area $\text{px}^2$')
+
+            ax[0].set_ylim((0, 150))
+            ax[1].set_ylim((0, 150))
+
             # add to video
-            plt.savefig(osp.join(basepath, 'area_dist.png'))
+            plt.savefig(osp.join(basepath, 'area_dist.png'), dpi=150)
             plt.close('all')
             img = cv2.imread(osp.join(basepath, 'area_dist.png'))
             ve.write(image=img)
