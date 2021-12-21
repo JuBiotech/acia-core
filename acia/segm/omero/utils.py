@@ -20,6 +20,7 @@ def getImage(conn: BlitzGateway, imageId: int) -> ImageWrapper:
     """
     return conn.getObject('Image', imageId)
 
+
 def getDataset(conn: BlitzGateway, datasetId: int) -> DatasetWrapper:
     """Get omero dataset by id
         Note: only datasets in your current group are accessible
@@ -32,6 +33,7 @@ def getDataset(conn: BlitzGateway, datasetId: int) -> DatasetWrapper:
         DatasetWrapper: dataset object
     """
     return conn.getObject('Dataset', datasetId)
+
 
 def getProject(conn: BlitzGateway, projectId: int) -> ProjectWrapper:
     """Get omero project by id
@@ -46,6 +48,7 @@ def getProject(conn: BlitzGateway, projectId: int) -> ProjectWrapper:
     """
     return conn.getObject('Project', projectId)
 
+
 def list_projects(conn: BlitzGateway) -> List[ProjectWrapper]:
     """List projects in the current user group
         Note: only projects in your current group are accessible
@@ -57,6 +60,7 @@ def list_projects(conn: BlitzGateway) -> List[ProjectWrapper]:
         List[ProjectWrapper]: List of project wrappers
     """
     return conn.getObjects('Project')
+
 
 def list_image_ids_in_dataset(conn: BlitzGateway, datasetId: int) -> List[int]:
     """[summary]
@@ -70,6 +74,7 @@ def list_image_ids_in_dataset(conn: BlitzGateway, datasetId: int) -> List[int]:
     """
     return [image.getId() for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
+
 def list_images_in_dataset(conn: BlitzGateway, datasetId: int) -> List[ImageWrapper]:
     """List all images in the omero dataset
 
@@ -82,17 +87,22 @@ def list_images_in_dataset(conn: BlitzGateway, datasetId: int) -> List[ImageWrap
     """
     return [image for image in conn.getObjects('Image', opts={'dataset': datasetId})]
 
+
 def list_datasets_in_project(conn: BlitzGateway, projectId: int) -> List[DatasetWrapper]:
     return conn.getObjects('Dataset', opts={'project': projectId})
+
 
 def list_images_in_project(conn: BlitzGateway, projectId: int) -> List[ImageWrapper]:
     return [image for dataset in list_datasets_in_project(conn, projectId=projectId) for image in dataset.listChildren()]
 
+
 def get_image_name(conn: BlitzGateway, imageId: int) -> str:
     return conn.getObject('Image', imageId).getName()
 
+
 def get_project_name(conn: BlitzGateway, projectId: int) -> str:
     return conn.getObject('Project', projectId).getName()
+
 
 def image_iterator(conn: BlitzGateway, object) -> ImageWrapper:
     if object.OMERO_CLASS == 'Image':
@@ -105,13 +115,14 @@ def image_iterator(conn: BlitzGateway, object) -> ImageWrapper:
             yield image
 
 
-def create_project(conn: BlitzGateway, project_name: str)-> ProjectWrapper:
+def create_project(conn: BlitzGateway, project_name: str) -> ProjectWrapper:
     new_project = ProjectWrapper(conn, omero.model.ProjectI())
     new_project.setName(project_name)
     new_project.save()
     return new_project
 
-def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str)-> DatasetWrapper:
+
+def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str) -> DatasetWrapper:
     # Use omero.gateway.DatasetWrapper:
     new_dataset = DatasetWrapper(conn, omero.model.DatasetI())
     new_dataset.setName(dataset_name)
@@ -129,6 +140,7 @@ def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str)-> Data
     conn.getUpdateService().saveObject(link)
 
     return new_dataset
+
 
 class ScaleBar:
 
@@ -165,7 +177,7 @@ class ScaleBar:
         img_pil = Image.fromarray(image)
         draw = ImageDraw.Draw(img_pil)
         text_x, text_y = draw.textsize(text, font=self.font)
-        draw.text(( xstart + self.pixelWidth / 2 - text_x / 2, ystart - text_y - 2), text, fill = self.color, font=self.font)
+        draw.text((xstart + self.pixelWidth / 2 - text_x / 2, ystart - text_y - 2), text, fill=self.color, font=self.font)
         image = np.array(img_pil)
 
         return image

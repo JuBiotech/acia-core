@@ -1,5 +1,4 @@
 from typing import Tuple
-from numpy.lib.polynomial import poly
 import tqdm
 import shapely
 from shapely.validation import make_valid

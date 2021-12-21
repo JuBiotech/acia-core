@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Tuple
+from typing import Tuple
 from acia.segm.omero.shapeUtils import make_coordinates
 import omero
 from omero.gateway import BlitzGateway
@@ -8,7 +8,8 @@ from .shapeUtils import create_polygon
 import numpy as np
 from itertools import product
 import tqdm
-from omero.model import LengthI as Length
+from omero.model import LengthI
+
 
 # We have a helper function for creating an ROI and linking it to new shapes
 def create_roi(updateService, img, shapes):
@@ -29,6 +30,7 @@ def create_roi(updateService, img, shapes):
     # Save the ROI (saves any linked shapes too)
     return updateService.saveAndReturnObject(roi)
 
+
 # We have a helper function for creating an ROI and linking it to new shapes
 def create_roi_fast(updateService, img, shapes):
     '''
@@ -45,6 +47,7 @@ def create_roi_fast(updateService, img, shapes):
         roi.addShape(shape)
     # Save the ROI (saves any linked shapes too)
     updateService.saveObject(roi)
+
 
 class OmeroRoIStorer:
     '''
@@ -63,7 +66,7 @@ class OmeroRoIStorer:
         if not force and userId != imageOwnerId:
             raise ValueError("You try to write to non-owned data. Enable 'force' option if you are sure to do that.")
 
-        #OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+        # OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
 
         size_t = image.getSizeT()
         size_z = image.getSizeZ()
@@ -72,7 +75,7 @@ class OmeroRoIStorer:
             # this is a linearized overlay
             logging.info('Linearized overlay: Use t and z')
             shapes = [
-                create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame/size_z), description="Score: %.2f" % cont.score) for cont in overlay
+                create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame / size_z), description="Score: %.2f" % cont.score) for cont in overlay
             ]
 
         else:
@@ -121,13 +124,12 @@ class OmeroRoIStorer:
 
             image = image = conn.getObject("Image", imageId)
 
-            size_t = image.getSizeT()
+            # size_t = image.getSizeT()
             size_z = image.getSizeZ()
-
 
             # loop rois
             for roi in result.rois:
-                if (not roiId is None) and roi.getId() != roiId:
+                if (roiId is not None) and roi.getId() != roiId:
                     # if the roiId is specified, check whether we have the right one
                     continue
 
@@ -169,22 +171,24 @@ class OmeroRoIStorer:
                         roi.removeShape(s)
                     roi = updateService.saveAndReturnObject(roi)
 
-
             # delete all RoIs in the image
             if len(result.rois) > 0:
-                conn.deleteObjects("Roi", [roi.getId().getValue() for roi in result.rois], deleteAnns=True, deleteChildren=True, wait=True)        
+                conn.deleteObjects("Roi", [roi.getId().getValue() for roi in result.rois], deleteAnns=True, deleteChildren=True, wait=True)
+
 
 class IngoreWithWrapper:
     def __init__(self, object):
         self.object = object
 
-    def __getattr__(self,attr):
+    def __getattr__(self, attr):
         return self.object.__getattribute__(attr)
 
     def __enter__(self):
         return self.object
+
     def __exit__(self, type, value, traceback):
         pass
+
 
 class BlitzConn(object):
     '''
@@ -264,7 +268,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             return conn.getObject('Image', self.imageId).getProject().getName()
 
     @property
-    def rawPixelSize(self) -> Tuple[Length,Length]:
+    def rawPixelSize(self) -> Tuple[LengthI, LengthI]:
         """Return the pixel size in omero objects
 
         Returns:
@@ -281,9 +285,8 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
 
             return size_x_obj, size_y_obj
 
-
     @property
-    def pixelSize(self) -> Tuple[float,float]:
+    def pixelSize(self) -> Tuple[float, float]:
         """Return the pixel size in micron
 
         Returns:
@@ -300,8 +303,6 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
 
             return size_x_obj.getValue(), size_y_obj.getValue()
 
-
-
     def __iter__(self):
         with self.make_connection() as conn:
             # get the specified image
@@ -314,11 +315,11 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             size_z = image.getSizeZ()
 
             # iterate over time
-            for t,z in product(range(size_t), range(size_z)):
+            for t, z in product(range(size_t), range(size_z)):
 
                 index = t * size_z + z
 
-                if self.range and not index in self.range:
+                if self.range and index not in self.range:
                     continue
 
                 image.setColorRenderingModel()
@@ -353,7 +354,6 @@ class OmeroRoISource(BlitzConn, RoISource):
             result = roi_service.findByImage(self.imageId, None)
             rois = result.rois
 
-
             if len(rois) == 0:
                 # no rois found
                 raise ValueError(f"No rois found for image {self.imageId}")
@@ -363,7 +363,7 @@ class OmeroRoISource(BlitzConn, RoISource):
 
             # compose an overlay from the rois
             overlay = OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
-                                    serverUrl=self.serverUrl, port=self.port, secure=self.secure)
+                                          serverUrl=self.serverUrl, port=self.port, secure=self.secure)
 
             # return overlay iterator over time
             return overlay.timeIterator(frame_range=self.range)

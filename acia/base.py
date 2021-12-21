@@ -8,8 +8,10 @@ from functools import partial
 from shapely.geometry import Polygon
 import copy
 
+
 def unpack(data, function):
     return function(*data)
+
 
 class Contour:
     def __init__(self, coordinates, score, frame, id):
@@ -113,8 +115,8 @@ class Overlay:
         assert endFrame <= np.max(self.frames())
 
         # iterate frames
-        for frame in range(startFrame, endFrame+1):
-            if frame_range and not frame in frame_range:
+        for frame in range(startFrame, endFrame + 1):
+            if frame_range and frame not in frame_range:
                 continue
             # filter sub overlay with all contours in the frame
             yield Overlay(list(filter(lambda contour: contour.frame == frame, self.contours)))
@@ -160,8 +162,10 @@ class Processor(object):
 class ImageSequenceSource(object):
     pass
 
+
 class RoISource(object):
     pass
+
 
 class ImageRoISource(object):
     '''
@@ -181,7 +185,7 @@ class ImageRoISource(object):
         import multiprocessing
         from tqdm.contrib.concurrent import process_map
         if num_workers is None:
-            num_workers = int(np.floor(multiprocessing.cpu_count()*2/3))
+            num_workers = int(np.floor(multiprocessing.cpu_count() * 2 / 3))
 
         def limit():
             for i, el in enumerate(self):
@@ -193,7 +197,7 @@ class ImageRoISource(object):
         import multiprocessing
         from tqdm.contrib.concurrent import process_map
         if num_workers is None:
-            num_workers = int(np.floor(multiprocessing.cpu_count()*2/3))
+            num_workers = int(np.floor(multiprocessing.cpu_count() * 2 / 3))
 
         return process_map(partial(unpack, function=function), self, max_workers=num_workers, chunksize=4)
 
@@ -201,8 +205,6 @@ class ImageRoISource(object):
         def limit():
             for i, el in enumerate(self):
                 yield el
-                #if i == 11:
-                #    break
 
         return list(tqdm.tqdm(map(function, limit())))
 

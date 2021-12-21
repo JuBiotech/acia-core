@@ -60,7 +60,7 @@ class OfflineModel(Processor):
             source: image sequence source
             tiling: whether to enable tiling
         '''
-        self.load_model(half=self.half, device=self.device)#, cfg_options={'test_cfg.rcnn.nms.iou_threshold': 0.3, 'test_cfg.rcnn.score_thr': 0.5})
+        self.load_model(half=self.half, device=self.device)  # , cfg_options={'test_cfg.rcnn.nms.iou_threshold': 0.3, 'test_cfg.rcnn.score_thr': 0.5})
 
         # TODO: super strange without [] it takes some other list as initialization. This leads to detected cells from other images...
         overlay = Overlay([])
@@ -78,7 +78,7 @@ class OfflineModel(Processor):
             # drop non-sense contours
             all_contours = list(filter(lambda comb: len(comb[1]) >= 5, zip(pred_result, all_contours)))
 
-            contours = [Contour(cont, pred['score'], frame_id, id=-1) for pred,cont in all_contours]
+            contours = [Contour(cont, pred['score'], frame_id, id=-1) for pred, cont in all_contours]
             overlay.add_contours(contours)
 
         return overlay

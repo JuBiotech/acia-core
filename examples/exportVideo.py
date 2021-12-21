@@ -8,6 +8,8 @@ import tqdm
 from PIL import Image
 from acia.segm.omero.utils import ScaleBar
 
+from acia.segm.omero.utils import ScaleBar
+
 def renderVideo(imageSource, roiSource, filename='output.avi', framerate=3):
     """[summary]
 
