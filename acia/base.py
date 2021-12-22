@@ -14,8 +14,16 @@ def unpack(data, function):
 
 
 class Contour:
-    def __init__(self, coordinates, score, frame, id):
-        self.coordinates = coordinates
+    def __init__(self, coordinates, score: float, frame: int, id: int):
+        """Create Contour
+
+        Args:
+            coordinates ([type]): [description]
+            score (float): segmentation score
+            frame (int): frame index
+            id (int): unique id
+        """
+        self.coordinates = np.array(coordinates, dtype=np.float32)
         self.score = score
         self.frame = frame
         self.id = id
@@ -53,6 +61,14 @@ class Contour:
             draw = ImageDraw.Draw(image)
         draw.polygon(self.coordinates, outline=outlineColor, fill=fillColor)
 
+    def scale(self, scale: float):
+        """Apply scale factor to contour coordinates
+
+        Args:
+            scale (float): the multplication factor
+        """
+        self.coordinates *= scale
+
     @property
     def center(self):
         return np.mean(self.coordinates, axis=0)
@@ -84,6 +100,17 @@ class Overlay:
 
     def frames(self):
         return np.unique([c.frame for c in self.contours])
+
+    def scale(self, scale: float):
+        """Scale the contour with the specified scale factor
+
+           Applies the scale factor to all coordinates individually
+
+        Args:
+            scale (float): [description]
+        """
+        for cont in self.contours:
+            cont.scale(scale)
 
     def croppedContours(self, cropping_parameters=Tuple[slice, slice]):
         y, x = cropping_parameters

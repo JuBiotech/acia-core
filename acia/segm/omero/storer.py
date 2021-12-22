@@ -218,7 +218,68 @@ class BlitzConn(object):
         pass
 
 
-class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
+class OmeroSource(BlitzConn):
+    """
+        Base Class for omero image information. Bundles functionality for image and RoIs.
+    """
+    def __init__(self, imageId: float, username: str = None, password: str = None, serverUrl: str = None, port=4064, secure=True, conn=None):
+        """
+        Args:
+            imageId (float): omero image id
+            username (str, optional): omero username. Not needed when conn is provided. Defaults to None.
+            password (str, optional): omero password. Not needed when conn is provided. Defaults to None.
+            serverUrl (str, optional): omero url. Not needed when conn is provided. Defaults to None.
+            port (int, optional): omero port. Not needed when conn is provided. Defaults to 4064.
+            secure (bool, optional): Whether to choose secure connection. Defaults to True.
+            conn ([type], optional): Existing omero connection. Defaults to None.
+        """
+        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn)
+
+    @property
+    def rawPixelSize(self) -> Tuple[LengthI, LengthI]:
+        """Return the pixel size in omero objects
+
+        Returns:
+            Tuple[LengthI,LengthI]: x and y pixel size in omero objects
+        """
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+
+            size_x_obj = image.getPixelSizeX(units="MICROMETER")
+            size_y_obj = image.getPixelSizeY(units="MICROMETER")
+
+            return size_x_obj, size_y_obj
+
+    @property
+    def pixelSize(self) -> Tuple[float, float]:
+        """Return the pixel size in micron
+
+        Returns:
+            Tuple[float,float]: x and y pixel size in micron
+        """
+        size_x_obj, size_y_obj = self.rawPixelSize
+
+        return size_x_obj.getValue(), size_y_obj.getValue()
+
+    def printPixelSize(self, unit="MICROMETER"):
+        """Output pixel sizes
+
+        Args:
+            unit (str, optional): Name of the unit. Defaults to "MICROMETER".
+        """
+        # get raw
+        size_x_obj, size_y_obj = self.rawPixelSize
+
+        # convert to correct unit
+        size_x_obj = omero.model.LengthI(size_x_obj, unit)
+        size_y_obj = omero.model.LengthI(size_y_obj, unit)
+
+        # output pixel sizes
+        print(" Pixel Size X:", size_x_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
+        print(" Pixel Size Y:", size_y_obj.getValue(), "(%s)" % size_y_obj.getSymbol())
+
+
+class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
     '''
         Uses omero server as a source for images
     '''
@@ -235,7 +296,7 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             base_channel: id of the phase contrast channel (visualized over all rgb channels)
         '''
 
-        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn)
+        OmeroSource.__init__(self, imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn)
 
         self.imageId = imageId
         self.channels = channels
@@ -266,42 +327,6 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
         '''
         with self.make_connection() as conn:
             return conn.getObject('Image', self.imageId).getProject().getName()
-
-    @property
-    def rawPixelSize(self) -> Tuple[LengthI, LengthI]:
-        """Return the pixel size in omero objects
-
-        Returns:
-            Tuple[float,float]: x and y pixel size in omero objects
-        """
-        with self.make_connection() as conn:
-            image = conn.getObject("Image", self.imageId)
-
-            size_x_obj = image.getPixelSizeX(units="MICROMETER")
-            print(" Pixel Size X:", size_x_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
-
-            size_y_obj = image.getPixelSizeX(units="MICROMETER")
-            print(" Pixel Size X:", size_y_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
-
-            return size_x_obj, size_y_obj
-
-    @property
-    def pixelSize(self) -> Tuple[float, float]:
-        """Return the pixel size in micron
-
-        Returns:
-            Tuple[float,float]: x and y pixel size in micron
-        """
-        with self.make_connection() as conn:
-            image = conn.getObject("Image", self.imageId)
-
-            size_x_obj = image.getPixelSizeX(units="MICROMETER")
-            print(" Pixel Size X:", size_x_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
-
-            size_y_obj = image.getPixelSizeX(units="MICROMETER")
-            print(" Pixel Size X:", size_y_obj.getValue(), "(%s)" % size_x_obj.getSymbol())
-
-            return size_x_obj.getValue(), size_y_obj.getValue()
 
     def __iter__(self):
         with self.make_connection() as conn:
@@ -336,14 +361,18 @@ class OmeroSequenceSource(ImageSequenceSource, BlitzConn):
             return int(image.getSizeT() * image.getSizeZ())
 
 
-class OmeroRoISource(BlitzConn, RoISource):
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]], range=None):
-        BlitzConn.__init__(self, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+class OmeroRoISource(OmeroSource, RoISource):
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]], range=None, scale=None):
+        OmeroSource.__init__(self, imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
 
         self.imageId = imageId
 
         self.roiSelector = roiSelector
         self.range = range
+        self.scale = scale
+        if self.scale:
+            # 1 pixel has the size of the returned value. To move to correct domain use that size as scale factor
+            self.scaleFactor = omero.model.LengthI(self.rawPixelSize[0], self.scale).getValue()
 
     def __iter__(self):
         # create connection to omero
@@ -364,6 +393,9 @@ class OmeroRoISource(BlitzConn, RoISource):
             # compose an overlay from the rois
             overlay = OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
                                           serverUrl=self.serverUrl, port=self.port, secure=self.secure)
+
+            if self.scale:
+                overlay.scale(self.scaleFactor)
 
             # return overlay iterator over time
             return overlay.timeIterator(frame_range=self.range)
