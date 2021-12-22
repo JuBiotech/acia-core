@@ -61,10 +61,16 @@ run:
     paths:
       - dist/*.whl
 
+.deploy_common:
+  # common config
+  only:
+    refs:
+      - master
+
+
 deploy:
   stage: deploy
-  only:
-  - master
+  extends: .deploy_common
   script:
     - pip install twine
     - python setup.py sdist bdist_wheel
@@ -72,8 +78,7 @@ deploy:
 
 pages:
   stage: deploy
-  only:
-    - master
+  extends: .deploy_common
   script:
     - pip install sphinx sphinx-rtd-theme
     - cd docs ; make html
