@@ -63,9 +63,9 @@ run:
 
 .deploy_common:
   # common config
-  only:
-    refs:
-      - master
+ rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
 
 
 deploy:
