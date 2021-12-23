@@ -1,44 +1,59 @@
-from itertools import islice
-from acia.base import Overlay
+from acia.base import ImageSequenceSource, Overlay
 from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
 import getpass
 import cv2
 import numpy as np
 import tqdm
-from PIL import Image
 from acia.segm.omero.utils import ScaleBar
 
 from acia.segm.omero.utils import ScaleBar
+from acia.segm.output import VideoExporter
 
-def renderVideo(imageSource, roiSource, filename='output.avi', framerate=3):
-    """[summary]
+no_crop = lambda frame, overlay: (slice(0,frame.shape[0]), slice(0, frame.shape[1]))
+def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='output.mp4', framerate=3, codec="vp09", scaleBar: ScaleBar=None, draw_frame_number=False, cropper=no_crop):
+    """Render a video of the time-lapse.
 
     Args:
-        imageSource ([type]): [description]
-        roiSource ([type]): [description]
-        filename (str, optional): path/to/the/output/video/file. Defaults to 'output.avi'.
-        framerate (int, optional): Frames per second in the video. Defaults to 3.
+        imageSource (ImageSequenceSource): Your time-lapse source object.
+        roiSource ([type]): Your source of RoIs for the image (e.g. cells). If None, no RoIs are visualized. Defaults to None.
+        filename (str, optional): The output path of the video. Defaults to 'output.mp4'.
+        framerate (int, optional): The framerate of the video. E.g. 3 means three time-lapse images per second. Defaults to 3.
+        codec (str, optional): The video format codec. Defaults to "vp09".
+        scaleBar (ScaleBar, optional): The scale bar object. Defaults to None.
+        draw_frame_number (bool, optional): Whether to draw the frame number. Defaults to False.
+        cropper ([type], optional): The frame cropper object. Defaults to no_crop.
     """
-    out = None
 
-    for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
-        if out is None:
-            # create video renderer
-            frame_height, frame_width = image.shape[:2]
-            out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc('M','J','P','G'), framerate, (frame_width,frame_height))
+    if roiSource is None:
+        roiSource = [None] * len(imageSource)
 
-        # draw overlay on image
-        #im = Image.fromarray(image)
-        #overlay.draw(im, (255, 255, 0))
-        #image = np.asarray(image)
-        image = cv2.drawContours(image, [np.round(np.array(cont.coordinates)).astype(np.int32) for cont in overlay.contours if len(cont.coordinates) > 0], -1, (255, 255, 0)) # RGB format
+    with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
+        for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
 
-        # output images
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        cv2.imwrite('images/%02d.png' % frame, image)
-        out.write(image)
+            crop_parameters = cropper(image, overlay)
+            image = image[crop_parameters[0], crop_parameters[1]]
 
-    out.release()
+            # draw overlay on image
+            #im = Image.fromarray(image)
+            #overlay.draw(im, (255, 255, 0))
+            #image = np.asarray(image)
+            height, width = image.shape[:2]
+
+            # TODO: Draw float based contours
+            if overlay:
+                image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.croppedContours(crop_parameters)], -1, (255, 255, 0)) # RGB format
+
+            if draw_frame_number:
+                cv2.putText(image, f'Frame: {frame}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
+            if scaleBar:
+                image = scaleBar.draw(image, width - scaleBar.pixelWidth - 10, height - 10)
+
+            # output images
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            cv2.imwrite('images/%02d.png' % frame, image)
+            ve.write(image)
+
 
 class InitialCenterCrop:
 
@@ -68,7 +83,6 @@ if __name__ == '__main__':
     framerate = 2
 
     imageId = 259 
-    draw_contours = True
     draw_frame_number = False
     draw_scale_bar = True
     cropping = InitialCenterCrop(125, 125)
@@ -77,44 +91,14 @@ if __name__ == '__main__':
     # load data from omero
     oss = OmeroSequenceSource(imageId, username=username, password=password, serverUrl=serverUrl, channels=[1], colorList=['FFFFFF'])
     #oss = OmeroSequenceSource(imageId, username=username, password=password, serverUrl=serverUrl, channels=[1], colorList=['FFFFFF'])
-    ors = OmeroRoISource(imageId, username=username, password=password, serverUrl=serverUrl)
+    ors = OmeroRoISource(imageId, username=username, password=password, serverUrl=serverUrl, range=(list(range(14))))
 
     assert len(oss) == len(ors)
 
-    out = None
     scaleBar = None
     if draw_scale_bar:
         scaleBar = ScaleBar(oss, 5, "MICROMETER", font_size=10)
 
-    # join frame images and overlay
-    for frame, (image, overlay) in islice(enumerate(tqdm.tqdm(zip(oss, ors))), 13):
-        if out is None:
-            # create video renderer
-            frame_height, frame_width = image.shape[:2]
-            out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M','J','P','G'), framerate, (frame_width,frame_height))
-
-        # crop the image
-        crop_parameters = cropping(image, overlay)
-        image = image[crop_parameters[0], crop_parameters[1]]
-
-        height, width = image.shape[:2]
-
-        # draw overlay on image
-        # TODO: Draw float based contours
-        if draw_contours:
-            image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.croppedContours(crop_parameters)], -1, (255, 255, 0)) # RGB format
-
-        if draw_frame_number:
-            cv2.putText(image, f'Frame: {frame}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
-
-        if draw_scale_bar:
-            image = scaleBar.draw(image, width - scaleBar.pixelWidth - 10, height - 10)
-
-        # output images
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        cv2.imwrite('images/%04d.png' % frame, image)
-        out.write(image)
-
-    out.release()
+    renderVideo(oss, ors, "outpy.mp4", codec="vp09", framerate=framerate, scaleBar=scaleBar, draw_frame_number=draw_frame_number, cropper=cropping)
 
 

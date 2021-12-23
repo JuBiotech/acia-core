@@ -187,12 +187,13 @@ class VideoExporter:
         Wrapper for opencv video writer. Simplifies usage
     '''
 
-    def __init__(self, filename, framerate):
+    def __init__(self, filename, framerate, codec="MJPG"):
         self.filename = filename
         self.framerate = framerate
         self.out = None
         self.frame_height = None
         self.frame_width = None
+        self.codec = codec
 
     def __del__(self):
         if self.out:
@@ -202,7 +203,7 @@ class VideoExporter:
         height, width = image.shape[:2]
         if self.out is None:
             self.frame_height, self.frame_width = image.shape[:2]
-            self.out = cv2.VideoWriter(self.filename, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), self.framerate, (self.frame_width, self.frame_height))
+            self.out = cv2.VideoWriter(self.filename, cv2.VideoWriter_fourcc(*self.codec), self.framerate, (self.frame_width, self.frame_height))
         if self.frame_height != height or self.frame_width != width:
             logging.warning('You add images of different resolution to the VideoExporter. This may cause problems (e.g. black video output)!')
         self.out.write(image)
