@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 from typing import Iterable, List
-from acia.base import ImageRoISource, Overlay
+from acia.base import ImageRoISource, ImageSequenceSource, Overlay
 import os
 import json
 import datetime
@@ -218,3 +218,48 @@ class VideoExporter:
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+no_crop = lambda frame, overlay: (slice(0,frame.shape[0]), slice(0, frame.shape[1]))
+def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='output.mp4', framerate=3, codec="vp09", scaleBar: ScaleBar=None, draw_frame_number=False, cropper=no_crop):
+    """Render a video of the time-lapse.
+
+    Args:
+        imageSource (ImageSequenceSource): Your time-lapse source object.
+        roiSource ([type]): Your source of RoIs for the image (e.g. cells). If None, no RoIs are visualized. Defaults to None.
+        filename (str, optional): The output path of the video. Defaults to 'output.mp4'.
+        framerate (int, optional): The framerate of the video. E.g. 3 means three time-lapse images per second. Defaults to 3.
+        codec (str, optional): The video format codec. Defaults to "vp09".
+        scaleBar (ScaleBar, optional): The scale bar object. Defaults to None.
+        draw_frame_number (bool, optional): Whether to draw the frame number. Defaults to False.
+        cropper ([type], optional): The frame cropper object. Defaults to no_crop.
+    """
+
+    if roiSource is None:
+        roiSource = [None] * len(imageSource)
+
+    with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
+        for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
+
+            crop_parameters = cropper(image, overlay)
+            image = image[crop_parameters[0], crop_parameters[1]]
+
+            # draw overlay on image
+            #im = Image.fromarray(image)
+            #overlay.draw(im, (255, 255, 0))
+            #image = np.asarray(image)
+            height, width = image.shape[:2]
+
+            # TODO: Draw float based contours
+            if overlay:
+                image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.croppedContours(crop_parameters)], -1, (255, 255, 0)) # RGB format
+
+            if draw_frame_number:
+                cv2.putText(image, f'Frame: {frame}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
+            if scaleBar:
+                image = scaleBar.draw(image, width - scaleBar.pixelWidth - 10, height - 10)
+
+            # output images
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            cv2.imwrite('images/%02d.png' % frame, image)
+            ve.write(image)
