@@ -73,7 +73,7 @@ upload_package:
   # dot pass artifacts from other stages
   dependencies: []
   cache: []
-#  extends: .deploy_common
+  extends: .deploy_common
   script:
     - set -e
     - pip install twine bump2version
