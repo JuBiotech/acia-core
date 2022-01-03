@@ -115,7 +115,7 @@ class OmeroRoIStorer:
             serverUrl: omero web address
             port: omero port (default: 4064)
         '''
-        overlay = Overlay()
+        overlay = Overlay([])
         # open connection to omero
         with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
             # get the roi service
@@ -374,31 +374,19 @@ class OmeroRoISource(OmeroSource, RoISource):
             # 1 pixel has the size of the returned value. To move to correct domain use that size as scale factor
             self.scaleFactor = omero.model.LengthI(self.rawPixelSize[0], self.scale).getValue()
 
+        self.overlay = None
+
     def __iter__(self):
-        # create connection to omero
-        with self.make_connection() as conn:
-            roi_service = conn.getRoiService()
-
-            # find all rois for the image
-            result = roi_service.findByImage(self.imageId, None)
-            rois = result.rois
-
-            if len(rois) == 0:
-                # no rois found
-                raise ValueError(f"No rois found for image {self.imageId}")
-
-            # select a subset of rois
-            rois = self.roiSelector(rois)
-
+        if self.overlay is None:
             # compose an overlay from the rois
-            overlay = OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
-                                          serverUrl=self.serverUrl, port=self.port, secure=self.secure)
+            self.overlay = OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
+                                               serverUrl=self.serverUrl, port=self.port, secure=self.secure)
 
             if self.scale:
-                overlay.scale(self.scaleFactor)
+                self.overlay.scale(self.scaleFactor)
 
-            # return overlay iterator over time
-            return overlay.timeIterator(frame_range=self.range)
+        # return overlay iterator over time
+        return self.overlay.timeIterator(frame_range=self.range)
 
     def __len__(self) -> int:
         with self.make_connection() as conn:
