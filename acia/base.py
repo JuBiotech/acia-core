@@ -75,7 +75,7 @@ class Contour:
 
 
 class Overlay:
-    def __init__(self, contours: List[Contour] = []):
+    def __init__(self, contours: List[Contour]):
         self.contours = contours
 
     def add_contour(self, contour: Contour):
