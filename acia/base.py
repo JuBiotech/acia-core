@@ -73,6 +73,15 @@ class Contour:
     def center(self):
         return np.mean(self.coordinates, axis=0)
 
+    @property
+    def area(self) -> float:
+        """Compute the area inside the contour
+
+        Returns:
+            [float]: area
+        """
+        return Polygon(self.coordinates).area
+
 
 class Overlay:
     def __init__(self, contours: List[Contour]):
