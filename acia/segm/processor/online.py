@@ -241,7 +241,10 @@ class FlexibleOnlineModel(Processor):
         body = response.json()
 
         for i, frame_id in enumerate(frame_ids):
-            content = body[i]['segmentation']
+            if len(frame_ids) == 1:
+                content = body['segmentation']
+            else:
+                content = body[i]['segmentation']
             for detection in content:
                 # label = detection['label']
                 contour = np.array(detection['contour_coordinates'], dtype=np.float32)
