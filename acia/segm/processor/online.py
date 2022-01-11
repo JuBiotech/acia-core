@@ -98,7 +98,7 @@ def batch(iterable, size):
     while True:
         batchiter = islice(sourceiter, size)
         try:
-            print("Next batch...")
+            logging.debug("Next batch...")
             yield chain([next(batchiter)], batchiter)
         except StopIteration:
             # we have reached the end of the iterator
@@ -252,7 +252,7 @@ class FlexibleOnlineModel(Processor):
 
                 contours.append(Contour(contour, score, frame_id, -1))
 
-        print("Finished batch prediction")
+        logging.debug("Finished batch prediction")
 
         return contours
 
