@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 
 from typing import Callable, Iterator, List, Tuple
 import numpy as np
@@ -127,7 +128,15 @@ class Overlay:
 
         crop_rectangle = Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
 
-        for cont in filter(lambda cont: crop_rectangle.contains(Polygon(cont.coordinates)), self.contours):
+        def __crop_function_filter(contour: Contour):
+            try:
+                return crop_rectangle.contains(Polygon(contour.coordinates))
+            except:
+                # if we have problems to convert to shapely polygon, we cannot include it
+                logging.warn('Have to drop Polygon: It cannot be converted into a shapely Polygon.')
+                return False
+
+        for cont in filter(lambda cont: __crop_function_filter(cont), self.contours):
             new_cont = copy.deepcopy(cont)
             new_cont.coordinates -= np.array([minx, miny])
 
