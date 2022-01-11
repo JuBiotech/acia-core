@@ -68,20 +68,14 @@ class OmeroRoIStorer:
 
         # OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
 
-        size_t = image.getSizeT()
+        # size_t = image.getSizeT()
         size_z = image.getSizeZ()
 
-        if overlay.numFrames() == size_t * size_z:
-            # this is a linearized overlay
-            logging.info('Linearized overlay: Use t and z')
-            shapes = [
-                create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame / size_z), description="Score: %.2f" % cont.score) for cont in overlay
-            ]
-
-        else:
-            shapes = [
-                create_polygon(cont.coordinates, z=z, t=cont.frame, description="Score: %.2f" % cont.score) for cont in overlay
-            ]
+        # this is a linearized overlay
+        logging.info('Using Linearized overlay: [t_1: z_0, z_1, ... z_Z, t_2: ,...] Use t and z')
+        shapes = [
+            create_polygon(cont.coordinates, z=cont.frame % size_z, t=np.floor(cont.frame / size_z), description="Score: %.2f" % cont.score) for cont in overlay
+        ]
 
         for shape in tqdm.tqdm(shapes):
             create_roi_fast(updateService, image, [shape])
