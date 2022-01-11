@@ -386,5 +386,5 @@ class OmeroRoISource(OmeroSource, RoISource):
         with self.make_connection() as conn:
             image = conn.getObject('Image', self.imageId)
             if self.range:
-                min(image.getSizeT() * image.getSizeZ(), len(self.range))
+                return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return image.getSizeT() * image.getSizeZ()
