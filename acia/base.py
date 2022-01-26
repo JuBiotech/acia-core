@@ -29,14 +29,14 @@ class Contour:
         self.frame = frame
         self.id = id
 
-    '''
-        Render contour mask onto existing image
-
-        img: pillow image
-        fillValue: mask values inside the contour
-        outlineValues: mask values on the outline (border)
-    '''
     def _toMask(self, img, maskValue=1, outlineValue=1, draw=None):
+        """
+            Render contour mask onto existing image
+
+            img: pillow image
+            fillValue: mask values inside the contour
+            outlineValues: mask values on the outline (border)
+        """
         if draw is None:
             draw = ImageDraw.Draw(img)
         draw.polygon(self.coordinates, outline=outlineValue, fill=maskValue)
@@ -44,17 +44,16 @@ class Contour:
 
         return mask
 
-    '''
-        Render contour mask onto new image
-
-        height: height of the image
-        width: width of the image
-        fillValue: mask values inside the contour
-        outlineValues: mask values on the outline (border)
-    '''
     def toMask(self, height, width, fillValue=1, outlineValue=1):
-        img = Image.new('L', (width, height), 0)
+        """
+            Render contour mask onto new image
 
+            height: height of the image
+            width: width of the image
+            fillValue: mask values inside the contour
+            outlineValues: mask values on the outline (border)
+        """
+        img = Image.new("L", (width, height), 0)
         return self._toMask(img, maskValue=fillValue, outlineValue=outlineValue)
 
     def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
@@ -166,15 +165,15 @@ class Overlay:
             # filter sub overlay with all contours in the frame
             yield Overlay(list(filter(lambda contour: contour.frame == frame, self.contours)))
 
-    '''
-        Turn the individual overlays into masks. For every time point we create a mask of all contours.
-
-        returns: List of masks (np.array[bool])
-
-        height: height of the image
-        width: width of the image
-    '''
     def toMasks(self, height, width) -> List[np.array]:
+        """
+            Turn the individual overlays into masks. For every time point we create a mask of all contours.
+
+            returns: List of masks (np.array[bool])
+
+            height: height of the image
+            width: width of the image
+        """
         masks = []
         for timeOverlay in self.timeIterator():
             img = Image.new('L', (width, height), 0)

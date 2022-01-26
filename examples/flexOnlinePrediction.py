@@ -1,5 +1,5 @@
 from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
-from acia.segm.processor.online import FlexibleOnlineModel, ModelDescriptor, OnlineModel
+from acia.segm.processor.online import FlexibleOnlineModel, ModelDescriptor
 from acia.segm.filter import NMSFilter
 
 
