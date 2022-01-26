@@ -83,9 +83,9 @@ class CocoDataset:
             self.sources.append(item)
 
     def write(self, base_folder: str, mode="train"):
-        '''
-        mode: 'train' | 'val'
-        '''
+        """
+            mode: 'train' | 'val'
+        """
 
         INFO = {
             "description": "CocoDataset - for cell segmentation",
