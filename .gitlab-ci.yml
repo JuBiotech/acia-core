@@ -46,6 +46,7 @@ test:
     - coverage run --source=./acia -m unittest discover ./tests "*test*.py" -v
     - coverage report
     - coverage xml
+    - cat coverage.xml
   artifacts:
     reports:
       cobertura: coverage.xml
