@@ -89,7 +89,7 @@ class AreaEx(PropertyExtractor):
         output_unit: Optional[UnitLike] = DEFAULT_UNIT_AREA,
     ):
         PropertyExtractor.__init__(
-            self, "area", input_unit=Unit(input_unit), output_unit=Unit(output_unit)
+            self, "area", input_unit=input_unit, output_unit=output_unit
         )
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
@@ -107,7 +107,7 @@ class LengthEx(PropertyExtractor):
         output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
     ):
         PropertyExtractor.__init__(
-            self, "length", input_unit=Unit(input_unit), output_unit=Unit(output_unit)
+            self, "length", input_unit=input_unit, output_unit=output_unit
         )
 
     @staticmethod
