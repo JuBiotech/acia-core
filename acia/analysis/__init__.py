@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import List, Optional
 import pandas as pd
 
-from acia.base import Contour, Overlay
+from acia.base import Overlay
 from pint._typing import UnitLike
 from pint import Quantity, Unit
 import numpy as np
+import numpy.ma as ma
+from PIL import Image, ImageDraw
 
 DEFAULT_UNIT_LENGTH = "micrometer"
 DEFAULT_UNIT_AREA = "micrometer ** 2"
@@ -35,7 +37,7 @@ class PropertyExtractor(object):
         # test the conversion here
         self.output_unit.is_compatible_with(self.input_unit)
 
-    def extract(self, overlay: Overlay, df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: List, df: pd.DataFrame):
         """Extract the desired properties for a single contour
 
         Args:
@@ -65,7 +67,7 @@ class PropertyExtractor(object):
 
 
 class ExtractorExecutor(object):
-    def execute(self, overlay: Overlay, extractors: List[PropertyExtractor] = []):
+    def execute(self, overlay: Overlay, images: List, extractors: List[PropertyExtractor] = []):
         df = pd.DataFrame()
         for extractor in extractors:
             result_df = extractor.extract(overlay, df)
@@ -137,7 +139,7 @@ class FrameEx(PropertyExtractor):
     def __init__(self):
         super().__init__("frame", 1)
 
-    def extract(self, overlay: Overlay, df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: List, df: pd.DataFrame):
         frames = []
         for cont in overlay:
             frames.append(self.convert(cont.frame))
@@ -149,7 +151,7 @@ class IdEx(PropertyExtractor):
     def __init__(self):
         super().__init__("id", 1)
 
-    def extract(self, overlay: Overlay, df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: List, df: pd.DataFrame):
         ids = []
         for cont in overlay:
             ids.append(self.convert(cont.id))
@@ -160,9 +162,45 @@ class TimeEx(PropertyExtractor):
     def __init__(self, input_unit: UnitLike, output_unit: Optional[UnitLike] = "hour"):
         super().__init__("time", input_unit, output_unit)
 
-    def extract(self, overlay: Overlay, df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: List, df: pd.DataFrame):
         times = []
         for index, row in df.iterrows():
             times.append(self.convert(row["frame"]))
 
         return pd.DataFrame({self.name: times})
+
+
+class FluorescenceEx(PropertyExtractor):
+    def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = 1, output_unit: Optional[UnitLike] = 1):
+        super().__init__("Fluorescence", input_unit=input_unit, output_unit=output_unit)
+
+        assert len(self.channels) == self.channel_names, "Number of channels and number of channel names must comply"
+
+        self.channels = channels
+        self.channel_names = channel_names
+        self.summarize_operator = summarize_operator
+
+    def extract(self, overlay: Overlay, images: List, df: pd.DataFrame):
+        channel_values = [] * len(self.channels)
+
+        for cont in overlay:
+            for ch_id, channel in enumerate(self.channels):
+                image = images[cont.frame]
+                raw_image = image.get_channel(channel)
+
+                height, width = raw_image.shape[:2]
+                img = Image.new('L', (width, height), 0)
+                draw = ImageDraw.Draw(img)
+
+                # draw cell mask
+                roi_mask = cont._toMask(img, draw=draw)
+
+                # create masked array
+                masked_roi = ma.masked_array(image, mask=~roi_mask)
+
+                # compute fluorescence response
+                value = self.summarize_operator(masked_roi.compressed())
+
+                channel_values[ch_id].append(value)
+
+        return pd.DataFrame({self.channel_names[i]: channel_values[i] for i in range(len(self.channels))})

@@ -8,7 +8,6 @@ from acia.analysis import (
     PropertyExtractor,
     TimeEx,
 )
-import pint
 
 from acia.base import Contour, Overlay
 
@@ -40,18 +39,17 @@ class TestPropertExtractors(unittest.TestCase):
         ]
         overlay = Overlay(contours)
 
-
         # test basic extractors
         df = ExtractorExecutor().execute(
             overlay,
-            [IdEx(), FrameEx(), AreaEx(), LengthEx(), TimeEx(input_unit="15 * minute")], # one frame every 15 minutes
+            [IdEx(), FrameEx(), AreaEx(), LengthEx(), TimeEx(input_unit="15 * minute")],  # one frame every 15 minutes
         )
 
         self.assertEqual(df["area"][0], 1)
         self.assertEqual(df["length"][0], 1)
         self.assertEqual(df["id"][0], 23)
         self.assertEqual(df["frame"][0], 5)
-        self.assertEqual(df["time"][0], 5*15/60)
+        self.assertEqual(df["time"][0], 5 * 15 / 60)
 
 
 if __name__ == "__main__":
