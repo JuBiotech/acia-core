@@ -4,7 +4,7 @@ import cv2
 import os.path as osp
 import logging
 
-from acia.base import ImageSequenceSource, Overlay, Contour, RoISource, Image
+from acia.base import ImageSequenceSource, Overlay, Contour, RoISource, BaseImage
 import roifile
 
 
@@ -29,14 +29,15 @@ def prepare_image(image, normalize_image=True):
 
     return image
 
-class LocalImage(Image):
+
+class LocalImage(BaseImage):
     def __init__(self, content):
         self.content = content
 
     @property
     def raw(self):
         return self.content
-    
+
     @property
     def num_channels(self):
         if len(self.raw.shape) == 2:
