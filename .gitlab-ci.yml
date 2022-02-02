@@ -48,6 +48,7 @@ test:
     - coverage report
     - coverage xml
     - cat coverage.xml
+  coverage: '*TOTAL.*\s+(\d+%)$*'
   artifacts:
     when: always
     reports:
