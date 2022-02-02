@@ -67,10 +67,26 @@ class LocalImageSource(ImageSequenceSource):
         if not osp.isfile(self.file_path):
             logging.warning(f'File "{self.file_path}" does not exist!')
 
-    def __iter__(self):
-        image = cv2.imread(self.file_path)
+    def __get_image(self):
+        if self.image is None:
+            self.image = LocalImage(prepare_image(cv2.imread(self.file_path), self.normalize_image))
+        return self.image
 
-        yield LocalImage(prepare_image(image, self.normalize_image))
+    def __iter__(self):
+        yield self.__get_image()
+
+    def get_frame(self, frame: int):
+        assert frame == 0, "We only have a single frame"
+
+        return self.__get_image()
+
+    @property
+    def num_channels(self) -> int:
+        return self.__get_image().num_channels
+
+    @property
+    def num_frames(self) -> int:
+        return 1
 
     def __len__(self):
         return 1
@@ -88,6 +104,13 @@ class LocalSequenceSource(ImageSequenceSource):
             image = prepare_image(image, self.normalize_image)
 
             yield image
+
+    def get_frame(self, frame: int) -> BaseImage:
+        # TODO: this is super slow access for indiviudal images
+        images = tifffile.imread(self.filename)
+        assert frame < len(images)
+
+        return LocalImage(prepare_image(images[frame]))
 
     def slice(self, start, end):
         images = tifffile.imread(self.filename)
@@ -107,7 +130,7 @@ class LocalSequenceSource(ImageSequenceSource):
                 # make it artificially rgb
                 image = np.repeat(image[:, :, None], 3, axis=-1)
 
-            yield image
+            yield LocalImage(image)
 
 
 class ImageJRoISource(RoISource):

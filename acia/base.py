@@ -221,7 +221,13 @@ class Processor(object):
 
 
 class ImageSequenceSource(object):
-    pass
+    @property
+    def num_channels(self) -> int:
+        raise NotImplementedError()
+
+    @property
+    def get_frame(self, frame: int) -> BaseImage:
+        raise NotImplementedError()
 
 
 class RoISource(object):

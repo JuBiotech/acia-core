@@ -3,7 +3,7 @@ from typing import Tuple
 from acia.segm.omero.shapeUtils import make_coordinates
 import omero
 from omero.gateway import BlitzGateway
-from acia.base import Contour, ImageSequenceSource, Overlay, RoISource
+from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
 from .shapeUtils import create_polygon
 import numpy as np
 from itertools import product
@@ -323,6 +323,23 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         with self.make_connection() as conn:
             return conn.getObject('Image', self.imageId).getProject().getName()
 
+    def __get_image(self, frame: int) -> BaseImage:
+        with self.make_connection() as conn:
+            # get the specified image
+            image = conn.getObject("Image", self.imageId)
+
+            size_t = image.getSizeT()
+            size_z = image.getSizeZ()
+
+            z = frame % size_t
+            t = np.floor(frame / size_t)
+
+            image.setColorRenderingModel()
+            image.setActiveChannels(self.channels, colors=self.colorList)
+            rendered_image = image.renderImage(z, t, compression=self.imageQuality)
+
+            return LocalImage(np.asarray(rendered_image, dtype=np.uint8))
+
     def __iter__(self):
         with self.make_connection() as conn:
             # get the specified image
@@ -347,6 +364,17 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
                 rendered_image = image.renderImage(z, t, compression=self.imageQuality)
 
                 yield LocalImage(np.asarray(rendered_image, dtype=np.uint8))
+
+    def get_frame(self, frame: int):
+        return self.__get_image(frame)
+
+    @property
+    def num_channels(self) -> int:
+        return len(self.channels)
+
+    @property
+    def num_frames(self) -> int:
+        return len(self)
 
     def __len__(self):
         with self.make_connection() as conn:
