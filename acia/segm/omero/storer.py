@@ -329,7 +329,6 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
             image = conn.getObject("Image", self.imageId)
 
             size_t = image.getSizeT()
-            size_z = image.getSizeZ()
 
             z = frame % size_t
             t = np.floor(frame / size_t)

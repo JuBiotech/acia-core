@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 import pandas as pd
 
-from acia.base import BaseImage, ImageSequenceSource, Overlay
+from acia.base import ImageSequenceSource, Overlay
 from pint._typing import UnitLike
 from pint import Quantity, Unit
 import numpy as np
