@@ -153,7 +153,7 @@ class FlexibleOnlineModel(Processor):
                 local_batch = np.array([item for item in local_batch], dtype=object)
 
                 frames = local_batch[:, 0]
-                images = local_batch[:, 1]
+                images = map(lambda img: img.raw, local_batch[:, 1])
 
                 contours += self.predict_batch(frames, images, params)
 
