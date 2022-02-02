@@ -80,7 +80,11 @@ class Contour:
         Returns:
             [float]: area
         """
-        return Polygon(self.coordinates).area
+        return self.polygon.area
+
+    @property
+    def polygon(self) -> Polygon:
+        return Polygon(self.coordinates)
 
 
 class Overlay:
