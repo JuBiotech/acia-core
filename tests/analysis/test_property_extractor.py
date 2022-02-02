@@ -41,8 +41,9 @@ class TestPropertExtractors(unittest.TestCase):
 
         # test basic extractors
         df = ExtractorExecutor().execute(
-            overlay,
-            [IdEx(), FrameEx(), AreaEx(), LengthEx(), TimeEx(input_unit="15 * minute")],  # one frame every 15 minutes
+            overlay=overlay,
+            extractors=[IdEx(), FrameEx(), AreaEx(), LengthEx(), TimeEx(input_unit="15 * minute")],  # one frame every 15 minutes
+            images = None
         )
 
         self.assertEqual(df["area"][0], 1)
