@@ -69,7 +69,7 @@ class PropertyExtractor(object):
 class ExtractorExecutor(object):
     def __init__(self) -> None:
         self.units = {}
-        
+
     def execute(self, overlay: Overlay, images: List, extractors: List[PropertyExtractor] = []):
         df = pd.DataFrame()
         for extractor in extractors:
