@@ -9,6 +9,7 @@ import numpy as np
 from itertools import product
 import tqdm
 from omero.model import LengthI
+from acia.segm.local import LocalImage
 
 
 # We have a helper function for creating an ROI and linking it to new shapes
@@ -345,7 +346,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
                 image.setActiveChannels(self.channels, colors=self.colorList)
                 rendered_image = image.renderImage(z, t, compression=self.imageQuality)
 
-                yield np.asarray(rendered_image, dtype=np.uint8)
+                yield LocalImage(np.asarray(rendered_image, dtype=np.uint8))
 
     def __len__(self):
         with self.make_connection() as conn:

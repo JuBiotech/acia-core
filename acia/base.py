@@ -202,6 +202,10 @@ class Overlay:
 
                 cont.draw(image, outlineColor=oc_local, fillColor=fc_local, draw=imdraw)
 
+class Image(object):
+    def get_channel(channel: int):
+        raise NotImplementedError("Please implement this function!")
+
 
 class Processor(object):
     pass

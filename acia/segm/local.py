@@ -4,7 +4,7 @@ import cv2
 import os.path as osp
 import logging
 
-from acia.base import ImageSequenceSource, Overlay, Contour, RoISource
+from acia.base import ImageSequenceSource, Overlay, Contour, RoISource, Image
 import roifile
 
 
@@ -29,6 +29,34 @@ def prepare_image(image, normalize_image=True):
 
     return image
 
+class LocalImage(Image):
+    def __init__(self, content):
+        self.content = content
+
+    @property
+    def raw(self):
+        return self.content
+    
+    @property
+    def num_channels(self):
+        if len(self.raw.shape) == 2:
+            # only width and height -> 1 channel
+            return 1
+        else:
+            # multiple channels -> channels are specified at the end
+            return self.raw.shape[-1]
+
+    def get_channel(self, channel: int):
+        assert channel < self.num_channels
+
+        if self.num_channels == 1 and len(self.raw.shape) == 2:
+            return self.raw
+        else:
+            return self.raw[..., channel]
+
+    def __getitem__(self, item):
+        return self.raw[item]
+
 
 class LocalImageSource(ImageSequenceSource):
     def __init__(self, file_path: str, normalize_image=True):
@@ -41,7 +69,7 @@ class LocalImageSource(ImageSequenceSource):
     def __iter__(self):
         image = cv2.imread(self.file_path)
 
-        yield prepare_image(image, self.normalize_image)
+        yield LocalImage(prepare_image(image, self.normalize_image))
 
     def __len__(self):
         return 1
