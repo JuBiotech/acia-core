@@ -246,6 +246,8 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
     with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
         for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
 
+            image = image.raw
+
             crop_parameters = cropper(image, overlay)
             image = image[crop_parameters[0], crop_parameters[1]]
 
