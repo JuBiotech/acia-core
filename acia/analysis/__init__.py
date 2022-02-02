@@ -67,12 +67,17 @@ class PropertyExtractor(object):
 
 
 class ExtractorExecutor(object):
+    def __init__(self) -> None:
+        self.units = {}
+        
     def execute(self, overlay: Overlay, images: List, extractors: List[PropertyExtractor] = []):
         df = pd.DataFrame()
         for extractor in extractors:
-            result_df = extractor.extract(overlay, images, df)
+            result_df, units = extractor.extract(overlay, images, df)
 
             df = pd.concat([df, result_df], ignore_index=False, sort=False, axis=1)
+
+            self.units.update(**units)
 
         return df
 
@@ -92,7 +97,7 @@ class AreaEx(PropertyExtractor):
         for cont in overlay:
             areas.append(self.convert(cont.area))
 
-        return pd.DataFrame({self.name: areas})
+        return pd.DataFrame({self.name: areas}), {self.name: self.output_unit}
 
 
 class LengthEx(PropertyExtractor):
@@ -132,7 +137,7 @@ class LengthEx(PropertyExtractor):
                 )
             )
 
-        return pd.DataFrame({self.name: lengths})
+        return pd.DataFrame({self.name: lengths}), {self.name, self.output_unit}
 
 
 class FrameEx(PropertyExtractor):
@@ -144,7 +149,7 @@ class FrameEx(PropertyExtractor):
         for cont in overlay:
             frames.append(self.convert(cont.frame))
 
-        return pd.DataFrame({self.name: frames})
+        return pd.DataFrame({self.name: frames}), {self.name: self.output_unit}
 
 
 class IdEx(PropertyExtractor):
@@ -155,7 +160,7 @@ class IdEx(PropertyExtractor):
         ids = []
         for cont in overlay:
             ids.append(self.convert(cont.id))
-        return pd.DataFrame({self.name: ids})
+        return pd.DataFrame({self.name: ids}), {self.name: self.output_unit}
 
 
 class TimeEx(PropertyExtractor):
@@ -167,7 +172,7 @@ class TimeEx(PropertyExtractor):
         for index, row in df.iterrows():
             times.append(self.convert(row["frame"]))
 
-        return pd.DataFrame({self.name: times})
+        return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
 
 
 class FluorescenceEx(PropertyExtractor):
@@ -204,4 +209,4 @@ class FluorescenceEx(PropertyExtractor):
 
                 channel_values[ch_id].append(value)
 
-        return pd.DataFrame({self.channel_names[i]: channel_values[i] for i in range(len(self.channels))})
+        return pd.DataFrame({self.channel_names[i]: channel_values[i] for i in range(len(self.channels))}), {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
