@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 import pandas as pd
 
-from acia.base import BaseImage, Overlay
+from acia.base import BaseImage, ImageSequenceSource, Overlay
 from pint._typing import UnitLike
 from pint import Quantity, Unit
 import numpy as np
@@ -37,7 +37,7 @@ class PropertyExtractor(object):
         # test the conversion here
         self.output_unit.is_compatible_with(self.input_unit)
 
-    def extract(self, overlay: Overlay, images: List, df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         """Extract the desired properties for a single contour
 
         Args:
@@ -87,7 +87,7 @@ class AreaEx(PropertyExtractor):
             self, "area", input_unit=Unit(input_unit), output_unit=Unit(output_unit)
         )
 
-    def extract(self, overlay: Overlay, images: List[BaseImage], df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         areas = []
         for cont in overlay:
             areas.append(self.convert(cont.area))
@@ -117,7 +117,7 @@ class LengthEx(PropertyExtractor):
 
         return distances
 
-    def extract(self, overlay: Overlay, images: List[BaseImage], df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         lengths = []
         for cont in overlay:
             lengths.append(
@@ -139,7 +139,7 @@ class FrameEx(PropertyExtractor):
     def __init__(self):
         super().__init__("frame", 1)
 
-    def extract(self, overlay: Overlay, images: List[BaseImage], df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         frames = []
         for cont in overlay:
             frames.append(self.convert(cont.frame))
@@ -151,7 +151,7 @@ class IdEx(PropertyExtractor):
     def __init__(self):
         super().__init__("id", 1)
 
-    def extract(self, overlay: Overlay, images: List[BaseImage], df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         ids = []
         for cont in overlay:
             ids.append(self.convert(cont.id))
@@ -162,7 +162,7 @@ class TimeEx(PropertyExtractor):
     def __init__(self, input_unit: UnitLike, output_unit: Optional[UnitLike] = "hour"):
         super().__init__("time", input_unit, output_unit)
 
-    def extract(self, overlay: Overlay, images: List[BaseImage], df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         times = []
         for index, row in df.iterrows():
             times.append(self.convert(row["frame"]))
@@ -180,7 +180,8 @@ class FluorescenceEx(PropertyExtractor):
         self.channel_names = channel_names
         self.summarize_operator = summarize_operator
 
-    def extract(self, overlay: Overlay, images: List[BaseImage], df: pd.DataFrame):
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+
         channel_values = [] * len(self.channels)
 
         for cont in overlay:
