@@ -42,11 +42,11 @@ test:
     - python setup.py install
     - pip install tox flake8  # you can also use tox
     - tox -e py38,flake8
-    - pip install coverage unittest-xml-reporting
-    - python -m xmlrunner discover ./tests/ -o reports/
-    - coverage run --source=./acia -m unittest discover ./tests "*test*.py" -v
-    - coverage report
-    - coverage xml
+    #- pip install coverage unittest-xml-reporting
+    #- python -m xmlrunner discover ./tests/ -o reports/
+    #- coverage run --source=./acia -m unittest discover ./tests "*test*.py" -v
+    #- coverage report
+    #- coverage xml
     - cat coverage.xml
   coverage: '*TOTAL.*\s+(\d+%)$*'
   artifacts:
