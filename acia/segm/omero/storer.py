@@ -212,6 +212,12 @@ class BlitzConn(object):
     def __exit__(self, type, value, traceback):
         pass
 
+    def __del__(self):
+        # make sure the connection is always closed
+        if self.conn:
+            self.conn.__exit__()
+            self.conn = None
+
 
 class OmeroSource(BlitzConn):
     """
@@ -300,6 +306,8 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         self.colorList = colorList
         self.range = range
 
+        self.omero_image = None
+
         assert len(self.channels) <= len(self.colorList), f"you must specify a color for every channel! You have {len(self.channels)} channels ({self.channels}) but only {len(self.colorList)} color(s) ({self.colorList}). Please update your colorList!"
 
     def imageName(self) -> str:
@@ -323,46 +331,47 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         with self.make_connection() as conn:
             return conn.getObject('Image', self.imageId).getProject().getName()
 
+    def __get_omero_image(self):
+        # open the connection
+        self.conn = self.make_connection().__enter__()
+
+        # cache the image
+        if self.omero_image is None:
+            self.omero_image = self.conn.getObject("Image", self.imageId)
+
+        return self.omero_image
+
     def __get_image(self, frame: int) -> BaseImage:
-        with self.make_connection() as conn:
-            # get the specified image
-            image = conn.getObject("Image", self.imageId)
+        # get the specified image
+        image = self.__get_omero_image()
 
-            size_t = image.getSizeT()
+        size_t = image.getSizeT()
+        size_z = image.getSizeZ()
 
+        # determine z and t values
+        if size_z == 1:
+            z = 0
+        else:
             z = frame % size_t
-            t = np.floor(frame / size_t)
+        if size_t == 1:
+            t = 0
+            z = frame
+        else:
+            t = int(np.floor(frame / size_t))
 
-            image.setColorRenderingModel()
-            image.setActiveChannels(self.channels, colors=self.colorList)
-            rendered_image = image.renderImage(z, t, compression=self.imageQuality)
+        # perform rendering
+        image.setColorRenderingModel()
+        image.setActiveChannels(self.channels, colors=self.colorList)
+        rendered_image = image.renderImage(z, t, compression=self.imageQuality)
 
-            return LocalImage(np.asarray(rendered_image, dtype=np.uint8))
+        # return local image
+        return LocalImage(np.asarray(rendered_image, dtype=np.uint8))
 
     def __iter__(self):
-        with self.make_connection() as conn:
-            # get the specified image
-            image = conn.getObject("Image", self.imageId)
-            # set grayscale mode
-            image.setGreyscaleRenderingModel()
-
-            # size_c = image.getSizeC()
-            size_t = image.getSizeT()
-            size_z = image.getSizeZ()
-
-            # iterate over time
-            for t, z in product(range(size_t), range(size_z)):
-
-                index = t * size_z + z
-
-                if self.range and index not in self.range:
-                    continue
-
-                image.setColorRenderingModel()
-                image.setActiveChannels(self.channels, colors=self.colorList)
-                rendered_image = image.renderImage(z, t, compression=self.imageQuality)
-
-                yield LocalImage(np.asarray(rendered_image, dtype=np.uint8))
+        for frame in range(self.num_frames):
+            if self.range and frame not in self.range:
+                continue
+            yield self.get_frame(frame)
 
     def get_frame(self, frame: int):
         return self.__get_image(frame)
