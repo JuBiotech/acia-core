@@ -174,6 +174,18 @@ class TimeEx(PropertyExtractor):
 
         return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
 
+class PositionEx(PropertyExtractor):
+    def __init__(self, input_unit: UnitLike, output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH):
+        super().__init__("position", input_unit=input_unit, output_unit=output_unit)
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        positions_x = []
+        positions_y = []
+        for cont in overlay:
+            positions_x.append(self.convert(cont.center[0]))
+            positions_y.append(self.convert(cont.center[1]))
+
+        return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {"position_x": self.output_unit, "position_y": self.output_unit}
 
 class FluorescenceEx(PropertyExtractor):
     def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = 1, output_unit: Optional[UnitLike] = 1):
