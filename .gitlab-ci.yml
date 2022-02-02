@@ -44,7 +44,7 @@ test:
     - tox -e py38,flake8
     - pip install coverage unittest-xml-reporting
     - python -m xmlrunner discover ./tests/ -o reports/
-    - coverage run -m unittest discover ./tests/
+    - coverage run --source=./acia -m unittest discover ./tests "*test*.py" -v
     - coverage report
     - coverage xml
     - cat coverage.xml
