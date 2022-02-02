@@ -226,7 +226,7 @@ def no_crop(frame: int, overlay: Overlay):
     return (slice(0, frame.shape[0]), slice(0, frame.shape[1]))
 
 
-def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='output.mp4', framerate=3, codec="vp09", scaleBar: ScaleBar = None, draw_frame_number=False, cropper=no_crop):
+def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='output.mp4', framerate=3, codec="vp09", scaleBar: ScaleBar = None, draw_frame_number=False, cropper=no_crop, filter_contours=lambda i,cont: True):
     """Render a video of the time-lapse.
 
     Args:
@@ -256,7 +256,7 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
             # TODO: Draw float based contours
             # Draw overlay
             if overlay:
-                image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for cont in overlay.croppedContours(crop_parameters)], -1, (255, 255, 0))  # RGB format
+                image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for i, cont in enumerate(overlay.croppedContours(crop_parameters)) if filter_contours(i,cont)], -1, (255, 255, 0))  # RGB format
 
             if draw_frame_number:
                 cv2.putText(image, f'Frame: {frame}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
