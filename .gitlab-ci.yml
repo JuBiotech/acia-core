@@ -47,7 +47,7 @@ test:
     #- coverage run --source=./acia -m unittest discover ./tests "*test*.py" -v
     #- coverage report
     #- coverage xml
-    - cat ./builds/coverage.xml
+    - cat coverage.xml
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     when: always
