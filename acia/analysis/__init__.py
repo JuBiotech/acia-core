@@ -137,7 +137,7 @@ class LengthEx(PropertyExtractor):
                 )
             )
 
-        return pd.DataFrame({self.name: lengths}), {self.name, self.output_unit}
+        return pd.DataFrame({self.name: lengths}), {self.name: self.output_unit}
 
 
 class FrameEx(PropertyExtractor):
