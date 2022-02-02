@@ -279,6 +279,33 @@ class OmeroSource(BlitzConn):
         print(" Pixel Size Y:", size_y_obj.getValue(), "(%s)" % size_y_obj.getSymbol())
 
 
+def compute_indices(frame: int, size_t: int, size_z: int)-> Tuple[int, int]:
+    """Compute t and z values from a linearized frame number
+
+    Args:
+        frame (int): the linearized frame index
+        size_t (int): the total size of the t dimension
+        size_z (int): the total size of the z dimension
+
+    Returns:
+        (Tuple[int, int]): tuple of (t,z) indices
+    """
+
+    if size_t > 1 and size_z > 1:
+        t = int(np.floor(frame / size_t))
+        z = frame % size_t
+    elif size_t > 1:
+        t = frame
+        z = 0
+    elif size_z > 1:
+        t = 0
+        z = frame
+    else:
+        raise ValueError("This state should not be reachable!")
+
+    return t,z
+
+    
 class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
     '''
         Uses omero server as a source for images
@@ -347,16 +374,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         size_t = image.getSizeT()
         size_z = image.getSizeZ()
 
-        # determine z and t values
-        if size_z == 1:
-            z = 0
-        else:
-            z = frame % size_t
-        if size_t == 1:
-            t = 0
-            z = frame
-        else:
-            t = int(np.floor(frame / size_t))
+        t,z = compute_indices(frame, size_t, size_z)
 
         # perform rendering
         image.setColorRenderingModel()
