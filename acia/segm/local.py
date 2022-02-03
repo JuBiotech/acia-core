@@ -60,23 +60,17 @@ class LocalImage(BaseImage):
 
 
 class LocalImageSource(ImageSequenceSource):
-    def __init__(self, file_path: str, normalize_image=True):
-        self.file_path = file_path
-        self.normalize_image = normalize_image
-
-        if not osp.isfile(self.file_path):
-            logging.warning(f'File "{self.file_path}" does not exist!')
+    def __init__(self, image):
+        self.image = image
 
     def __get_image(self):
-        if self.image is None:
-            self.image = LocalImage(prepare_image(cv2.imread(self.file_path), self.normalize_image))
         return self.image
 
     def __iter__(self):
         yield self.__get_image()
 
     def get_frame(self, frame: int):
-        assert frame == 0, "We only have a single frame"
+        assert frame == 0, f"We only have a single frame, but frame={frame}"
 
         return self.__get_image()
 
@@ -90,6 +84,18 @@ class LocalImageSource(ImageSequenceSource):
 
     def __len__(self):
         return 1
+
+    @staticmethod
+    def from_file(file_path: str, normalize_image = True):
+        image = LocalImage(prepare_image(cv2.imread(file_path), normalize_image))
+
+        return LocalImageSource(image)
+
+    @staticmethod
+    def from_array(array):
+        image = LocalImage(array)
+
+        return LocalImageSource(image)
 
 
 class LocalSequenceSource(ImageSequenceSource):
