@@ -95,6 +95,22 @@ class LocalImageSource(ImageSequenceSource):
 
         return LocalImageSource(image)
 
+class InMemorySequenceSource(ImageSequenceSource):
+    def __init__(self, image_stack):
+        self.image_stack = image_stack
+
+    def get_frame(self, frame: int) -> BaseImage:
+        assert frame < len(self.image_stack)
+
+        return LocalImage(self.image_stack[frame])
+
+    def __len__(self):
+        return len(self.image_stack)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.get_frame(i)
+
 
 class LocalSequenceSource(ImageSequenceSource):
     def __init__(self, tif_file, normalize_image=True):
