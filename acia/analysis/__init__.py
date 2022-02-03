@@ -1,14 +1,16 @@
 from __future__ import annotations
+from functools import reduce
 
 from typing import List, Optional
 import pandas as pd
 
-from acia.base import ImageSequenceSource, Overlay
+from acia.base import BaseImage, ImageSequenceSource, Overlay
 from pint._typing import UnitLike
 from pint import Quantity, Unit
 import numpy as np
 import numpy.ma as ma
 from PIL import Image, ImageDraw
+from multiprocessing import Pool
 
 DEFAULT_UNIT_LENGTH = "micrometer"
 DEFAULT_UNIT_AREA = "micrometer ** 2"
