@@ -12,10 +12,10 @@ from acia.analysis import (
 )
 import pint
 import numpy as np
-from itertools import product, starmap
+from itertools import product
 
-from acia.base import Contour, ImageSequenceSource, Overlay
-from acia.segm.local import InMemorySequenceSource, LocalImage, LocalImageSource
+from acia.base import Contour, Overlay
+from acia.segm.local import InMemorySequenceSource, LocalImageSource
 
 
 class TestPropertExtractors(unittest.TestCase):
@@ -79,7 +79,7 @@ class TestPropertExtractors(unittest.TestCase):
 
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
-        contours = [Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=0, id=23) for id,frame in product(list(range(squared_num)), list(range(squared_num)))]
+        contours = [Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=frame, id=id) for id, frame in product(list(range(squared_num)), list(range(squared_num)))]
         overlay = Overlay(contours)
 
         image = np.zeros((200, 200))
@@ -87,7 +87,7 @@ class TestPropertExtractors(unittest.TestCase):
         image[0, 1] = 5
         image[1, 0] = 6
         image[1, 1] = 10
-        image_sources =  InMemorySequenceSource(np.stack([image] * squared_num))
+        image_sources = InMemorySequenceSource(np.stack([image] * squared_num))
 
         # test basic extractors
         df = ExtractorExecutor().execute(

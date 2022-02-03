@@ -95,6 +95,7 @@ class LocalImageSource(ImageSequenceSource):
 
         return LocalImageSource(image)
 
+
 class InMemorySequenceSource(ImageSequenceSource):
     def __init__(self, image_stack):
         self.image_stack = image_stack
