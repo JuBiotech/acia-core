@@ -157,6 +157,9 @@ class FlexibleOnlineModel(Processor):
 
                 contours += self.predict_batch(frames, images, params)
 
+        for i,cont in enumerate(contours):
+            cont.id = i
+
         # create new overlay based on all contours
         return Overlay(contours)
 
