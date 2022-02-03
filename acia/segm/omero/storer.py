@@ -348,7 +348,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         size_t = image.getSizeT()
         size_z = image.getSizeZ()
 
-        t,z = compute_indices(frame, size_t, size_z)
+        t, z = compute_indices(frame, size_t, size_z)
 
         # perform rendering
         image.setColorRenderingModel()

@@ -1,8 +1,6 @@
 import numpy as np
 import tifffile
 import cv2
-import os.path as osp
-import logging
 
 from acia.base import ImageSequenceSource, Overlay, Contour, RoISource, BaseImage
 import roifile
@@ -86,7 +84,7 @@ class LocalImageSource(ImageSequenceSource):
         return 1
 
     @staticmethod
-    def from_file(file_path: str, normalize_image = True):
+    def from_file(file_path: str, normalize_image=True):
         image = LocalImage(prepare_image(cv2.imread(file_path), normalize_image))
 
         return LocalImageSource(image)

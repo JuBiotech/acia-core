@@ -44,10 +44,10 @@ class TestPropertExtractors(unittest.TestCase):
         ureg = pint.UnitRegistry()
 
         image = np.zeros((200, 200))
-        image[0,0] = 2
-        image[0,1] = 5
-        image[1,0] = 6
-        image[1,1] = 10
+        image[0, 0] = 2
+        image[0, 1] = 5
+        image[1, 0] = 6
+        image[1, 1] = 10
         image_source = LocalImageSource.from_array(image)
 
         # test basic extractors
@@ -62,7 +62,7 @@ class TestPropertExtractors(unittest.TestCase):
                 TimeEx(input_unit="15 * minute"),  # one frame every 15 minutes
                 PositionEx(input_unit=0.07 * ureg.micrometer),
                 FluorescenceEx(channels=[0], channel_names=['gfp']),
-                FluorescenceEx(channels=[0], channel_names=['gfp_mean'], summarize_operator=np.mean)
+                FluorescenceEx(channels=[0], channel_names=['gfp_mean'], summarize_operator=np.mean, parallel=1)
             ],
         )
 
@@ -74,7 +74,7 @@ class TestPropertExtractors(unittest.TestCase):
         self.assertEqual(df["position_x"][0], 0.5 * 0.07)
         self.assertEqual(df["position_y"][0], 0.5 * 0.07)
         self.assertEqual(df["gfp"][0], 5.5)
-        self.assertEqual(df["gfp_mean"][0], np.mean([2,5,6,10]))
+        self.assertEqual(df["gfp_mean"][0], np.mean([2, 5, 6, 10]))
 
 
 if __name__ == "__main__":

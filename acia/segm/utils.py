@@ -1,7 +1,8 @@
 from typing import Tuple
 import numpy as np
 
-def compute_indices(frame: int, size_t: int, size_z: int)-> Tuple[int, int]:
+
+def compute_indices(frame: int, size_t: int, size_z: int) -> Tuple[int, int]:
     """Compute t and z values from a linearized frame number
 
     Args:
@@ -25,4 +26,4 @@ def compute_indices(frame: int, size_t: int, size_z: int)-> Tuple[int, int]:
     else:
         raise ValueError("This state should not be reachable!")
 
-    return t,z
+    return t, z

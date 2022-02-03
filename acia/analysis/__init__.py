@@ -176,6 +176,7 @@ class TimeEx(PropertyExtractor):
 
         return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
 
+
 class PositionEx(PropertyExtractor):
     def __init__(self, input_unit: UnitLike, output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH):
         super().__init__("position", input_unit=input_unit, output_unit=output_unit)
@@ -188,6 +189,7 @@ class PositionEx(PropertyExtractor):
             positions_y.append(self.convert(cont.center[1]))
 
         return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {"position_x": self.output_unit, "position_y": self.output_unit}
+
 
 class FluorescenceEx(PropertyExtractor):
     def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = '1', output_unit: Optional[UnitLike] = '', parallel=6):
@@ -230,7 +232,7 @@ class FluorescenceEx(PropertyExtractor):
         channel_values = [[] * len(self.channels)]
 
         def iterator(timeIterator):
-            for i,overlay in enumerate(timeIterator):
+            for i, overlay in enumerate(timeIterator):
                 yield (overlay, images.get_frame(i), self.channels, self.channel_names, self.summarize_operator)
 
         if self.parallel > 1:
@@ -238,7 +240,7 @@ class FluorescenceEx(PropertyExtractor):
                 result = p.starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()), chunksize=5)
 
                 # concatenate all results
-                result = reduce(lambda a,b: pd.concat([a,b], ignore_index=True), result)
+                result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
 
                 return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
 
