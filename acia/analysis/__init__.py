@@ -188,19 +188,59 @@ class PositionEx(PropertyExtractor):
         return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {"position_x": self.output_unit, "position_y": self.output_unit}
 
 class FluorescenceEx(PropertyExtractor):
-    def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = '1', output_unit: Optional[UnitLike] = ''):
+    def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = '1', output_unit: Optional[UnitLike] = '', parallel=6):
         super().__init__("Fluorescence", input_unit=input_unit, output_unit=output_unit)
 
         self.channels = channels
         self.channel_names = channel_names
         self.summarize_operator = summarize_operator
+        self.parallel = parallel
 
         assert len(self.channels) == len(self.channel_names), "Number of channels and number of channel names must comply"
+
+    @staticmethod
+    def extract_fluorescence(overlay: Overlay, image: BaseImage, channels, channel_names, summarize_operator):
+        channel_values = [[] * len(channels)]
+
+        for cont in overlay:
+            for ch_id, channel in enumerate(channels):
+                raw_image = image.get_channel(channel)
+
+                height, width = raw_image.shape[:2]
+                img = Image.new('L', (width, height), 0)
+                draw = ImageDraw.Draw(img)
+
+                # draw cell mask
+                roi_mask = cont._toMask(img, draw=draw)
+
+                # create masked array
+                masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
+
+                # compute fluorescence response
+                value = summarize_operator(masked_roi.compressed())
+
+                channel_values[ch_id].append(value)
+
+        return pd.DataFrame({channel_names[i]: channel_values[i] for i in range(len(channels))})
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
 
         channel_values = [[] * len(self.channels)]
 
+        def iterator(timeIterator):
+            for i,overlay in enumerate(timeIterator):
+                yield (overlay, images.get_frame(i), self.channels, self.channel_names, self.summarize_operator)
+
+        if self.parallel > 1:
+            with Pool(self.parallel) as p:
+                result = p.starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()), chunksize=5)
+
+                # concatenate all results
+                result = reduce(lambda a,b: pd.concat([a,b], ignore_index=True), result)
+
+                return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+
+        else:
         for cont in overlay:
             for ch_id, channel in enumerate(self.channels):
                 image = images.get_frame(cont.frame)
