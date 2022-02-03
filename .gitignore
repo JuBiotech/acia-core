@@ -12,6 +12,9 @@ model_zoo/
 data/
 *.npy
 *.zip
+*.xml
+*.mp4
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
