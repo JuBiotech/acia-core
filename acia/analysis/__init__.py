@@ -243,24 +243,24 @@ class FluorescenceEx(PropertyExtractor):
                 return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
 
         else:
-        for cont in overlay:
-            for ch_id, channel in enumerate(self.channels):
-                image = images.get_frame(cont.frame)
-                raw_image = image.get_channel(channel)
+            for cont in overlay:
+                for ch_id, channel in enumerate(self.channels):
+                    image = images.get_frame(cont.frame)
+                    raw_image = image.get_channel(channel)
 
-                height, width = raw_image.shape[:2]
-                img = Image.new('L', (width, height), 0)
-                draw = ImageDraw.Draw(img)
+                    height, width = raw_image.shape[:2]
+                    img = Image.new('L', (width, height), 0)
+                    draw = ImageDraw.Draw(img)
 
-                # draw cell mask
-                roi_mask = cont._toMask(img, draw=draw)
+                    # draw cell mask
+                    roi_mask = cont._toMask(img, draw=draw)
 
-                # create masked array
-                masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
+                    # create masked array
+                    masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
 
-                # compute fluorescence response
-                value = self.summarize_operator(masked_roi.compressed())
+                    # compute fluorescence response
+                    value = self.summarize_operator(masked_roi.compressed())
 
-                channel_values[ch_id].append(value)
+                    channel_values[ch_id].append(value)
 
-        return pd.DataFrame({self.channel_names[i]: channel_values[i] for i in range(len(self.channels))}), {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+            return pd.DataFrame({self.channel_names[i]: channel_values[i] for i in range(len(self.channels))}), {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
