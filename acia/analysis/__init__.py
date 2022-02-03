@@ -188,22 +188,22 @@ class PositionEx(PropertyExtractor):
         return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {"position_x": self.output_unit, "position_y": self.output_unit}
 
 class FluorescenceEx(PropertyExtractor):
-    def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = 1, output_unit: Optional[UnitLike] = 1):
+    def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = '1', output_unit: Optional[UnitLike] = ''):
         super().__init__("Fluorescence", input_unit=input_unit, output_unit=output_unit)
-
-        assert len(self.channels) == self.channel_names, "Number of channels and number of channel names must comply"
 
         self.channels = channels
         self.channel_names = channel_names
         self.summarize_operator = summarize_operator
 
+        assert len(self.channels) == len(self.channel_names), "Number of channels and number of channel names must comply"
+
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
 
-        channel_values = [] * len(self.channels)
+        channel_values = [[] * len(self.channels)]
 
         for cont in overlay:
             for ch_id, channel in enumerate(self.channels):
-                image = images[cont.frame]
+                image = images.get_frame(cont.frame)
                 raw_image = image.get_channel(channel)
 
                 height, width = raw_image.shape[:2]
@@ -214,7 +214,7 @@ class FluorescenceEx(PropertyExtractor):
                 roi_mask = cont._toMask(img, draw=draw)
 
                 # create masked array
-                masked_roi = ma.masked_array(image, mask=~roi_mask)
+                masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
 
                 # compute fluorescence response
                 value = self.summarize_operator(masked_roi.compressed())
