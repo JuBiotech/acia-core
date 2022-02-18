@@ -1,5 +1,6 @@
 from __future__ import annotations
 from functools import reduce
+import logging
 
 from typing import List, Optional
 import pandas as pd
@@ -238,13 +239,17 @@ class FluorescenceEx(PropertyExtractor):
                 yield (overlay, images.get_frame(i), self.channels, self.channel_names, self.summarize_operator)
 
         if self.parallel > 1:
-            with Pool(self.parallel) as p:
-                result = p.starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()), chunksize=5)
+            try:
+                with Pool(self.parallel) as p:
+                    result = p.starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()), chunksize=5)
 
-                # concatenate all results
-                result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
+                    # concatenate all results
+                    result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
 
-                return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+                    return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+            except Exception as e:
+                logging.error("Parallel fluorescence extraction failed! Please run with 'parallel=1' to investigate the error!")
+                raise e
 
         else:
             for cont in overlay:
