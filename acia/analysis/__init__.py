@@ -13,6 +13,8 @@ import numpy.ma as ma
 from PIL import Image, ImageDraw
 from multiprocessing import Pool
 from tqdm import tqdm
+from itertools import starmap
+
 
 DEFAULT_UNIT_LENGTH = "micrometer"
 DEFAULT_UNIT_AREA = "micrometer ** 2"
@@ -206,8 +208,20 @@ class FluorescenceEx(PropertyExtractor):
         assert len(self.channels) == len(self.channel_names), "Number of channels and number of channel names must comply"
 
     @staticmethod
-    def extract_fluorescence(overlay: Overlay, image: BaseImage, channels, channel_names, summarize_operator):
-        channel_values = [[] * len(channels)]
+    def extract_fluorescence(overlay: Overlay, image: BaseImage, channels: List[int], channel_names: List[str], summarize_operator):
+        """Extract fluorescence information based on an overlay(segmentation) and corresponding image.
+
+        Args:
+            overlay (Overlay): Ovleray providing the image segmentation information
+            image (BaseImage): the image itself
+            channels (List[int]): list of channels (image channels) we want to investigate
+            channel_names (List[str]): list of names for the channel results
+            summarize_operator (_type_): summarizing operator, e.g. np.media, to compress all fluorescence values to a single one
+
+        Returns:
+            pd.DataFrame: pandas data frame containing columns of channel_names and the rows represent the extracted fluorescence
+        """
+        channel_values = [ [] for _ in channels ]
 
         for cont in overlay:
             for ch_id, channel in enumerate(channels):
@@ -231,45 +245,27 @@ class FluorescenceEx(PropertyExtractor):
         return pd.DataFrame({channel_names[i]: channel_values[i] for i in range(len(channels))})
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
-
-        channel_values = [[]] * len(self.channels)
-
+        assert overlay.numFrames() == len(images), "Please make sure that the frames in your overlay fit to the frames in your image source"
+        
         def iterator(timeIterator):
             for i, overlay in enumerate(timeIterator):
                 yield (overlay, images.get_frame(i), self.channels, self.channel_names, self.summarize_operator)
+
+        result = None
 
         if self.parallel > 1:
             try:
                 with Pool(self.parallel) as p:
                     result = p.starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()), chunksize=5)
 
-                    # concatenate all results
-                    result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
-
-                    return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
             except Exception as e:
                 logging.error("Parallel fluorescence extraction failed! Please run with 'parallel=1' to investigate the error!")
                 raise e
 
         else:
-            for cont in overlay:
-                for ch_id, channel in enumerate(self.channels):
-                    image = images.get_frame(cont.frame)
-                    raw_image = image.get_channel(channel)
+            result = starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()))
 
-                    height, width = raw_image.shape[:2]
-                    img = Image.new('L', (width, height), 0)
-                    draw = ImageDraw.Draw(img)
+        # concatenate all results
+        result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
 
-                    # draw cell mask
-                    roi_mask = cont._toMask(img, draw=draw)
-
-                    # create masked array
-                    masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
-
-                    # compute fluorescence response
-                    value = self.summarize_operator(masked_roi.compressed())
-
-                    channel_values[ch_id].append(value)
-
-            return pd.DataFrame({self.channel_names[i]: channel_values[i] for i in range(len(self.channels))}), {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+        return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
