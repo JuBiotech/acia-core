@@ -11,3 +11,4 @@ roifile>=2021.6.6
 tifffile==2020.11.18
 pycocotools==2.0.3
 pint>=0.18
+progressbar2
