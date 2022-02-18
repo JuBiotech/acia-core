@@ -11,6 +11,7 @@ import numpy as np
 import numpy.ma as ma
 from PIL import Image, ImageDraw
 from multiprocessing import Pool
+from progressbar import progressbar
 
 DEFAULT_UNIT_LENGTH = "micrometer"
 DEFAULT_UNIT_AREA = "micrometer ** 2"
@@ -74,7 +75,8 @@ class ExtractorExecutor(object):
 
     def execute(self, overlay: Overlay, images: List, extractors: List[PropertyExtractor] = []):
         df = pd.DataFrame()
-        for extractor in extractors:
+        for extractor in progressbar(extractors, redirect_stdout=True):
+            print(f"Performing: {extractor.name}...")
             result_df, units = extractor.extract(overlay, images, df)
 
             df = pd.concat([df, result_df], ignore_index=False, sort=False, axis=1)
