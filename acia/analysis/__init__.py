@@ -231,7 +231,7 @@ class FluorescenceEx(PropertyExtractor):
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
 
-        channel_values = [[] * len(self.channels)]
+        channel_values = [[]] * len(self.channels)
 
         def iterator(timeIterator):
             for i, overlay in enumerate(timeIterator):
