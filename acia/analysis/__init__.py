@@ -221,7 +221,7 @@ class FluorescenceEx(PropertyExtractor):
         Returns:
             pd.DataFrame: pandas data frame containing columns of channel_names and the rows represent the extracted fluorescence
         """
-        channel_values = [ [] for _ in channels ]
+        channel_values = [[] for _ in channels]
 
         for cont in overlay:
             for ch_id, channel in enumerate(channels):
@@ -246,7 +246,7 @@ class FluorescenceEx(PropertyExtractor):
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         assert overlay.numFrames() == len(images), "Please make sure that the frames in your overlay fit to the frames in your image source"
-        
+
         def iterator(timeIterator):
             for i, overlay in enumerate(timeIterator):
                 yield (overlay, images.get_frame(i), self.channels, self.channel_names, self.summarize_operator)
