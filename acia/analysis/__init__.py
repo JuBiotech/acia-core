@@ -12,7 +12,7 @@ import numpy as np
 import numpy.ma as ma
 from PIL import Image, ImageDraw
 from multiprocessing import Pool
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from itertools import starmap
 
 
