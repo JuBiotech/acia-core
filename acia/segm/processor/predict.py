@@ -10,7 +10,7 @@ import time
 import argparse
 import tifffile
 import os
-import tqdm
+import tqdm.auto as tqdm
 from mmcv.runner import wrap_fp16_model
 import torch
 import roifile

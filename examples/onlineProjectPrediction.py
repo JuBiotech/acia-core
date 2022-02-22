@@ -3,7 +3,7 @@ from acia.segm.omero.utils import get_image_name, get_project_name, list_images_
 from acia.segm.processor.online import OnlineModel
 from acia.segm.filter import NMSFilter
 from omero.gateway import BlitzGateway
-import tqdm
+import tqdm.auto as tqdm
 import getpass
 
 import logging

@@ -7,7 +7,7 @@ import cv2
 from .predict import contour_from_mask
 from .predict import prediction
 
-import tqdm
+import tqdm.auto as tqdm
 import numpy as np
 
 

@@ -1,5 +1,5 @@
 from typing import Tuple
-import tqdm
+import tqdm.auto as tqdm
 import shapely
 from shapely.validation import make_valid
 from acia.base import Overlay

@@ -3,7 +3,7 @@ from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
 import getpass
 import cv2
 import numpy as np
-import tqdm
+import tqdm.auto as tqdm
 from acia.segm.omero.utils import ScaleBar
 
 from acia.segm.omero.utils import ScaleBar

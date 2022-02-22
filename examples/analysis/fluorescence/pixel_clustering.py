@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from config import basepath
 import os.path as osp
-import tqdm
+import tqdm.auto as tqdm
 
 def cluster_pixels(image, transform, kmeans, kernel_size=9):
     kernel = np.ones((kernel_size, kernel_size),np.float32)/(kernel_size*kernel_size)

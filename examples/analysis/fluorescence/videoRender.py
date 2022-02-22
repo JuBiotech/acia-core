@@ -2,7 +2,7 @@ from scipy.sparse import base
 from acia.segm.output import VideoExporter
 import numpy as np
 import pandas as pd
-import tqdm as tqdm
+import tqdm.auto as tqdm
 import cv2
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import StandardScaler

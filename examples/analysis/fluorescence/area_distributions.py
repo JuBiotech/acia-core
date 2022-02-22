@@ -6,7 +6,7 @@ from config import basepath
 import os.path as osp
 import matplotlib.pyplot as plt
 import cv2
-import tqdm
+import tqdm.auto as tqdm
 import pandas as pd
 
 plt.rcParams.update({
