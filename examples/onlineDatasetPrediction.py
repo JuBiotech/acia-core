@@ -3,7 +3,7 @@ from acia.deploy import OnlineModel, LocalSequenceSource, RoiStorer, NMSFilter
 from acia.segm.omero.utils import list_image_ids_in_dataset
 
 from omero.gateway import BlitzGateway
-import tqdm
+import tqdm.auto as tqdm
 
 if __name__ == '__main__':
     '''

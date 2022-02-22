@@ -7,7 +7,7 @@ from acia.base import Contour, ImageSequenceSource, Overlay, RoISource
 from .shapeUtils import create_polygon
 import numpy as np
 from itertools import product
-import tqdm
+import tqdm.auto as tqdm
 from omero.model import LengthI
 
 
