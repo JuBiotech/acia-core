@@ -6,7 +6,6 @@ from omero.gateway import BlitzGateway
 from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
 from .shapeUtils import create_polygon
 import numpy as np
-from itertools import product
 import tqdm.auto as tqdm
 from omero.model import LengthI
 from acia.segm.local import LocalImage
