@@ -9,7 +9,7 @@ import os
 import json
 import datetime
 import shutil
-import tqdm
+import tqdm.auto as tqdm
 import skimage.io
 from pycococreatortools import pycococreatortools
 import numpy as np

@@ -1,5 +1,5 @@
 from examples.analysis.fluorescence.area_distributions import compute_area_bounds
-import tqdm
+import tqdm.auto as tqdm
 import numpy as np
 from examples.analysis.fluorescence.config import clustering
 from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource

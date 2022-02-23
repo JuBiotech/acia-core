@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import tqdm as tqdm
+import tqdm.auto as tqdm
 import cv2
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import StandardScaler

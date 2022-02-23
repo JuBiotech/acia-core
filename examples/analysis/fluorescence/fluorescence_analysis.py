@@ -4,7 +4,7 @@ from acia.base import ImageRoISource
 import cv2
 import numpy as np
 import os.path as osp
-import tqdm
+import tqdm.auto as tqdm
 import numpy.ma as ma
 from PIL import Image, ImageDraw
 import pandas as pd

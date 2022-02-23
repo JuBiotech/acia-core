@@ -2,7 +2,7 @@
 
 import logging
 from typing import List
-import tqdm
+import tqdm.auto as tqdm
 import json
 import numpy as np
 

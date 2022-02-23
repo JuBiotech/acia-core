@@ -8,7 +8,7 @@ import seaborn as sns
 import os.path as osp
 import os
 import cv2
-import tqdm
+import tqdm.auto as tqdm
 import itertools
 import scipy
 from tqdm.contrib.concurrent import process_map
