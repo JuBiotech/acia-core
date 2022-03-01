@@ -186,7 +186,10 @@ class FlexibleOnlineModel(Processor):
 
         body = response.json()
 
-        content = body['segmentation']
+        if body['format_version'] != '0.2':
+            logging.warn('Using segmentation approach with unsupported version number!')
+
+        content = body['segmentation_data'][0]
 
         for detection in content:
             # label = detection['label']
@@ -240,11 +243,11 @@ class FlexibleOnlineModel(Processor):
 
         body = response.json()
 
+        if body['format_version'] != '0.2':
+            logging.warn('Using segmentation approach with unsupported version number!')
+
         for i, frame_id in enumerate(frame_ids):
-            if len(frame_ids) == 1:
-                content = body['segmentation']
-            else:
-                content = body[i]['segmentation']
+            content = body['segmentation_data'][i]
             for detection in content:
                 # label = detection['label']
                 contour = np.array(detection['contour_coordinates'], dtype=np.float32)
