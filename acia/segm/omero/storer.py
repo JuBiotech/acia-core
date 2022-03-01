@@ -399,6 +399,10 @@ class OmeroRoISource(OmeroSource, RoISource):
         self.overlay = None
 
     def __iter__(self):
+        # return overlay iterator over time
+        return self.get_overlay().timeIterator(frame_range=self.range)
+
+    def get_overlay(self):
         if self.overlay is None:
             # compose an overlay from the rois
             self.overlay = OmeroRoIStorer.load(self.imageId, username=self.username, password=self.password,
@@ -407,8 +411,7 @@ class OmeroRoISource(OmeroSource, RoISource):
             if self.scale:
                 self.overlay.scale(self.scaleFactor)
 
-        # return overlay iterator over time
-        return self.overlay.timeIterator(frame_range=self.range)
+        return self.overlay
 
     def __len__(self) -> int:
         with self.make_connection() as conn:
