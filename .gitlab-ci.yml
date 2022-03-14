@@ -35,10 +35,9 @@ before_script:
   - source venv/bin/activate
 
 test:
-  image: python:3.8
   stage: test
   script:
-    - pip install --upgrade pip
+    #- pip install --upgrade pip
     #- python setup.py install
     - pip install tox flake8  # you can also use tox
     - tox -e py38,flake8
