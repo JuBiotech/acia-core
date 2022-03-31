@@ -74,13 +74,13 @@ class TestPropertExtractors(unittest.TestCase):
             ],
         )
 
-        self.assertEqual(df["area"][0], (2*3) * ps**2)
+        self.assertEqual(df["area"][0], (2 * 3) * ps**2)
         self.assertEqual(df["length"][0], 3 * ps)
         self.assertEqual(df["id"][0], 23)
         self.assertEqual(df["frame"][0], 0)
         self.assertEqual(df["time"][0], 0 * 15 / 60)
-        self.assertEqual(df["position_x"][0], 2/2 * ps)
-        self.assertEqual(df["position_y"][0], 3/2 * ps)
+        self.assertEqual(df["position_x"][0], 2 / 2 * ps)
+        self.assertEqual(df["position_y"][0], 3 / 2 * ps)
         self.assertEqual(df["gfp"][0], 4)
         self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
 

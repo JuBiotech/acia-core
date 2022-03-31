@@ -156,6 +156,7 @@ class LengthEx(PropertyExtractor):
 
         return pd.DataFrame({self.name: lengths}), {self.name: self.output_unit}
 
+
 class WidthEx(PropertyExtractor):
     """ Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
     def __init__(
