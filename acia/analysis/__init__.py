@@ -57,6 +57,14 @@ class PropertyExtractor(object):
         raise NotImplementedError()
 
     def convert(self, input: float | Quantity) -> float:
+        """ Converts input to the specified output unit
+
+        Args:
+            input (float | Quantity): Input value
+
+        Returns:
+            float: the magnitude in the output unit
+        """
         if isinstance(input, Quantity):
             # 1. convert input to input unit
             # 2. scale with input unit
@@ -108,6 +116,7 @@ class AreaEx(PropertyExtractor):
 
 
 class LengthEx(PropertyExtractor):
+    """ Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
     def __init__(
         self,
         input_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
@@ -134,6 +143,7 @@ class LengthEx(PropertyExtractor):
         for cont in overlay:
             lengths.append(
                 self.convert(
+                    # longer edge of minimum roated bbox
                     np.max(
                         LengthEx.pairwise_distances(
                             np.array(
