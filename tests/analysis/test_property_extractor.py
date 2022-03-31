@@ -9,6 +9,7 @@ from acia.analysis import (
     PositionEx,
     PropertyExtractor,
     TimeEx,
+    WidthEx,
 )
 import pint
 import numpy as np
@@ -39,7 +40,7 @@ class TestPropertExtractors(unittest.TestCase):
         )
 
     def test_extractors(self):
-        contours = [Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=0, id=23)]
+        contours = [Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23)]
         overlay = Overlay(contours)
 
         ureg = pint.UnitRegistry()
@@ -49,7 +50,12 @@ class TestPropertExtractors(unittest.TestCase):
         image[0, 1] = 5
         image[1, 0] = 6
         image[1, 1] = 10
+        image[2, 0:3] = 4
+        image[0:2, 2] = 4
         image_source = LocalImageSource.from_array(image)
+
+        # pixel size
+        ps = 0.07
 
         # test basic extractors
         df = ExtractorExecutor().execute(
@@ -58,24 +64,25 @@ class TestPropertExtractors(unittest.TestCase):
             extractors=[
                 IdEx(),
                 FrameEx(),
-                AreaEx(0.07 * ureg.micrometer**2),
-                LengthEx(),
+                AreaEx(input_unit=(ps * ureg.micrometer)**2),
+                LengthEx(input_unit=ps * ureg.micrometer),
+                WidthEx(input_unit=ps * ureg.micrometer),
                 TimeEx(input_unit="15 * minute"),  # one frame every 15 minutes
-                PositionEx(input_unit=0.07 * ureg.micrometer),
-                FluorescenceEx(channels=[0], channel_names=['gfp']),
+                PositionEx(input_unit=ps * ureg.micrometer),
+                FluorescenceEx(channels=[0], channel_names=['gfp'], parallel=1),
                 FluorescenceEx(channels=[0], channel_names=['gfp_mean'], summarize_operator=np.mean, parallel=1)
             ],
         )
 
-        self.assertEqual(df["area"][0], 0.07)
-        self.assertEqual(df["length"][0], 1)
+        self.assertEqual(df["area"][0], (2*3) * ps**2)
+        self.assertEqual(df["length"][0], 3 * ps)
         self.assertEqual(df["id"][0], 23)
         self.assertEqual(df["frame"][0], 0)
         self.assertEqual(df["time"][0], 0 * 15 / 60)
-        self.assertEqual(df["position_x"][0], 0.5 * 0.07)
-        self.assertEqual(df["position_y"][0], 0.5 * 0.07)
-        self.assertEqual(df["gfp"][0], 5.5)
-        self.assertEqual(df["gfp_mean"][0], np.mean([2, 5, 6, 10]))
+        self.assertEqual(df["position_x"][0], 2/2 * ps)
+        self.assertEqual(df["position_y"][0], 3/2 * ps)
+        self.assertEqual(df["gfp"][0], 4)
+        self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
 
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
