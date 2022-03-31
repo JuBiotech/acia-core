@@ -156,6 +156,50 @@ class LengthEx(PropertyExtractor):
 
         return pd.DataFrame({self.name: lengths}), {self.name: self.output_unit}
 
+class WidthEx(PropertyExtractor):
+    """ Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
+    def __init__(
+        self,
+        input_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
+        output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
+    ):
+        PropertyExtractor.__init__(
+            self, "width", input_unit=input_unit, output_unit=output_unit
+        )
+
+    @staticmethod
+    def pairwise_distances(points):
+        distances = []
+
+        if len(points) == 0:
+            return distances
+
+        for a, b in zip(points, points[1:]):
+            distances.append(np.linalg.norm(a - b))
+
+        return distances
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        """ Extract width information for all contours"""
+        widths = []
+        for cont in overlay:
+            widths.append(
+                self.convert(
+                    # shorter edge of bbox approximation
+                    np.min(
+                        # measure edge lengths of bbox approximation
+                        WidthEx.pairwise_distances(
+                            np.array(
+                                # bbox approaximation
+                                cont.polygon.minimum_rotated_rectangle.exterior.coords
+                            )
+                        )
+                    )
+                )
+            )
+
+        return pd.DataFrame({self.name: widths}), {self.name: self.output_unit}
+
 
 class FrameEx(PropertyExtractor):
     def __init__(self):
