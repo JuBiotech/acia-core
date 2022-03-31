@@ -87,7 +87,7 @@ class ExtractorExecutor(object):
     def execute(self, overlay: Overlay, images: List, extractors: List[PropertyExtractor] = []):
         df = pd.DataFrame()
         for extractor in tqdm(extractors):
-            print(f"Performing: {extractor.name}...")
+            print(f"Extracting: {extractor.name}...")
             result_df, units = extractor.extract(overlay, images, df)
 
             df = pd.concat([df, result_df], ignore_index=False, sort=False, axis=1)
