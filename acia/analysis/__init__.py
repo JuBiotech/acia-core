@@ -7,7 +7,7 @@ import pandas as pd
 
 from acia.base import BaseImage, ImageSequenceSource, Overlay
 from pint._typing import UnitLike
-from acia import ureg, Q_, U_
+from acia import Q_, U_
 import numpy as np
 import numpy.ma as ma
 from PIL import Image, ImageDraw
