@@ -7,7 +7,7 @@ import pandas as pd
 
 from acia.base import BaseImage, ImageSequenceSource, Overlay
 from pint._typing import UnitLike
-from pint import Quantity, Unit
+from acia import ureg, Q_, U_
 import numpy as np
 import numpy.ma as ma
 from PIL import Image, ImageDraw
@@ -27,15 +27,15 @@ class PropertyExtractor(object):
         self.name = name
 
         # try to parse input quantity
-        self.input_unit = Quantity(input_unit)
+        self.input_unit = Q_(input_unit)
         if self.input_unit.dimensionless and isinstance(
-            self.input_unit.magnitude, Unit
+            self.input_unit.magnitude, U_
         ):
             # if we have no dimension and magnitude is unit -> we better go with a unit
-            self.input_unit = Unit(input_unit)
+            self.input_unit = U_(input_unit)
         if output_unit:
             # parse output unit
-            self.output_unit = Unit(output_unit)
+            self.output_unit = U_(output_unit)
         else:
             # no conversion if no output unit is specified
             self.output_unit = self.input_unit
@@ -56,7 +56,7 @@ class PropertyExtractor(object):
         """
         raise NotImplementedError()
 
-    def convert(self, input: float | Quantity) -> float:
+    def convert(self, input: float | Q_) -> float:
         """ Converts input to the specified output unit
 
         Args:
@@ -65,7 +65,7 @@ class PropertyExtractor(object):
         Returns:
             float: the magnitude in the output unit
         """
-        if isinstance(input, Quantity):
+        if isinstance(input, Q_):
             # 1. convert input to input unit
             # 2. scale with input unit
             # 3. convert to output unit
