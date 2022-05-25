@@ -14,6 +14,7 @@ from acia.analysis import (
 import pint
 import numpy as np
 from itertools import product
+from acia import ureg
 
 from acia.base import Contour, Overlay
 from acia.segm.local import InMemorySequenceSource, LocalImageSource
@@ -42,8 +43,6 @@ class TestPropertExtractors(unittest.TestCase):
     def test_extractors(self):
         contours = [Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23)]
         overlay = Overlay(contours)
-
-        ureg = pint.UnitRegistry()
 
         image = np.zeros((200, 200))
         image[0, 0] = 2
