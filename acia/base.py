@@ -15,7 +15,7 @@ def unpack(data, function):
 
 
 class Contour:
-    def __init__(self, coordinates, score: float, frame: int, id: int):
+    def __init__(self, coordinates, score: float, frame: int, id: int, label=None):
         """Create Contour
 
         Args:
@@ -23,11 +23,13 @@ class Contour:
             score (float): segmentation score
             frame (int): frame index
             id (int): unique id
+            label: class-defining label of the contour
         """
         self.coordinates = np.array(coordinates, dtype=np.float32)
         self.score = score
         self.frame = frame
         self.id = id
+        self.label = label
 
     def _toMask(self, img, maskValue=1, outlineValue=1, draw=None):
         """
