@@ -28,15 +28,17 @@ cache:
     - .cache/pip
     - venv/
 
-before_script:
-  - python -V  # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
+.venv:
+  before_script:
+    - python -V  # Print out python version for debugging
+    - pip install virtualenv
+    - '[ ! -d "/venv/" ] && virtualenv venv'
+    - source venv/bin/activate
 
 test:
   image: python:3.8
   stage: test
+  extends: .venv
   script:
     - pip install --upgrade pip
     - python setup.py install
@@ -51,8 +53,17 @@ test:
         coverage_format: cobertura
         path: coverage.xml
 
+installation:
+  image: continuumio/miniconda3
+  stage: build
+  script:
+    - conda env create -f conda.yaml
+    - conda run -n acia pip install -e .
+    - conda run -n acia python -c "import acia"
+
 run:
   stage: build
+  extends: .venv
   script:
     - python setup.py bdist_wheel
     # an alternative approach is to install and run:
@@ -64,8 +75,9 @@ run:
 
 .deploy_common:
   # common config
- rules:
+  rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  extends: .venv
 
 
 
