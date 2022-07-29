@@ -2,13 +2,19 @@
 
 [![coverage report](https://jugit.fz-juelich.de/j.seiffarth/acia/badges/master/coverage.svg)](https://jugit.fz-juelich.de/j.seiffarth/acia/-/commits/master)
 
+The `acia` library allows to work with different image sources, process data (segmentation) and extract single-object properties for RoIs. Although the funtionality is developed with microfluidic applications in mind, the library can be used for any objects detected in images.
 
+## Installation
 
-Python Boilerplate contains all the boilerplate you need to create a Python package.
+1. Clone this repository
 
+2. Create the conda environment (including dependencies) and install `acia`
 
-* Free software: MIT license
-* Documentation: https://acia.readthedocs.io.
+    ```bash
+    conda env create -f conda.yaml
+    conda activate acia
+    pip install -e .
+    ```
 
 
 Features
