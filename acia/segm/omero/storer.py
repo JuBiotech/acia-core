@@ -140,8 +140,10 @@ class OmeroRoIStorer:
 
                         id = s.getId().getValue()
 
+                        label = s.getTextValue().getValue()
+
                         # add contour element to overlay
-                        cont = Contour(points, score, t, id=id)
+                        cont = Contour(points, score, t, id=id, label=label)
                         overlay.add_contour(cont)
 
         # return the overlay
@@ -199,11 +201,17 @@ class BlitzConn(object):
 
     def make_connection(self):
         if self.conn:
+            if self.conn._connected is False:
+                self.conn.connect()
             # we already have an existing conn object
             return IngoreWithWrapper(self.conn)
         else:
             # return a new connection
-            return BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+            conn = BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+            conn.connect()
+            conn.SERVICE_OPTS.setOmeroGroup('-1')
+            self.conn = conn
+            return conn
 
     def __enter__(self):
         self.make_connection()

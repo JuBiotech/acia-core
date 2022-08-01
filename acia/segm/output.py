@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 
 from typing import Iterable, List
@@ -69,8 +70,7 @@ def drawJointMask(image_id: int, height: int, width: int, overlay: Overlay):
     return joint_mask, annotations
 
 
-class CocoDataset:
-
+class DatasetExporter:
     def __init__(self):
         self.sources = []
 
@@ -81,6 +81,13 @@ class CocoDataset:
         else:
             # not iterable
             self.sources.append(item)
+
+
+class CocoDataset(DatasetExporter):
+
+    def __init__(self, labels=None):
+        self.labels = labels
+        super().__init__()
 
     def write(self, base_folder: str, mode="train"):
         """
@@ -158,6 +165,9 @@ class CocoDataset:
                     logging.info('No detections in a frame! -> Skip')
                     continue
 
+                # filter only wanted labels
+                rois = Overlay(list(filter(lambda o: len(self.labels) == 0 or o.label in self.labels, rois)))
+
                 height, width = image.shape[:2]
 
                 # store the image
@@ -182,6 +192,59 @@ class CocoDataset:
 
         with open(os.path.join(annotation_file), 'w') as output_json_file:
             json.dump(coco_output, output_json_file)
+
+
+class MMSegmentationDataset(DatasetExporter):
+    def __init__(self, labels=["Stem", "ThickRoot", "MediumRoot", "ThinRoot"], label_coverter=lambda x: x):
+        super().__init__()
+        self.labels = labels
+        self.label_converter = label_coverter
+
+    def write(self, base_folder: str | Path = "data", mode="train"):
+
+        img_path = Path(base_folder).absolute() / "img_dir" / mode
+        ann_path = Path(base_folder).absolute() / "ann_dir" / mode
+
+        img_path.mkdir(parents=True, exist_ok=True)
+        ann_path.mkdir(parents=True, exist_ok=True)
+
+        for input_index, image_roi_source in enumerate(tqdm.tqdm(self.sources)):
+            for image_index, (image, rois) in enumerate(image_roi_source):
+                if len(rois) == 0:
+                    print("Skip")
+                    continue
+
+                # save image file
+                image_file_path = img_path / f"{input_index:03d}_{image_index:03d}.png"
+                mask_file_path = ann_path / f"{input_index:03d}_{image_index:03d}.png"
+                cv2.imwrite(str(image_file_path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+
+                height, width = image.shape[:2]
+
+                image_mask = np.zeros((height, width), dtype=np.uint8)
+
+                # save roi masks
+                for i, label in enumerate(self.labels):
+                    label_value = i + 1
+                    rois_for_label = filter(lambda r: self.label_converter(r.label) == label, rois)
+
+                    label_mask = np.zeros((height, width), dtype=np.uint8)
+
+                    for roi in rois_for_label:
+                        roi_mask = roi.toMask(height, width, fillValue=label_value, outlineValue=label_value)
+
+                        label_mask |= roi_mask
+
+                    kernel = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=np.uint8)
+
+                    dil_label_mask = cv2.dilate(label_mask, kernel)
+                    ero_label_mask = cv2.erode(dil_label_mask, kernel)
+
+                    label_mask = ero_label_mask
+
+                    image_mask[label_mask > 0] = (label_mask.astype(np.uint8) * label_value)[label_mask > 0]
+
+                cv2.imwrite(str(mask_file_path), image_mask)
 
 
 class VideoExporter:
