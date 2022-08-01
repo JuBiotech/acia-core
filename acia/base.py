@@ -84,6 +84,9 @@ class Contour:
         """
         return Polygon(self.coordinates).area
 
+    def __repr__(self) -> str:
+        return self.id
+
 
 class Overlay:
     def __init__(self, contours: List[Contour]):
@@ -150,6 +153,9 @@ class Overlay:
             startFrame: first frame number
             endFrame: last frame number
         '''
+        if len(self.frames()) == 0:
+            yield Overlay([])
+
         if startFrame is None:
             startFrame = np.min(self.frames())
 
