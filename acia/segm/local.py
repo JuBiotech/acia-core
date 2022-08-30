@@ -1,7 +1,6 @@
 """ Local segmentation functionality dealing with files from HDD.
 """
 
-import logging
 import os
 import os.path as osp
 

@@ -11,7 +11,6 @@ from acia.analysis import (
     TimeEx,
     WidthEx,
 )
-import pint
 import numpy as np
 from itertools import product
 from acia import ureg
