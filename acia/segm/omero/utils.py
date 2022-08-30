@@ -122,7 +122,7 @@ def list_image_ids_in(omero_id: int, omero_type: str, conn: BlitzGateway) -> Lis
     else:
         raise Exception(f"Wrong omero_type: '{omero_type}'! Please choose one of 'project', 'dataset' or 'image'!")
 
-    return map(lambda image: image.getId(), func(conn, omero_id))
+    return list(map(lambda image: image.getId(), func(conn, omero_id)))
 
 def get_image_name(conn: BlitzGateway, imageId: int) -> str:
     return conn.getObject('Image', imageId).getName()
