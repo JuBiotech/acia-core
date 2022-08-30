@@ -51,6 +51,10 @@ class OfflineModel(Processor):
                 # make it 16-bit
                 wrap_fp16_model(self.model)
 
+            if "classes" in self.model.cfg:
+                # update object classes from config
+                self.model.CLASSES = self.model.cfg["classes"]
+
         return self.model
 
     def predict(self, source: ImageSequenceSource) -> Overlay:
@@ -78,7 +82,7 @@ class OfflineModel(Processor):
             # drop non-sense contours
             all_contours = list(filter(lambda comb: len(comb[1]) >= 5, zip(pred_result, all_contours)))
 
-            contours = [Contour(cont, pred['score'], frame_id, id=-1) for pred, cont in all_contours]
+            contours = [Contour(cont, pred['score'], frame_id, id=-1, label=pred['label']) for pred, cont in all_contours]
             overlay.add_contours(contours)
 
         return overlay

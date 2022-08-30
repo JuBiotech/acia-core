@@ -141,8 +141,10 @@ class OmeroRoIStorer:
 
                         id = s.getId().getValue()
 
+                        label = s.getTextValue().getValue()
+
                         # add contour element to overlay
-                        cont = Contour(points, score, t, id=id)
+                        cont = Contour(points, score, t, id=id, label=label)
                         overlay.add_contour(cont)
 
         # return the overlay
@@ -190,6 +192,11 @@ class BlitzConn(object):
         Encapsulates standard omero behavior
     '''
     def __init__(self, username, password, serverUrl, port=4064, secure=True, conn=None):
+
+        assert username is not None, "Please provide a username"
+        assert password is not None, "Please provide a password"
+        assert serverUrl is not None, "Please provide a OMERO server"
+
         self.username = username
         self.password = password
         self.serverUrl = serverUrl
@@ -200,11 +207,17 @@ class BlitzConn(object):
 
     def make_connection(self):
         if self.conn:
+            if self.conn._connected is False:
+                self.conn.connect()
             # we already have an existing conn object
             return IngoreWithWrapper(self.conn)
         else:
             # return a new connection
-            return BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+            conn = BlitzGateway(self.username, self.password, host=self.serverUrl, port=self.port, secure=self.secure)
+            conn.connect()
+            conn.SERVICE_OPTS.setOmeroGroup('-1')
+            self.conn = conn
+            return conn
 
     def __enter__(self):
         self.make_connection()
@@ -384,8 +397,8 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
 
 
 class OmeroRoISource(OmeroSource, RoISource):
-    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]], range=None, scale=None):
-        OmeroSource.__init__(self, imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure)
+    def __init__(self, imageId: int, username: str, password: str, serverUrl: str, port=4064, z=0, secure=True, roiSelector=lambda rois: [rois[0]], range=None, scale=None, conn=None):
+        OmeroSource.__init__(self, imageId=imageId, username=username, password=password, serverUrl=serverUrl, port=port, secure=secure, conn=conn)
 
         self.imageId = imageId
 
