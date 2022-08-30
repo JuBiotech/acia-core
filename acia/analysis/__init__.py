@@ -329,6 +329,7 @@ class FluorescenceEx(PropertyExtractor):
 
         return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
 
+
 def scale(output_path: Path, analysis_script: Path, image_ids: List[int], additional_parameters=None):
     """Scale an analysis notebook to several image sequences
 
@@ -357,8 +358,8 @@ def scale(output_path: Path, analysis_script: Path, image_ids: List[int], additi
 
         # parameters to integrate into notebook
         parameters = dict(
-            storage_folder = str(output_file.parent.absolute()),
-            image_id = image_id,
+            storage_folder=str(output_file.parent.absolute()),
+            image_id=image_id,
             **additional_parameters
         )
 
@@ -366,10 +367,10 @@ def scale(output_path: Path, analysis_script: Path, image_ids: List[int], additi
         pm.execute_notebook(
             output_file,
             output_file,
-            parameters = parameters,
+            parameters=parameters,
             cwd=output_file.parent
         )
-    
+
         # save experiment in list
         experiment_executions.append(dict(parameters=parameters, storage_folder=output_file.parent))
 

@@ -95,6 +95,7 @@ def list_datasets_in_project(conn: BlitzGateway, projectId: int) -> List[Dataset
 def list_images_in_project(conn: BlitzGateway, projectId: int) -> List[ImageWrapper]:
     return [image for dataset in list_datasets_in_project(conn, projectId=projectId) for image in dataset.listChildren()]
 
+
 def list_image_ids_in(omero_id: int, omero_type: str, conn: BlitzGateway) -> List[int]:
     """List all image sequences in an omero source (dataset, project or image)
 
@@ -123,6 +124,7 @@ def list_image_ids_in(omero_id: int, omero_type: str, conn: BlitzGateway) -> Lis
         raise Exception(f"Wrong omero_type: '{omero_type}'! Please choose one of 'project', 'dataset' or 'image'!")
 
     return list(map(lambda image: image.getId(), func(conn, omero_id)))
+
 
 def get_image_name(conn: BlitzGateway, imageId: int) -> str:
     return conn.getObject('Image', imageId).getName()
