@@ -95,6 +95,34 @@ def list_datasets_in_project(conn: BlitzGateway, projectId: int) -> List[Dataset
 def list_images_in_project(conn: BlitzGateway, projectId: int) -> List[ImageWrapper]:
     return [image for dataset in list_datasets_in_project(conn, projectId=projectId) for image in dataset.listChildren()]
 
+def list_image_ids_in(omero_id: int, omero_type: str, conn: BlitzGateway) -> List[int]:
+    """List all image sequences in an omero source (dataset, project or image)
+
+    Args:
+        omero_id (int): the omero id specifying the resource on the omero server
+        omero_type (str): the type of the omero source. Can be 'project', 'dataset' or 'image'.
+        conn (BlitzGateway): the connection to omero
+
+    Raises:
+        Exception: when wrong omero_type is specified
+
+    Returns:
+        List[int]: list of image ids contained in the OMERO resource
+    """
+
+    omero_type == omero_type.lower()
+    func = None
+
+    if omero_type == "project":
+        func = list_images_in_project
+    elif omero_type == "dataset":
+        func = list_images_in_dataset
+    elif omero_type == "image":
+        return [omero_id]
+    else:
+        raise Exception(f"Wrong omero_type: '{omero_type}'! Please choose one of 'project', 'dataset' or 'image'!")
+
+    return map(lambda image: image.getId(), func(conn, omero_id))
 
 def get_image_name(conn: BlitzGateway, imageId: int) -> str:
     return conn.getObject('Image', imageId).getName()
