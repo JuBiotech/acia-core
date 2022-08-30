@@ -329,7 +329,7 @@ class FluorescenceEx(PropertyExtractor):
 
         return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
 
-def scale(output_path: Path, analysis_script: Path, image_ids: List[int]):
+def scale(output_path: Path, analysis_script: Path, image_ids: List[int], additional_parameters=None):
     """Scale an analysis notebook to several image sequences
 
     **Hint:** the analysis script should only use absolute paths as the file is copied and executed in another folder.
@@ -340,9 +340,12 @@ def scale(output_path: Path, analysis_script: Path, image_ids: List[int]):
         image_ids (List[int]): list of (OMERO) image sources
     """
 
+    if additional_parameters is None:
+        additional_parameters = {}
+
     experiment_executions = []
 
-    for image_id in image_ids:
+    for image_id in tqdm(image_ids):
 
         # path to the new notebook file
         # every execution should have its own folder to store local files
@@ -354,8 +357,9 @@ def scale(output_path: Path, analysis_script: Path, image_ids: List[int]):
 
         # parameters to integrate into notebook
         parameters = dict(
-            storage_folder = output_file.stem,
-            image_id = image_id
+            storage_folder = str(output_file.parent.absolute()),
+            image_id = image_id,
+            **additional_parameters
         )
 
         # execute the notebook
@@ -367,6 +371,6 @@ def scale(output_path: Path, analysis_script: Path, image_ids: List[int]):
         )
     
         # save experiment in list
-        experiment_executions.append(dict(parameters=parameters, storage_folder=output_file.stem))
+        experiment_executions.append(dict(parameters=parameters, storage_folder=output_file.parent))
 
     return experiment_executions
