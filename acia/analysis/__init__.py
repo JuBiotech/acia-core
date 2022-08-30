@@ -1,6 +1,10 @@
 from __future__ import annotations
 from functools import reduce
 import logging
+from pathlib import Path
+import os
+import shutil
+import papermill as pm
 
 from typing import List, Optional
 import pandas as pd
@@ -324,3 +328,45 @@ class FluorescenceEx(PropertyExtractor):
         result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
 
         return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+
+def scale(output_path: Path, analysis_script: Path, image_ids: List[int]):
+    """Scale an analysis notebook to several image sequences
+
+    **Hint:** the analysis script should only use absolute paths as the file is copied and executed in another folder.
+
+    Args:
+        output_path (Path): the general output path to the storage
+        analysis_script (Path): the template script
+        image_ids (List[int]): list of (OMERO) image sources
+    """
+
+    experiment_executions = []
+
+    for image_id in image_ids:
+
+        # path to the new notebook file
+        # every execution should have its own folder to store local files
+        output_file = output_path / f"execution_{image_id}" / "notebook.ipynb"
+
+        # create the directory (should not exist) and copy file to that
+        os.makedirs(Path(output_file).parent, exist_ok=False)
+        shutil.copy(analysis_script, output_file)
+
+        # parameters to integrate into notebook
+        parameters = dict(
+            storage_folder = output_file.stem,
+            image_id = image_id
+        )
+
+        # execute the notebook
+        pm.execute_notebook(
+            output_file,
+            output_file,
+            parameters = parameters,
+            cwd=output_file.parent
+        )
+    
+        # save experiment in list
+        experiment_executions.append(dict(parameters=parameters, storage_folder=output_file.stem))
+
+    return experiment_executions
