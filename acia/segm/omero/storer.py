@@ -206,10 +206,8 @@ class BlitzConn(object):
         self.conn = conn
 
     def make_connection(self):
-        if self.conn:
-            if self.conn._connected is False:
-                self.conn.connect()
-            # we already have an existing conn object
+        # try to keep connection alive
+        if self.conn is not None and self.conn.keepAlive():
             return IngoreWithWrapper(self.conn)
         else:
             # return a new connection
@@ -217,7 +215,7 @@ class BlitzConn(object):
             conn.connect()
             conn.SERVICE_OPTS.setOmeroGroup('-1')
             self.conn = conn
-            return conn
+            return IngoreWithWrapper(self.conn)
 
     def __enter__(self):
         self.make_connection()
