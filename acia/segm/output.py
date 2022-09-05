@@ -314,9 +314,9 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
         for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
 
             # extract the numpy image
-            if image is BaseImage:
+            if isinstance(image, BaseImage):
                 image = image.raw
-            elif image is np.array:
+            elif isinstance(image, np.array):
                 pass
             else:
                 raise Exception("Unsupported image type!")
