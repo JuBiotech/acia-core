@@ -321,6 +321,9 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
             else:
                 raise Exception("Unsupported image type!")
 
+            # copy image as we draw onto it
+            image = np.copy(image)
+
             crop_parameters = cropper(image, overlay)
             image = image[crop_parameters[0], crop_parameters[1]]
 
