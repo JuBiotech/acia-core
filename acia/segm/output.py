@@ -304,12 +304,22 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
     """
 
     if roiSource is None:
-        roiSource = [None] * len(imageSource)
+        # when we have no rois -> create iterator that always returns None
+        def always_none():
+            while True:
+                yield None
+        roiSource = always_none
 
     with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
         for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
 
-            image = image.raw
+            # extract the numpy image
+            if image is BaseImage:
+                image = image.raw
+            elif image is np.array:
+                pass
+            else:
+                raise Exception("Unsupported image type!")
 
             crop_parameters = cropper(image, overlay)
             image = image[crop_parameters[0], crop_parameters[1]]
