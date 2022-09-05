@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 from typing import Iterable, List
-from acia.base import ImageRoISource, ImageSequenceSource, Overlay
+from acia.base import BaseImage, ImageRoISource, ImageSequenceSource, Overlay
 from acia.segm.omero.utils import ScaleBar
 
 import os
