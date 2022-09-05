@@ -308,7 +308,7 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
         def always_none():
             while True:
                 yield None
-        roiSource = always_none
+        roiSource = iter(always_none)
 
     with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
         for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
