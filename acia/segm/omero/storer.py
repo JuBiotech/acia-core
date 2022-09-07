@@ -1,6 +1,7 @@
 """Classes for OMERO storage interaction"""
 
 import logging
+from pathlib import Path
 from typing import Tuple
 
 import numpy as np
@@ -582,3 +583,169 @@ class OmeroRoISource(OmeroSource, RoISource):
             if self.range:
                 return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return image.getSizeT() * image.getSizeZ()
+
+
+def upload_file(
+    omero_type: str,
+    omero_id: int,
+    file_path: Path,
+    conn: BlitzGateway,
+    mime_type="text/plain",
+    namespace: str = None,
+):
+    """Upload a file attachement for an OMERO object (Image, Datase, Project)
+
+    Args:
+        omero_type (str): Image, Dataset or Project
+        omero_id (int): id of the omero object
+        file_path (Path): file path of the file to upload
+        conn (BlitzGateway): connection to OMERO
+        mime_type (str, optional): mime type of the uploaded data. Defaults to "text/plain".
+        namespace(str, optional): OMERO namespace of the uploaded file
+
+    Returns:
+        _type_: created annotation object
+    """
+
+    omero_object = conn.getObject(omero_type, omero_id)
+
+    # create the original file and file annotation (uploads the file etc.)
+    file_ann = conn.createFileAnnfromLocalFile(
+        file_path, mimetype=mime_type, ns=namespace, desc=None
+    )
+
+    logging.info(
+        "Attaching FileAnnotation to OMERO object: File ID: %d, %s Size: %d",
+        file_ann.getId(),
+        file_ann.getFile().getName(),
+        file_ann.getFile().getSize(),
+    )
+
+    # link it to dataset.
+    omero_object.linkAnnotation(file_ann)
+
+    # return OMERO annotation
+    return file_ann
+
+
+def download_file(ann, output_path: Path, append_filename=False):
+    """Download OMERO file attachment
+
+    Args:
+        ann (_type_): OMERO annotation object
+        output_path (Path): path to write the file to
+        append_filename (bool, optional): If True treats output_path as a folder and appends the OMERO file name. Defaults to False.
+    """
+    assert isinstance(ann, omero.gateway.FileAnnotationWrapper)
+
+    if not isinstance(output_path, Path):
+        output_path = Path(output_path)
+
+    logging.info(
+        "File ID: %d %s Size: %d",
+        ann.getFile().getId(),
+        ann.getFile().getName(),
+        ann.getFile().getSize(),
+    )
+
+    file_path = output_path
+
+    if append_filename:
+        file_path = file_path / ann.getFile().getName()
+
+    with open(str(file_path), "wb") as f:
+        logging.info("\nDownloading file to %s...", file_path)
+        for chunk in ann.getFileInChunks():
+            f.write(chunk)
+    logging.info("File downloaded!")
+
+
+def delete_file_annotation(annotation_id: int, conn: BlitzGateway):
+    """Delete an OMERO file attachement
+
+    Args:
+        annotation_id (int): id of the annotation object
+        conn (BlitzGateway): OMERO connection
+    """
+    # ann_obj = conn.getObject('Annotation', annotation_id)
+    conn.deleteObjects("Annotation", [annotation_id], wait=True)
+
+
+def list_file_annotations(omero_type: str, omero_id: int, conn: BlitzGateway):
+    """List all file annotations of an OMERO object
+
+    Args:
+        omero_type (str): Image, Dataset or Project OMERO object type
+        omero_id (int): unique OMERO id of the object
+        conn (BlitzGateway): OMERO connection
+
+    Returns:
+        _type_: List of OMERO annotation objects for files
+    """
+    # get OMERO object
+    omero_object = conn.getObject(omero_type, omero_id)
+
+    annotations = []
+
+    for ann in omero_object.listAnnotations():
+        if isinstance(ann, omero.gateway.FileAnnotationWrapper):
+            # add file annotations
+            annotations.append(ann)
+
+    return annotations
+
+
+def replace_file_annotation(
+    omero_type: str, omero_id: int, file_path: Path, conn, mime_type: str = "text/plain"
+):
+    """Replace an OMERO file by a new version.
+
+    Deletes existing file attachements on OMERO with the same name and uploads the new file.
+
+    Args:
+        omero_type (str): Image, Dataset or Project OMERO object type
+        omero_id (int): unique OMERO id of the object
+        file_path (Path): path of the file to upload
+        conn (_type_): OMERO connection
+        mime_type (str, optional): MIME type of the data file to upload. Defaults to "text/plain".
+
+    Returns:
+        _type_: new annotation object of the uploaded file
+    """
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+
+    # only get annotations with the same filename
+    anns = filter(
+        lambda ann: ann.getFile().getName() == file_path.name,
+        list_file_annotations(omero_type, omero_id, conn),
+    )
+
+    # upload the new file version first
+    new_ann = upload_file(omero_type, omero_id, file_path, conn, mime_type=mime_type)
+
+    # delete every other annotation with the same name
+    for ann in anns:
+        delete_file_annotation(ann.getId(), conn)
+
+    return new_ann
+
+
+def print_file_annotations(omero_type: str, omero_id: int, conn: BlitzGateway):
+    """List all file annotations
+
+    Args:
+        omero_type (str): Image, Dataset or Project OMERO object type
+        omero_id (int): unique OMERO id of the object
+        conn (BlitzGateway): OMERO connection
+    """
+    for ann in list_file_annotations(omero_type, omero_id, conn):
+        print(
+            "File ID:",
+            ann.getFile().getId(),
+            ann.getFile().getName(),
+            "Size:",
+            ann.getFile().getSize(),
+            "Namespace:",
+            ann.getNs(),
+        )
