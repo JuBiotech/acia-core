@@ -9,7 +9,7 @@ import numpy as np
 import roifile
 import tifffile
 
-from acia.base import Contour, ImageSequenceSource, Overlay, RoISource, BaseImage
+from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
 
 
 def prepare_image(image, normalize_image=True):
@@ -35,6 +35,8 @@ def prepare_image(image, normalize_image=True):
 
 
 class LocalImage(BaseImage):
+    """Class for a single image"""
+
     def __init__(self, content):
         self.content = content
 
@@ -64,7 +66,9 @@ class LocalImage(BaseImage):
 
 
 class LocalImageSource(ImageSequenceSource):
-    def __init__(self, image):
+    """Source for a single image only"""
+
+    def __init__(self, image: LocalImage):
         self.image = image
 
     def __get_image(self):
@@ -103,6 +107,8 @@ class LocalImageSource(ImageSequenceSource):
 
 
 class InMemorySequenceSource(ImageSequenceSource):
+    """Image sequence for an in memory image stack"""
+
     def __init__(self, image_stack):
         self.image_stack = image_stack
 
@@ -117,6 +123,10 @@ class InMemorySequenceSource(ImageSequenceSource):
     def __iter__(self):
         for i in range(len(self)):
             yield self.get_frame(i)
+
+    @property
+    def num_channels(self) -> int:
+        return self.get_frame(0).num_channels
 
 
 class LocalSequenceSource(ImageSequenceSource):
@@ -173,6 +183,10 @@ class LocalSequenceSource(ImageSequenceSource):
         assert frame < len(images)
 
         return LocalImage(prepare_image(images[frame]))
+
+    @property
+    def num_channels(self) -> int:
+        return self.get_frame(0).num_channels
 
     def slice(self, start, end):
         images = tifffile.imread(self.filename)

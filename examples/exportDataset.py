@@ -1,52 +1,49 @@
-from acia.segm.output import CocoDataset
-from acia.base import ImageRoISource
-from typing import List
-from omero.gateway import BlitzGateway
-from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
-from acia.segm.omero.utils import has_all_tags
-import getpass
-import cv2
-import numpy as np
-import omero
+""" Example to export segmentation GT dataset in COCO format"""
 
+import getpass
 import logging
 
+from omero.gateway import BlitzGateway
 
+from acia.base import ImageRoISource
+from acia.segm.omero.storer import OmeroRoISource, OmeroSequenceSource
+from acia.segm.omero.utils import has_all_tags
+from acia.segm.output import CocoDataset
 
-if __name__ == '__main__':
-    serverUrl = 'ibt056'
-    username = 'root'
-    password = getpass.getpass(f'Password for {username}@{serverUrl}: ')
+if __name__ == "__main__":
+    serverUrl = "ibt056"
+    username = "root"
+    password = getpass.getpass(f"Password for {username}@{serverUrl}: ")
 
-    omero_cred = {
-        'username': username,
-        'serverUrl': serverUrl,
-        'password': password
-    }
+    omero_cred = {"username": username, "serverUrl": serverUrl, "password": password}
 
     logging.info("Connect to omero...")
-    with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
+    with BlitzGateway(
+        username, password, host=serverUrl, port=4064, secure=True
+    ) as conn:
         tags = conn.getObjects("TagAnnotation")
 
-        print('Available tags:')
+        print("Available tags:")
         for tag in tags:
             print("\t", tag.textValue)
 
         print("Datasets with 'C. glutamicum': ")
         dataset_list = []
         for dataset in conn.getObjects("Dataset"):
-            if has_all_tags(dataset, ['C. glutamicum']):
+            if has_all_tags(dataset, ["C. glutamicum"]):
                 print("\t", dataset.getName())
                 dataset_list.append(dataset.getId())
 
         print("Ground truth data for C. glutamicum")
         image_list = []
         for dataset_id in dataset_list:
-            for image in conn.getObjects("Image", opts={'dataset': dataset_id}):
-                if has_all_tags(image, ['gold-standard']):
+            for image in conn.getObjects("Image", opts={"dataset": dataset_id}):
+                if has_all_tags(image, ["gold-standard"]):
                     dataset = image.getParent()
                     project = dataset.getParent()
-                    print(f'{project.getName()} > {dataset.getName()} > {image.getName()}')
+                    print(
+                        f"{project.getName()} > {dataset.getName()} > {image.getName()}"
+                    )
 
                     # add the image to the list
                     image_list.append(image.getId())
@@ -55,14 +52,11 @@ if __name__ == '__main__':
         irs_list = []
         for image_id in image_list:
             irs = ImageRoISource(
-                OmeroSequenceSource(imageId = image_id, **omero_cred),
-                OmeroRoISource(image_id, **omero_cred)
+                OmeroSequenceSource(imageId=image_id, **omero_cred),
+                OmeroRoISource(image_id, **omero_cred),
             )
             irs_list.append(irs)
 
         cd = CocoDataset()
         cd.add(irs_list)
-        cd.write('coco')
-
-
-    exit(1)
+        cd.write("coco")

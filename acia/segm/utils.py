@@ -1,5 +1,12 @@
+"""Utils for segmentation data handling"""
+
 from typing import Tuple
+
 import numpy as np
+from shapely.geometry import Polygon
+
+from acia.base import Contour
+from acia.utils import pairwise_distances
 
 
 def compute_indices(frame: int, size_t: int, size_z: int) -> Tuple[int, int]:
@@ -27,3 +34,21 @@ def compute_indices(frame: int, size_t: int, size_z: int) -> Tuple[int, int]:
         raise ValueError("This state should not be reachable!")
 
     return t, z
+
+
+def length_and_area(contour: Contour) -> tuple[float, float]:
+    """Compute length and area of a contour object (in pixel coordinates)
+
+    Args:
+        contour (Contour): contour object
+
+    Returns:
+        tuple[float, float]: length and area of the contour
+    """
+
+    polygon = Polygon(contour.coordinates)
+
+    length = np.max(
+        pairwise_distances(np.array(polygon.minimum_rotated_rectangle.exterior.coords))
+    )
+    return length, polygon.area

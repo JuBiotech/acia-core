@@ -1,40 +1,42 @@
+""" Functionality for single-cell analysis """
+
 from __future__ import annotations
-from functools import reduce
+
 import logging
-from pathlib import Path
 import os
 import shutil
-import papermill as pm
-
-from typing import List, Optional
-import pandas as pd
-
-from acia.base import BaseImage, ImageSequenceSource, Overlay
-from pint._typing import UnitLike
-from acia import Q_, U_
-import numpy as np
-import numpy.ma as ma
-from PIL import Image, ImageDraw
-from multiprocessing import Pool
-from tqdm.auto import tqdm
+from functools import reduce
 from itertools import starmap
+from multiprocessing import Pool
+from pathlib import Path
 
+import numpy as np
+import pandas as pd
+import papermill as pm
+from numpy import ma
+from PIL import Image, ImageDraw
+from pint._typing import UnitLike
+from tqdm.auto import tqdm
+
+from acia import Q_, U_
+from acia.base import BaseImage, ImageSequenceSource, Overlay
+from acia.utils import pairwise_distances
 
 DEFAULT_UNIT_LENGTH = "micrometer"
 DEFAULT_UNIT_AREA = "micrometer ** 2"
 
 
-class PropertyExtractor(object):
+class PropertyExtractor:
+    """Base class for single-cell property extractor"""
+
     def __init__(
-        self, name: str, input_unit: UnitLike, output_unit: Optional[UnitLike] = None
+        self, name: str, input_unit: UnitLike, output_unit: UnitLike | None = None
     ):
         self.name = name
 
         # try to parse input quantity
         self.input_unit = Q_(input_unit)
-        if self.input_unit.dimensionless and isinstance(
-            self.input_unit.magnitude, U_
-        ):
+        if self.input_unit.dimensionless and isinstance(self.input_unit.magnitude, U_):
             # if we have no dimension and magnitude is unit -> we better go with a unit
             self.input_unit = U_(input_unit)
         if output_unit:
@@ -61,7 +63,7 @@ class PropertyExtractor(object):
         raise NotImplementedError()
 
     def convert(self, input: float | Q_) -> float:
-        """ Converts input to the specified output unit
+        """Converts input to the specified output unit
 
         Args:
             input (float | Quantity): Input value
@@ -84,11 +86,18 @@ class PropertyExtractor(object):
             return (input * self.input_unit).to(self.output_unit).magnitude
 
 
-class ExtractorExecutor(object):
+class ExtractorExecutor:
+    """Executor to extract a list of single-cell properties from segmentation and images"""
+
     def __init__(self) -> None:
         self.units = {}
 
-    def execute(self, overlay: Overlay, images: List, extractors: List[PropertyExtractor] = []):
+    def execute(
+        self, overlay: Overlay, images: list, extractors: list[PropertyExtractor] = None
+    ):
+        if extractors is None:
+            extractors = []
+
         df = pd.DataFrame()
         for extractor in tqdm(extractors):
             print(f"Extracting: {extractor.name}...")
@@ -102,10 +111,12 @@ class ExtractorExecutor(object):
 
 
 class AreaEx(PropertyExtractor):
+    """Extract area for every contour"""
+
     def __init__(
         self,
-        input_unit: Optional[UnitLike] = DEFAULT_UNIT_AREA,
-        output_unit: Optional[UnitLike] = DEFAULT_UNIT_AREA,
+        input_unit: UnitLike | None = DEFAULT_UNIT_AREA,
+        output_unit: UnitLike | None = DEFAULT_UNIT_AREA,
     ):
         PropertyExtractor.__init__(
             self, "area", input_unit=input_unit, output_unit=output_unit
@@ -120,27 +131,16 @@ class AreaEx(PropertyExtractor):
 
 
 class LengthEx(PropertyExtractor):
-    """ Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
+    """Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
+
     def __init__(
         self,
-        input_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
-        output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
+        input_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+        output_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
     ):
         PropertyExtractor.__init__(
             self, "length", input_unit=input_unit, output_unit=output_unit
         )
-
-    @staticmethod
-    def pairwise_distances(points):
-        distances = []
-
-        if len(points) == 0:
-            return distances
-
-        for a, b in zip(points, points[1:]):
-            distances.append(np.linalg.norm(a - b))
-
-        return distances
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         lengths = []
@@ -149,7 +149,7 @@ class LengthEx(PropertyExtractor):
                 self.convert(
                     # longer edge of minimum roated bbox
                     np.max(
-                        LengthEx.pairwise_distances(
+                        pairwise_distances(
                             np.array(
                                 cont.polygon.minimum_rotated_rectangle.exterior.coords
                             )
@@ -162,30 +162,19 @@ class LengthEx(PropertyExtractor):
 
 
 class WidthEx(PropertyExtractor):
-    """ Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
+    """Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
+
     def __init__(
         self,
-        input_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
-        output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH,
+        input_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+        output_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
     ):
         PropertyExtractor.__init__(
             self, "width", input_unit=input_unit, output_unit=output_unit
         )
 
-    @staticmethod
-    def pairwise_distances(points):
-        distances = []
-
-        if len(points) == 0:
-            return distances
-
-        for a, b in zip(points, points[1:]):
-            distances.append(np.linalg.norm(a - b))
-
-        return distances
-
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
-        """ Extract width information for all contours"""
+        """Extract width information for all contours"""
         widths = []
         for cont in overlay:
             widths.append(
@@ -193,7 +182,7 @@ class WidthEx(PropertyExtractor):
                     # shorter edge of bbox approximation
                     np.min(
                         # measure edge lengths of bbox approximation
-                        WidthEx.pairwise_distances(
+                        pairwise_distances(
                             np.array(
                                 # bbox approaximation
                                 cont.polygon.minimum_rotated_rectangle.exterior.coords
@@ -207,6 +196,8 @@ class WidthEx(PropertyExtractor):
 
 
 class FrameEx(PropertyExtractor):
+    """Extract the frame information for every contour"""
+
     def __init__(self):
         super().__init__("frame", 1)
 
@@ -219,6 +210,8 @@ class FrameEx(PropertyExtractor):
 
 
 class IdEx(PropertyExtractor):
+    """Extract single-cell id for every contour"""
+
     def __init__(self):
         super().__init__("id", 1)
 
@@ -230,19 +223,27 @@ class IdEx(PropertyExtractor):
 
 
 class TimeEx(PropertyExtractor):
-    def __init__(self, input_unit: UnitLike, output_unit: Optional[UnitLike] = "hour"):
+    """Extract time information for every contour"""
+
+    def __init__(self, input_unit: UnitLike, output_unit: UnitLike | None = "hour"):
         super().__init__("time", input_unit, output_unit)
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         times = []
-        for index, row in df.iterrows():
+        for _, row in df.iterrows():
             times.append(self.convert(row["frame"]))
 
         return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
 
 
 class PositionEx(PropertyExtractor):
-    def __init__(self, input_unit: UnitLike, output_unit: Optional[UnitLike] = DEFAULT_UNIT_LENGTH):
+    """Extract cell center information from image RoI detections"""
+
+    def __init__(
+        self,
+        input_unit: UnitLike,
+        output_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+    ):
         super().__init__("position", input_unit=input_unit, output_unit=output_unit)
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
@@ -252,11 +253,24 @@ class PositionEx(PropertyExtractor):
             positions_x.append(self.convert(cont.center[0]))
             positions_y.append(self.convert(cont.center[1]))
 
-        return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {"position_x": self.output_unit, "position_y": self.output_unit}
+        return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {
+            "position_x": self.output_unit,
+            "position_y": self.output_unit,
+        }
 
 
 class FluorescenceEx(PropertyExtractor):
-    def __init__(self, channels, channel_names, summarize_operator=np.median, input_unit: UnitLike = '1', output_unit: Optional[UnitLike] = '', parallel=6):
+    """Extracting fluorescence properties from image sequence and RoI detections"""
+
+    def __init__(
+        self,
+        channels,
+        channel_names,
+        summarize_operator=np.median,
+        input_unit: UnitLike = "1",
+        output_unit: UnitLike | None = "",
+        parallel=6,
+    ):
         super().__init__("Fluorescence", input_unit=input_unit, output_unit=output_unit)
 
         self.channels = channels
@@ -264,10 +278,18 @@ class FluorescenceEx(PropertyExtractor):
         self.summarize_operator = summarize_operator
         self.parallel = parallel
 
-        assert len(self.channels) == len(self.channel_names), "Number of channels and number of channel names must comply"
+        assert len(self.channels) == len(
+            self.channel_names
+        ), "Number of channels and number of channel names must comply"
 
     @staticmethod
-    def extract_fluorescence(overlay: Overlay, image: BaseImage, channels: List[int], channel_names: List[str], summarize_operator):
+    def extract_fluorescence(
+        overlay: Overlay,
+        image: BaseImage,
+        channels: list[int],
+        channel_names: list[str],
+        summarize_operator,
+    ):
         """Extract fluorescence information based on an overlay(segmentation) and corresponding image.
 
         Args:
@@ -287,7 +309,7 @@ class FluorescenceEx(PropertyExtractor):
                 raw_image = image.get_channel(channel)
 
                 height, width = raw_image.shape[:2]
-                img = Image.new('L', (width, height), 0)
+                img = Image.new("L", (width, height), 0)
                 draw = ImageDraw.Draw(img)
 
                 # draw cell mask
@@ -301,36 +323,61 @@ class FluorescenceEx(PropertyExtractor):
 
                 channel_values[ch_id].append(value)
 
-        return pd.DataFrame({channel_names[i]: channel_values[i] for i in range(len(channels))})
+        return pd.DataFrame(
+            {channel_names[i]: channel_values[i] for i in range(len(channels))}
+        )
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
-        assert overlay.numFrames() == len(images), "Please make sure that the frames in your overlay fit to the frames in your image source"
+        assert overlay.numFrames() == len(
+            images
+        ), "Please make sure that the frames in your overlay fit to the frames in your image source"
 
         def iterator(timeIterator):
             for i, overlay in enumerate(timeIterator):
-                yield (overlay, images.get_frame(i), self.channels, self.channel_names, self.summarize_operator)
+                yield (
+                    overlay,
+                    images.get_frame(i),
+                    self.channels,
+                    self.channel_names,
+                    self.summarize_operator,
+                )
 
         result = None
 
         if self.parallel > 1:
             try:
                 with Pool(self.parallel) as p:
-                    result = p.starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()), chunksize=5)
+                    result = p.starmap(
+                        FluorescenceEx.extract_fluorescence,
+                        iterator(overlay.timeIterator()),
+                        chunksize=5,
+                    )
 
             except Exception as e:
-                logging.error("Parallel fluorescence extraction failed! Please run with 'parallel=1' to investigate the error!")
+                logging.error(
+                    "Parallel fluorescence extraction failed! Please run with 'parallel=1' to investigate the error!"
+                )
                 raise e
 
         else:
-            result = starmap(FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator()))
+            result = starmap(
+                FluorescenceEx.extract_fluorescence, iterator(overlay.timeIterator())
+            )
 
         # concatenate all results
         result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
 
-        return result, {self.channel_names[i]: self.output_unit for i in range(len(self.channels))}
+        return result, {
+            self.channel_names[i]: self.output_unit for i in range(len(self.channels))
+        }
 
 
-def scale(output_path: Path, analysis_script: Path, image_ids: List[int], additional_parameters=None):
+def scale(
+    output_path: Path,
+    analysis_script: Path,
+    image_ids: list[int],
+    additional_parameters=None,
+):
     """Scale an analysis notebook to several image sequences
 
     **Hint:** the analysis script should only use absolute paths as the file is copied and executed in another folder.
@@ -360,18 +407,17 @@ def scale(output_path: Path, analysis_script: Path, image_ids: List[int], additi
         parameters = dict(
             storage_folder=str(output_file.parent.absolute()),
             image_id=image_id,
-            **additional_parameters
+            **additional_parameters,
         )
 
         # execute the notebook
         pm.execute_notebook(
-            output_file,
-            output_file,
-            parameters=parameters,
-            cwd=output_file.parent
+            output_file, output_file, parameters=parameters, cwd=output_file.parent
         )
 
         # save experiment in list
-        experiment_executions.append(dict(parameters=parameters, storage_folder=output_file.parent))
+        experiment_executions.append(
+            dict(parameters=parameters, storage_folder=output_file.parent)
+        )
 
     return experiment_executions

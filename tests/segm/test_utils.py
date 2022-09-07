@@ -1,14 +1,16 @@
+""" Utils for segmentation testing """
+
 import unittest
+
 from acia.segm.utils import compute_indices
 
 
 class TestIndexing(unittest.TestCase):
+    """Test the linearization of z and t stacks"""
 
     def test_both(self):
 
-        setup = dict(
-            size_t=4,
-            size_z=4)
+        setup = dict(size_t=4, size_z=4)
 
         self.assertEqual(compute_indices(0, **setup), (0, 0))
         self.assertEqual(compute_indices(1, **setup), (0, 1))
@@ -17,23 +19,17 @@ class TestIndexing(unittest.TestCase):
         self.assertEqual(compute_indices(10, **setup), (2, 2))
 
     def test_only_t(self):
-        setup = dict(
-            size_t=50,
-            size_z=1
-        )
+        setup = dict(size_t=50, size_z=1)
 
-        for i in range(setup['size_t']):
+        for i in range(setup["size_t"]):
             self.assertEqual(compute_indices(i, **setup), (i, 0))
 
     def test_only_z(self):
-        setup = dict(
-            size_t=1,
-            size_z=50
-        )
+        setup = dict(size_t=1, size_z=50)
 
-        for i in range(setup['size_z']):
+        for i in range(setup["size_z"]):
             self.assertEqual(compute_indices(i, **setup), (0, i))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

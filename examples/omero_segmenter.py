@@ -1,20 +1,26 @@
-print('Loading...')
+"""Automated segmenter based on OMERO tags"""
 
 import getpass
+import itertools
 import logging
+import time
+
+import omero
 from numpy import integer
 from omero.gateway import BlitzGateway
-from acia.base import Processor
-from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
-from acia.segm.omero.utils import image_iterator, list_images_in_dataset, list_images_in_project
-from acia.segm.processor.offline import OfflineModel
-from acia.segm.filter import NMSFilter
-from examples.training_dataset.exportDataset import has_all_tags
-import time
-import omero
-import itertools
+from omero.rtypes import unwrap
 
-def get_tags(conn, object) -> list:
+from acia.base import Processor
+from acia.segm.filter import NMSFilter
+from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
+from acia.segm.omero.utils import image_iterator
+from acia.segm.processor.offline import OfflineModel
+from examples.training_dataset.exportDataset import has_all_tags
+
+print("Loading...")
+
+
+def get_tags(_, object) -> list:
     """Obtain all tags associated with an omero object
 
     Args:
@@ -31,8 +37,9 @@ def get_tags(conn, object) -> list:
 
     return tags
 
-def remove_tag(conn, object, tag_name: str, tag_owner_id = None):
-    """ Removes the named tag from the omero object using the omero connection.
+
+def remove_tag(conn, object, tag_name: str, tag_owner_id=None):
+    """Removes the named tag from the omero object using the omero connection.
 
     Args:
         conn ([type]): omero connection
@@ -69,16 +76,28 @@ def remove_tag(conn, object, tag_name: str, tag_owner_id = None):
         linksByType[objType].append(obj.id.val)
     for linkType, ids in linksByType.items():
         conn.deleteObjects(linkType, ids, wait=True)
-    #if len(notFound) > 0:
+    # if len(notFound) > 0:
     #    raise AttributeError("Attribute not specified. Cannot be removed.")
 
     if len(toDelete) == 0:
         # warn user that the tag could not be found
-        logging.warn(f'tag "{tag_name}" not found in object "{object.getName()}"')
+        logging.warning('tag "%s" not found in object "%s"', tag_name, object.getName())
+
 
 def create_model():
     # create local machine learning model
-    return OfflineModel('model_zoo/htc/version3/htc_like_def_detr_tuned.py', 'model_zoo/htc/version3/latest.pth', half=True, tiling={'x_shift': 768-128, 'y_shift': 768-128, 'tile_height': 768, 'tile_width': 768})
+    return OfflineModel(
+        "model_zoo/htc/version3/htc_like_def_detr_tuned.py",
+        "model_zoo/htc/version3/latest.pth",
+        half=True,
+        tiling={
+            "x_shift": 768 - 128,
+            "y_shift": 768 - 128,
+            "tile_height": 768,
+            "tile_width": 768,
+        },
+    )
+
 
 def predict(imageId: integer, model: Processor, conn):
     """[summary]
@@ -97,45 +116,54 @@ def predict(imageId: integer, model: Processor, conn):
 
     # filter cell detections
     print("Filter detections")
-    result = NMSFilter.filter(result, iou_thr=0.5, mode='i')
+    result = NMSFilter.filter(result, iou_thr=0.5, mode="i")
 
     # store detections in omero
     print("Save results...")
     OmeroRoIStorer.storeWithConn(result, imageId, conn=conn)
 
+
 def segmentation(username, password, serverUrl):
-    tag_filter = ['request-segm'] # e.g. add E. coli here
+    tag_filter = ["request-segm"]  # e.g. add E. coli here
 
     request_tags = tag_filter
-
-    model = None
 
     def get_model():
         return create_model()
 
-
     logging.info("Connect to omero...")
-    with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
+    with BlitzGateway(
+        username, password, host=serverUrl, port=4064, secure=True
+    ) as conn:
         # TODO: get really all objects!
 
         # Querying across omero groups
-        conn.SERVICE_OPTS.setOmeroGroup('-1')
+        conn.SERVICE_OPTS.setOmeroGroup("-1")
 
-        omero_objects = itertools.chain(conn.getObjects("Project"), conn.getObjects("Image"), conn.getObjects("Dataset"))#*all_objects)
-        
+        omero_objects = itertools.chain(
+            conn.getObjects("Project"),
+            conn.getObjects("Image"),
+            conn.getObjects("Dataset"),
+        )  # *all_objects)
 
         # iterate over any kind of omero object (Image, Dataset, Project)
         for obj in omero_objects:
             if has_all_tags(obj, tag_filter):
-                print(f'Found segmentation request for {obj.getName()}')
-                request_segm_tag = list(filter(lambda tag: tag.OMERO_TYPE == omero.model.TagAnnotationI and tag.getTextValue() == 'request-segm', get_tags(conn, obj)))
+                print(f"Found segmentation request for {obj.getName()}")
+                request_segm_tag = list(
+                    filter(
+                        lambda tag: tag.OMERO_TYPE == omero.model.TagAnnotationI
+                        and tag.getTextValue() == "request-segm",
+                        get_tags(conn, obj),
+                    )
+                )
                 assert len(request_segm_tag) == 1
                 request_segm_tag = request_segm_tag[0]
                 owner = request_segm_tag.link.getDetails().getOwner().getName()
 
                 # make a user connection the lives for 10 minutes
                 # TODO: make a user connection the lives for 24 hours (seems to be strangely counted...)
-                user_connection = conn.suConn(owner, ttl=24*60*60000)
+                user_connection = conn.suConn(owner, ttl=24 * 60 * 60000)
 
                 # iterate over the image(s) in there
                 for image in image_iterator(conn, obj):
@@ -144,10 +172,14 @@ def segmentation(username, password, serverUrl):
                     roi_count = image.getROICount()
 
                     if roi_count > 0:
-                        #TODO: add a force/overwrite option
-                        logging.info(f"Skip {image.getName()} because it already has {roi_count} RoIs detected.")
+                        # TODO: add a force/overwrite option
+                        logging.info(
+                            "Skip %s because it already has %d RoIs detected.",
+                            image.getName(),
+                            roi_count,
+                        )
                         continue
-                    
+
                     # do the segmentation here
                     predict(image.getId(), get_model(), user_connection)
                     print("Segmentation successfull!")
@@ -160,30 +192,42 @@ def segmentation(username, password, serverUrl):
 
 
 def del_segmentations(username, password, serverUrl):
-    tag_filter = ['request-del-segm'] # e.g. add E. coli here
+    tag_filter = ["request-del-segm"]  # e.g. add E. coli here
 
     request_tags = tag_filter
 
-    with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
+    with BlitzGateway(
+        username, password, host=serverUrl, port=4064, secure=True
+    ) as conn:
 
         # Querying across omero groups
-        conn.SERVICE_OPTS.setOmeroGroup('-1')
+        conn.SERVICE_OPTS.setOmeroGroup("-1")
 
-        omero_objects = itertools.chain(conn.getObjects("Image"), conn.getObjects("Dataset"), conn.getObjects("Project"))
+        omero_objects = itertools.chain(
+            conn.getObjects("Image"),
+            conn.getObjects("Dataset"),
+            conn.getObjects("Project"),
+        )
 
         # iterate over any kind of omero object (Image, Dataset, Project)
         for obj in omero_objects:
             if has_all_tags(obj, tag_filter):
-                print(f'Found segmentation deletion request for {obj.getName()}')
+                print(f"Found segmentation deletion request for {obj.getName()}")
 
-                request_del_segm_tag = list(filter(lambda tag: tag.OMERO_TYPE == omero.model.TagAnnotationI and tag.getTextValue() == 'request-del-segm', get_tags(conn, obj)))
+                request_del_segm_tag = list(
+                    filter(
+                        lambda tag: tag.OMERO_TYPE == omero.model.TagAnnotationI
+                        and tag.getTextValue() == "request-del-segm",
+                        get_tags(conn, obj),
+                    )
+                )
                 assert len(request_del_segm_tag) == 1
                 request_del_segm_tag = request_del_segm_tag[0]
                 owner = request_del_segm_tag.link.getDetails().getOwner().getName()
 
                 # make a user connection the lives for 10 minutes
                 # TODO: same strange user connection init
-                user_connection = conn.suConn(owner, ttl=24*60*60000)
+                user_connection = conn.suConn(owner, ttl=24 * 60 * 60000)
 
                 # iterate over the image(s) in there
                 for image in image_iterator(conn, obj):
@@ -196,21 +240,16 @@ def del_segmentations(username, password, serverUrl):
                 user_connection.close()
 
 
-if __name__ == '__main__':
-    serverUrl = 'ibt056'
-    username = 'root'
-    password = getpass.getpass(f'Password for {username}@{serverUrl}: ')
+if __name__ == "__main__":
+    serverUrl = "ibt056"
+    username = "root"
+    password = getpass.getpass(f"Password for {username}@{serverUrl}: ")
 
-    omero_cred = {
-        'username': username,
-        'serverUrl': serverUrl,
-        'password': password
-    }
-
+    omero_cred = {"username": username, "serverUrl": serverUrl, "password": password}
 
     while True:
 
         segmentation(**omero_cred)
         del_segmentations(**omero_cred)
-        print('Sleep')
+        print("Sleep")
         time.sleep(30)

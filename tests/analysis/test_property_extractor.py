@@ -1,4 +1,11 @@
+""" Testcases for single-cell property extractors """
+
 import unittest
+from itertools import product
+
+import numpy as np
+
+from acia import ureg
 from acia.analysis import (
     AreaEx,
     ExtractorExecutor,
@@ -11,15 +18,13 @@ from acia.analysis import (
     TimeEx,
     WidthEx,
 )
-import numpy as np
-from itertools import product
-from acia import ureg
-
 from acia.base import Contour, Overlay
 from acia.segm.local import InMemorySequenceSource, LocalImageSource
 
 
-class TestPropertExtractors(unittest.TestCase):
+class TestPropertyExtractors(unittest.TestCase):
+    """Test cases for single-cell property extractors"""
+
     def test_unit_conversion(self):
         # test basic conversion patterns
 
@@ -62,13 +67,18 @@ class TestPropertExtractors(unittest.TestCase):
             extractors=[
                 IdEx(),
                 FrameEx(),
-                AreaEx(input_unit=(ps * ureg.micrometer)**2),
+                AreaEx(input_unit=(ps * ureg.micrometer) ** 2),
                 LengthEx(input_unit=ps * ureg.micrometer),
                 WidthEx(input_unit=ps * ureg.micrometer),
                 TimeEx(input_unit="15 * minute"),  # one frame every 15 minutes
                 PositionEx(input_unit=ps * ureg.micrometer),
-                FluorescenceEx(channels=[0], channel_names=['gfp'], parallel=1),
-                FluorescenceEx(channels=[0], channel_names=['gfp_mean'], summarize_operator=np.mean, parallel=1)
+                FluorescenceEx(channels=[0], channel_names=["gfp"], parallel=1),
+                FluorescenceEx(
+                    channels=[0],
+                    channel_names=["gfp_mean"],
+                    summarize_operator=np.mean,
+                    parallel=1,
+                ),
             ],
         )
 
@@ -84,7 +94,10 @@ class TestPropertExtractors(unittest.TestCase):
 
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
-        contours = [Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=frame, id=id) for id, frame in product(list(range(squared_num)), list(range(squared_num)))]
+        contours = [
+            Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=frame, id=id)
+            for id, frame in product(list(range(squared_num)), list(range(squared_num)))
+        ]
         overlay = Overlay(contours)
 
         image = np.zeros((200, 200))
@@ -94,18 +107,24 @@ class TestPropertExtractors(unittest.TestCase):
         image[1, 1] = 10
         image_sources = InMemorySequenceSource(np.stack([image] * squared_num))
 
+        self.assertTrue(image_sources is not None)
+
         # test basic extractors
         df = ExtractorExecutor().execute(
             overlay=overlay,
             images=image_sources,
             extractors=[
-                FluorescenceEx(channels=[0], channel_names=['fl1']),
-                FluorescenceEx(channels=[0], channel_names=['fl1_mean'], summarize_operator=np.mean),
+                FluorescenceEx(channels=[0], channel_names=["fl1"]),
+                FluorescenceEx(
+                    channels=[0], channel_names=["fl1_mean"], summarize_operator=np.mean
+                ),
             ],
         )
 
-        np.testing.assert_array_equal(df['fl1'], [5.5] * len(df))
-        np.testing.assert_array_equal(df['fl1_mean'], [np.mean([2, 5, 6, 10])] * len(df))
+        np.testing.assert_array_equal(df["fl1"], [5.5] * len(df))
+        np.testing.assert_array_equal(
+            df["fl1_mean"], [np.mean([2, 5, 6, 10])] * len(df)
+        )
 
 
 if __name__ == "__main__":
