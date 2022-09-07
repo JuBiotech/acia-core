@@ -36,7 +36,7 @@ def compute_indices(frame: int, size_t: int, size_z: int) -> Tuple[int, int]:
     return t, z
 
 
-def length_and_area(contour: Contour) -> tuple[float, float]:
+def length_and_area(contour: Contour) -> Tuple[float, float]:
     """Compute length and area of a contour object (in pixel coordinates)
 
     Args:
