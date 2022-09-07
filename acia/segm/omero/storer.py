@@ -84,9 +84,9 @@ class OmeroRoIStorer:
         logging.info(f"Stored overlay with {len(overlay)} rois for image '{image.getName()}'")
 
     @staticmethod
-    def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False, z=0):
+    def store(overlay: Overlay, imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, force=False, z=0, conn=None):
         '''
-            Stores overlay results in omero
+            Stores overlay results in OMERO. Uses existing connection if available.
 
             overlay: the overlay to store
             imageId: omero id of the image sequence
@@ -94,10 +94,11 @@ class OmeroRoIStorer:
             password: omero password
             serverUrl: omero web address
             port: omero port (default: 4064)
+            conn: existing OMERO connection or None. (default: None)
         '''
 
-        with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
-            OmeroRoIStorer.storeWithConn(overlay, imageId, conn, force, z)
+        #with BlitzGateway(username, password, host=serverUrl, port=port, secure=secure) as conn:
+        OmeroRoIStorer.storeWithConn(overlay, imageId, conn, force, z)
 
     @staticmethod
     def load(imageId: int, username: str, password: str, serverUrl: str, port=4064, secure=True, roiId=None) -> Overlay:
