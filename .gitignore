@@ -12,6 +12,10 @@ model_zoo/
 data/
 *.npy
 *.zip
+*.xml
+*.mp4
+yolo_dataset/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

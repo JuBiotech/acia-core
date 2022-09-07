@@ -44,9 +44,7 @@ test:
     - python setup.py install
     - pip install tox flake8  # you can also use tox
     - tox -e py38,flake8
-    - pip install pytest pytest-cov
-    - pytest --cov=acia/ tests/
-    - coverage xml
+  coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     reports:
       coverage_report:

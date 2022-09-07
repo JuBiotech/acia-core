@@ -1,24 +1,36 @@
-from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
-from acia.segm.omero.utils import get_image_name, get_project_name, list_images_in_project
-from acia.segm.processor.online import OnlineModel
-from acia.segm.filter import NMSFilter
-from omero.gateway import BlitzGateway
-import tqdm.auto as tqdm
-import getpass
+"""
+Simple example to use the apis for online segmentation
+"""
 
-import logging
+
 import argparse
+import getpass
+import logging
 
-if __name__ == '__main__':
-    '''
-        Simple example to use the apis
-    '''
+import tqdm.auto as tqdm
+from omero.gateway import BlitzGateway
 
+from acia.segm.filter import NMSFilter
+from acia.segm.omero.storer import OmeroRoIStorer, OmeroSequenceSource
+from acia.segm.omero.utils import (
+    get_image_name,
+    get_project_name,
+    list_images_in_project,
+)
+from acia.segm.processor.online import OnlineModel
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project-id', required=True, help="Omero Id of the project to segment.")
-    parser.add_argument('--user', required=True)
-    parser.add_argument('--server-url', required=True)
-    parser.add_argument('--model-url', default='http://ibt056/pt/predictions/cellcmaskrcnn/', help="Web address of the prediction model")
+    parser.add_argument(
+        "--project-id", required=True, help="Omero Id of the project to segment."
+    )
+    parser.add_argument("--user", required=True)
+    parser.add_argument("--server-url", required=True)
+    parser.add_argument(
+        "--model-url",
+        default="http://ibt056/pt/predictions/cellcmaskrcnn/",
+        help="Web address of the prediction model",
+    )
     args = parser.parse_args()
 
     projectId = args.project_id
@@ -26,53 +38,69 @@ if __name__ == '__main__':
     username = args.user
     serverUrl = args.server_url
     modelUrl = args.model_url
-    password = getpass.getpass(f'Password for {username}@{serverUrl}: ')
+    password = getpass.getpass(f"Password for {username}@{serverUrl}: ")
 
     # connect to remote machine learning model
     model = OnlineModel(modelUrl)
 
-    #projectId = 151
+    # projectId = 151
 
     print("Connect to omero...")
-    with BlitzGateway(username, password, host=serverUrl, port=4064, secure=True) as conn:
+    with BlitzGateway(
+        username, password, host=serverUrl, port=4064, secure=True
+    ) as conn:
         print("Connection to OMERO established!")
         projectName = get_project_name(conn, projectId)
         print(f"Scanning project'{projectName}...'")
         image_list = map(lambda im: im.getId(), list_images_in_project(conn, projectId))
         print(get_image_name(conn, 1))
-        #print(conn.getObject('Image', 1).getProject())
+        # print(conn.getObject('Image', 1).getProject())
 
-    print(f'We have discovered {len(image_list)} image sequences in the project "{projectName}"!')
+    print(
+        f'We have discovered {len(image_list)} image sequences in the project "{projectName}"!'
+    )
     print(f'We are performing cell segmentation with the model "{modelUrl}"')
-    print(f'Please lean back...')
+    print("Please lean back...")
 
     for imageId in tqdm.tqdm(image_list):
         try:
             print()
             # create local image data source
             source = OmeroSequenceSource(imageId, username, password, serverUrl)
-            #source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
+            # source = LocalSequenceSource('input/PHH2.nd2-PHH2.nd2(series6)_rois-1_70_final.tif')
 
             # perform overlay prediction
             projectName = source.projectName()
             datasetName = source.datasetName()
             imageName = source.imageName()
 
-            #OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl)
+            # OmeroRoIStorer.clear(imageId=imageId, username=username, password=password, serverUrl=serverUrl)
 
             print(f"Predict {projectName} > {datasetName} > {imageName}")
-            result = model.predict(source, params={'test_cfg.rcnn.nms.iou_threshold': 0.8, 'test_cfg.rcnn.score_thr': 0.25})
+            result = model.predict(
+                source,
+                params={
+                    "test_cfg.rcnn.nms.iou_threshold": 0.8,
+                    "test_cfg.rcnn.score_thr": 0.25,
+                },
+            )
             print()
 
             # filter cell detections
             print("Filter detections")
-            result = NMSFilter.filter(result, iou_thr=0.2, mode='i')
+            result = NMSFilter.filter(result, iou_thr=0.2, mode="i")
             print()
 
             # store detections in omero
             print("Save results...")
             OmeroRoIStorer.store(result, imageId, username, password, serverUrl)
+        # pylint: disable=W0703
         except Exception as e:
-            logging.error(f"Error while processing {projectName} > {datasetName} > {imageName}")
+            logging.error(
+                "Error while processing %s > %s > %s",
+                projectName,
+                datasetName,
+                imageName,
+            )
             print(e)
-        #RoiStorer.store(result, 'rois.zip')
+        # RoiStorer.store(result, 'rois.zip')

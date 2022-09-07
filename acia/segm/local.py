@@ -1,7 +1,6 @@
 """ Local segmentation functionality dealing with files from HDD.
 """
 
-import logging
 import os
 import os.path as osp
 
@@ -10,7 +9,7 @@ import numpy as np
 import roifile
 import tifffile
 
-from acia.base import Contour, ImageSequenceSource, Overlay, RoISource
+from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
 
 
 def prepare_image(image, normalize_image=True):
@@ -35,23 +34,99 @@ def prepare_image(image, normalize_image=True):
     return image
 
 
+class LocalImage(BaseImage):
+    """Class for a single image"""
+
+    def __init__(self, content):
+        self.content = content
+
+    @property
+    def raw(self):
+        return self.content
+
+    @property
+    def num_channels(self):
+        if len(self.raw.shape) == 2:
+            # only width and height -> 1 channel
+            return 1
+        else:
+            # multiple channels -> channels are specified at the end
+            return self.raw.shape[-1]
+
+    def get_channel(self, channel: int):
+        assert channel < self.num_channels
+
+        if self.num_channels == 1 and len(self.raw.shape) == 2:
+            return self.raw
+        else:
+            return self.raw[..., channel]
+
+    def __getitem__(self, item):
+        return self.raw[item]
+
+
 class LocalImageSource(ImageSequenceSource):
-    """Source for local single image file (e.g. png)"""
+    """Source for a single image only"""
 
-    def __init__(self, file_path: str, normalize_image=True):
-        self.file_path = file_path
-        self.normalize_image = normalize_image
+    def __init__(self, image: LocalImage):
+        self.image = image
 
-        if not osp.isfile(self.file_path):
-            logging.warning("File %s does not exist!", self.file_path)
+    def __get_image(self):
+        return self.image
 
     def __iter__(self):
-        image = cv2.imread(self.file_path)
+        yield self.__get_image()
 
-        yield prepare_image(image, self.normalize_image)
+    def get_frame(self, frame: int):
+        assert frame == 0, f"We only have a single frame, but frame={frame}"
+
+        return self.__get_image()
+
+    @property
+    def num_channels(self) -> int:
+        return self.__get_image().num_channels
+
+    @property
+    def num_frames(self) -> int:
+        return 1
 
     def __len__(self):
         return 1
+
+    @staticmethod
+    def from_file(file_path: str, normalize_image=True):
+        image = LocalImage(prepare_image(cv2.imread(file_path), normalize_image))
+
+        return LocalImageSource(image)
+
+    @staticmethod
+    def from_array(array):
+        image = LocalImage(array)
+
+        return LocalImageSource(image)
+
+
+class InMemorySequenceSource(ImageSequenceSource):
+    """Image sequence for an in memory image stack"""
+
+    def __init__(self, image_stack):
+        self.image_stack = image_stack
+
+    def get_frame(self, frame: int) -> BaseImage:
+        assert frame < len(self.image_stack)
+
+        return LocalImage(self.image_stack[frame])
+
+    def __len__(self):
+        return len(self.image_stack)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.get_frame(i)
+
+    @property
+    def num_channels(self) -> int:
+        return self.get_frame(0).num_channels
 
 
 class LocalSequenceSource(ImageSequenceSource):
@@ -102,6 +177,17 @@ class LocalSequenceSource(ImageSequenceSource):
 
             yield image
 
+    def get_frame(self, frame: int) -> BaseImage:
+        # TODO: this is super slow access for indiviudal images
+        images = tifffile.imread(self.filename)
+        assert frame < len(images)
+
+        return LocalImage(prepare_image(images[frame]))
+
+    @property
+    def num_channels(self) -> int:
+        return self.get_frame(0).num_channels
+
     def slice(self, start, end):
         images = tifffile.imread(self.filename)
 
@@ -122,7 +208,7 @@ class LocalSequenceSource(ImageSequenceSource):
                 # make it artificially rgb
                 image = np.repeat(image[:, :, None], 3, axis=-1)
 
-            yield image
+            yield LocalImage(image)
 
 
 class ImageJRoISource(RoISource):

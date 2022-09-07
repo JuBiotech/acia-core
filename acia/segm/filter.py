@@ -1,13 +1,18 @@
+""" Filters for segmentating overlay objects"""
+
+from functools import partial
 from typing import Tuple
-import tqdm.auto as tqdm
-import shapely
-from shapely.validation import make_valid
-from acia.base import Overlay
-from shapely.geometry import Polygon
-import shapely.affinity
-from rtree import index
+
 import cv2
 import numpy as np
+import shapely
+import shapely.affinity
+import tqdm.auto as tqdm
+from rtree import index
+from shapely.geometry import Polygon
+from shapely.validation import make_valid
+
+from acia.base import Overlay
 
 
 def bbox_to_rectangle(bbox: Tuple[float]):
@@ -16,15 +21,21 @@ def bbox_to_rectangle(bbox: Tuple[float]):
 
 
 class NMSFilter:
+    """Non-maximum supression filter based on contours"""
 
     @staticmethod
-    def filter(overlay: Overlay, iou_thr=0.1, mode='iou') -> Overlay:
-        prefiltered_contours = [cont for cont in overlay.contours if len(cont.coordinates) >= 3]
+    def filter(overlay: Overlay, iou_thr=0.1, mode="iou") -> Overlay:
+        prefiltered_contours = [
+            cont for cont in overlay.contours if len(cont.coordinates) >= 3
+        ]
 
         # sort contours by their score (lowest first)
         sorted_contours = sorted(prefiltered_contours, key=lambda c: c.score)
         # make (valid) shapely polygons
-        polygons = [make_valid(shapely.geometry.polygon.Polygon(contour.coordinates)) for contour in sorted_contours]
+        polygons = [
+            make_valid(shapely.geometry.polygon.Polygon(contour.coordinates))
+            for contour in sorted_contours
+        ]
 
         keep_list = []
 
@@ -55,16 +66,27 @@ class NMSFilter:
             bottom = miny
             candidate_idx_list = idx.intersection((left, bottom, right, top))
 
-            candidate_idx_list = list(filter(lambda index: index > i and sorted_contours[i].frame == sorted_contours[index].frame, candidate_idx_list))
+            candidate_idx_list = list(
+                filter(
+                    partial(
+                        lambda index, loop_index, sorted_contours: index > loop_index
+                        and sorted_contours[loop_index].frame
+                        == sorted_contours[index].frame,
+                        loop_index=i,
+                        sorted_contours=sorted_contours,
+                    ),
+                    candidate_idx_list,
+                )
+            )
 
             # for those candidates we will compute the intersections in details
             for j in candidate_idx_list:
                 p_j = polygons[j]
 
                 # compute iou
-                if mode == 'i':
+                if mode == "i":
                     iou = p_i.intersection(p_j).area / p_i.area  # (p_i.union(p_j).area)
-                elif mode == 'iou':
+                elif mode == "iou":
                     iou = p_i.intersection(p_j).area / (p_i.union(p_j).area)
                 # compare to threshold
                 if iou >= iou_thr:
@@ -75,12 +97,15 @@ class NMSFilter:
 
             keep_list.append(keep)
 
-        overlay = Overlay([cont for i, cont in enumerate(sorted_contours) if keep_list[i]])
+        overlay = Overlay(
+            [cont for i, cont in enumerate(sorted_contours) if keep_list[i]]
+        )
 
         return overlay
 
 
 class SizeFilter:
+    """Filter by contour area"""
 
     @staticmethod
     def filter(overlay: Overlay, min_area, max_area) -> Overlay:
@@ -99,15 +124,19 @@ class SizeFilter:
         for cont, shape in zip(overlay.contours, contour_shapes):
             area = shape.area
 
-            if area > min_area and area < max_area:
+            if min_area < area < max_area:
                 result_overlay.add_contour(cont)
 
         return result_overlay
 
 
 class EllipsoidFilter:
+    """Contour filter for ellipsoid shape"""
+
     @staticmethod
-    def filter(overlay: Overlay, min_width_height_ratio, max_width_height_ratio) -> Overlay:
+    def filter(
+        overlay: Overlay, min_width_height_ratio, max_width_height_ratio
+    ) -> Overlay:
         result_overlay = Overlay([])
         for cont in overlay.contours:
             if len(cont.coordinates) < 5:
@@ -138,7 +167,7 @@ class EllipsoidFilter:
             rect_area_error = np.abs(shape.area - min_rect.area) / shape.area
             ellipse_area_error = np.abs(ellr.area - shape.area) / shape.area
 
-            if min_width_height_ratio <= width_height_ratio and width_height_ratio <= max_width_height_ratio:
+            if min_width_height_ratio <= width_height_ratio <= max_width_height_ratio:
                 if ellipse_area_error < rect_area_error:
                     # if an ellipse can better explain the cell detection than a rectangle
                     result_overlay.add_contour(cont)
