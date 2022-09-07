@@ -18,7 +18,7 @@ def getImage(conn: BlitzGateway, imageId: int) -> ImageWrapper:
     Returns:
         ImageWrapper: image object
     """
-    return conn.getObject('Image', imageId)
+    return conn.getObject("Image", imageId)
 
 
 def getDataset(conn: BlitzGateway, datasetId: int) -> DatasetWrapper:
@@ -32,7 +32,7 @@ def getDataset(conn: BlitzGateway, datasetId: int) -> DatasetWrapper:
     Returns:
         DatasetWrapper: dataset object
     """
-    return conn.getObject('Dataset', datasetId)
+    return conn.getObject("Dataset", datasetId)
 
 
 def getProject(conn: BlitzGateway, projectId: int) -> ProjectWrapper:
@@ -46,7 +46,7 @@ def getProject(conn: BlitzGateway, projectId: int) -> ProjectWrapper:
     Returns:
         ProjectWrapper: project object
     """
-    return conn.getObject('Project', projectId)
+    return conn.getObject("Project", projectId)
 
 
 def list_projects(conn: BlitzGateway) -> List[ProjectWrapper]:
@@ -59,7 +59,7 @@ def list_projects(conn: BlitzGateway) -> List[ProjectWrapper]:
     Returns:
         List[ProjectWrapper]: List of project wrappers
     """
-    return conn.getObjects('Project')
+    return conn.getObjects("Project")
 
 
 def list_image_ids_in_dataset(conn: BlitzGateway, datasetId: int) -> List[int]:
@@ -72,7 +72,9 @@ def list_image_ids_in_dataset(conn: BlitzGateway, datasetId: int) -> List[int]:
     Returns:
         List[int]: array of all image ids of the dataset
     """
-    return [image.getId() for image in conn.getObjects('Image', opts={'dataset': datasetId})]
+    return [
+        image.getId() for image in conn.getObjects("Image", opts={"dataset": datasetId})
+    ]
 
 
 def list_images_in_dataset(conn: BlitzGateway, datasetId: int) -> List[ImageWrapper]:
@@ -85,15 +87,21 @@ def list_images_in_dataset(conn: BlitzGateway, datasetId: int) -> List[ImageWrap
     Returns:
         List[ImageWrapper]: List of omero images
     """
-    return [image for image in conn.getObjects('Image', opts={'dataset': datasetId})]
+    return [image for image in conn.getObjects("Image", opts={"dataset": datasetId})]
 
 
-def list_datasets_in_project(conn: BlitzGateway, projectId: int) -> List[DatasetWrapper]:
-    return conn.getObjects('Dataset', opts={'project': projectId})
+def list_datasets_in_project(
+    conn: BlitzGateway, projectId: int
+) -> List[DatasetWrapper]:
+    return conn.getObjects("Dataset", opts={"project": projectId})
 
 
 def list_images_in_project(conn: BlitzGateway, projectId: int) -> List[ImageWrapper]:
-    return [image for dataset in list_datasets_in_project(conn, projectId=projectId) for image in dataset.listChildren()]
+    return [
+        image
+        for dataset in list_datasets_in_project(conn, projectId=projectId)
+        for image in dataset.listChildren()
+    ]
 
 
 def list_image_ids_in(omero_id: int, omero_type: str, conn: BlitzGateway) -> List[int]:
@@ -121,26 +129,28 @@ def list_image_ids_in(omero_id: int, omero_type: str, conn: BlitzGateway) -> Lis
     elif omero_type == "image":
         return [omero_id]
     else:
-        raise Exception(f"Wrong omero_type: '{omero_type}'! Please choose one of 'project', 'dataset' or 'image'!")
+        raise Exception(
+            f"Wrong omero_type: '{omero_type}'! Please choose one of 'project', 'dataset' or 'image'!"
+        )
 
     return list(map(lambda image: image.getId(), func(conn, omero_id)))
 
 
 def get_image_name(conn: BlitzGateway, imageId: int) -> str:
-    return conn.getObject('Image', imageId).getName()
+    return conn.getObject("Image", imageId).getName()
 
 
 def get_project_name(conn: BlitzGateway, projectId: int) -> str:
-    return conn.getObject('Project', projectId).getName()
+    return conn.getObject("Project", projectId).getName()
 
 
 def image_iterator(conn: BlitzGateway, object) -> ImageWrapper:
-    if object.OMERO_CLASS == 'Image':
+    if object.OMERO_CLASS == "Image":
         yield object
-    if object.OMERO_CLASS == 'Dataset':
+    if object.OMERO_CLASS == "Dataset":
         for image in list_images_in_dataset(conn, object.getId()):
             yield image
-    if object.OMERO_CLASS == 'Project':
+    if object.OMERO_CLASS == "Project":
         for image in list_images_in_project(conn, object.getId()):
             yield image
 
@@ -152,7 +162,9 @@ def create_project(conn: BlitzGateway, project_name: str) -> ProjectWrapper:
     return new_project
 
 
-def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str) -> DatasetWrapper:
+def create_dataset(
+    conn: BlitzGateway, projectId: int, dataset_name: str
+) -> DatasetWrapper:
     # Use omero.gateway.DatasetWrapper:
     new_dataset = DatasetWrapper(conn, omero.model.DatasetI())
     new_dataset.setName(dataset_name)
@@ -173,8 +185,15 @@ def create_dataset(conn: BlitzGateway, projectId: int, dataset_name: str) -> Dat
 
 
 class ScaleBar:
-
-    def __init__(self, oss: OmeroSequenceSource, width, unit="MICROMETER", short_title=u"μm", color=(255, 255, 255), font_size=25):
+    def __init__(
+        self,
+        oss: OmeroSequenceSource,
+        width,
+        unit="MICROMETER",
+        short_title="μm",
+        color=(255, 255, 255),
+        font_size=25,
+    ):
         self.width = width
         self.unit = unit
         self.color = color
@@ -191,23 +210,39 @@ class ScaleBar:
         self.pixelHeight = 10
 
         # TODO: no fixed font file
-        self.font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", self.font_size)
+        self.font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf", self.font_size
+        )
 
     def draw(self, image, xstart, ystart):
         # TODO: thickness parameter
         # draw line
-        cv2.line(image, (xstart, ystart), (xstart + self.pixelWidth, ystart), self.color, 1)
+        cv2.line(
+            image, (xstart, ystart), (xstart + self.pixelWidth, ystart), self.color, 1
+        )
         half_y = int(np.round(self.pixelHeight / 2))
-        cv2.line(image, (xstart, ystart - half_y), (xstart, ystart + half_y), self.color)
-        cv2.line(image, (xstart + self.pixelWidth, ystart - half_y), (xstart + self.pixelWidth, ystart + half_y), self.color)
+        cv2.line(
+            image, (xstart, ystart - half_y), (xstart, ystart + half_y), self.color
+        )
+        cv2.line(
+            image,
+            (xstart + self.pixelWidth, ystart - half_y),
+            (xstart + self.pixelWidth, ystart + half_y),
+            self.color,
+        )
 
         # draw size
         unit_text = self.short_title
-        text = f'{self.width} {unit_text}'
+        text = f"{self.width} {unit_text}"
         img_pil = Image.fromarray(image)
         draw = ImageDraw.Draw(img_pil)
         text_x, text_y = draw.textsize(text, font=self.font)
-        draw.text((xstart + self.pixelWidth / 2 - text_x / 2, ystart - text_y - 2), text, fill=self.color, font=self.font)
+        draw.text(
+            (xstart + self.pixelWidth / 2 - text_x / 2, ystart - text_y - 2),
+            text,
+            fill=self.color,
+            font=self.font,
+        )
         image = np.array(img_pil)
 
         return image

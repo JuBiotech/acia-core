@@ -1,5 +1,3 @@
-
-
 import logging
 from typing import List
 import tqdm.auto as tqdm
@@ -11,15 +9,16 @@ from urllib.parse import urlparse
 
 
 class OnlineModel(Processor):
-    '''
-        The model is not running locally on the computer but in a remote location
-    '''
+    """
+    The model is not running locally on the computer but in a remote location
+    """
+
     def __init__(self, url: str, username=None, password=None, timeout=30):
-        '''
-            url: remote model executer (can also contain a port definition)
-            username: username
-            password: password
-        '''
+        """
+        url: remote model executer (can also contain a port definition)
+        username: username
+        password: password
+        """
         self.url = url
         self.username = username
         self.password = password
@@ -31,12 +30,14 @@ class OnlineModel(Processor):
         if not self.port:
             # autodetermine port from protocol
             scheme = urlparse(url).scheme
-            if scheme == 'http':
+            if scheme == "http":
                 self.port = 80
-            elif scheme == 'https':
+            elif scheme == "https":
                 self.port = 443
             else:
-                logging.warn('Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?')
+                logging.warn(
+                    'Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?'
+                )
 
     def predict(self, source: ImageSequenceSource, params={}):
         import requests
@@ -50,20 +51,25 @@ class OnlineModel(Processor):
 
             # convert image into a binary png stream
             byte_io = BytesIO()
-            Image.fromarray(image).save(byte_io, 'png')
+            Image.fromarray(image).save(byte_io, "png")
             byte_io.seek(0)
 
             # pack this into form data
             multipart_form_data = {
-                'data': ('data.png', byte_io, 'image/png'),
+                "data": ("data.png", byte_io, "image/png"),
             }
 
             # send a request to the server
-            response = requests.post(self.url, files=multipart_form_data, params=params, timeout=self.timeout)
+            response = requests.post(
+                self.url, files=multipart_form_data, params=params, timeout=self.timeout
+            )
 
             # raise an error if the response is not as expected
             if response.status_code != 200:
-                raise ValueError('HTTP request for prediction not successful. Status code: %d' % response.status_code)
+                raise ValueError(
+                    "HTTP request for prediction not successful. Status code: %d"
+                    % response.status_code
+                )
 
             body = response.json()
 
@@ -71,9 +77,9 @@ class OnlineModel(Processor):
 
             for detection in content:
                 # label = detection['label']
-                contour_lists = detection['contours'][0]
-                contour = list(zip(contour_lists['x'], contour_lists['y']))
-                score = detection['score']
+                contour_lists = detection["contours"][0]
+                contour = list(zip(contour_lists["x"], contour_lists["y"]))
+                score = detection["score"]
 
                 contours.append(Contour(contour, score, frame, -1))
 
@@ -87,13 +93,14 @@ class OnlineModel(Processor):
 class ModelDescriptor:
     def __init__(self, repo: str, entry_point: str, version: str, parameters={}):
         self.repo = repo
-        self.entry_point = entry_point,
+        self.entry_point = (entry_point,)
         self.version = version
         self.parameters = parameters
 
 
 def batch(iterable, size):
     from itertools import islice, chain
+
     sourceiter = iter(iterable)
     while True:
         batchiter = islice(sourceiter, size)
@@ -107,10 +114,13 @@ def batch(iterable, size):
 
 
 class FlexibleOnlineModel(Processor):
-    '''
-        The model is not running locally on the computer but in a remote location
-    '''
-    def __init__(self, executorUrl: str, modelDesc: ModelDescriptor, timeout=600, batch_size=1):
+    """
+    The model is not running locally on the computer but in a remote location
+    """
+
+    def __init__(
+        self, executorUrl: str, modelDesc: ModelDescriptor, timeout=600, batch_size=1
+    ):
         self.url = executorUrl
         self.timeout = timeout
         self.modelDesc = modelDesc
@@ -122,12 +132,14 @@ class FlexibleOnlineModel(Processor):
         if not self.port:
             # autodetermine port from protocol
             scheme = urlparse(self.url).scheme
-            if scheme == 'http':
+            if scheme == "http":
                 self.port = 80
-            elif scheme == 'https':
+            elif scheme == "https":
                 self.port = 443
             else:
-                logging.warn('Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?')
+                logging.warn(
+                    'Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?'
+                )
 
     def predict(self, source: ImageSequenceSource, params={}):
         contours = []
@@ -139,7 +151,7 @@ class FlexibleOnlineModel(Processor):
             repo=self.modelDesc.repo,
             entry_point=self.modelDesc.entry_point,
             version=self.modelDesc.version,
-            parameters=json.dumps(additional_parameters)
+            parameters=json.dumps(additional_parameters),
         )
 
         if self.batch_size <= 1:
@@ -172,32 +184,37 @@ class FlexibleOnlineModel(Processor):
 
         # convert image into a binary png stream
         byte_io = BytesIO()
-        Image.fromarray(image).save(byte_io, 'png')
+        Image.fromarray(image).save(byte_io, "png")
         byte_io.seek(0)
 
         # pack this into form data
         multipart_form_data = {
-            'file': ('data.png', byte_io, 'image/png'),
+            "file": ("data.png", byte_io, "image/png"),
         }
 
         # send a request to the server
-        response = requests.post(self.url, files=multipart_form_data, params=params, timeout=self.timeout)
+        response = requests.post(
+            self.url, files=multipart_form_data, params=params, timeout=self.timeout
+        )
 
         # raise an error if the response is not as expected
         if response.status_code != 200:
-            raise ValueError('HTTP request for prediction not successful. Status code: %d' % response.status_code)
+            raise ValueError(
+                "HTTP request for prediction not successful. Status code: %d"
+                % response.status_code
+            )
 
         body = response.json()
 
-        if body['format_version'] != '0.2':
-            logging.warn('Using segmentation approach with unsupported version number!')
+        if body["format_version"] != "0.2":
+            logging.warn("Using segmentation approach with unsupported version number!")
 
-        content = body['segmentation_data'][0]
+        content = body["segmentation_data"][0]
 
         for detection in content:
             # label = detection['label']
-            contour = np.array(detection['contour_coordinates'], dtype=np.float32)
-            score = -1.
+            contour = np.array(detection["contour_coordinates"], dtype=np.float32)
+            score = -1.0
 
             contours.append(Contour(contour, score, frame_id, -1))
 
@@ -228,33 +245,39 @@ class FlexibleOnlineModel(Processor):
         for image in images:
             # convert image into a binary png stream
             byte_io = BytesIO()
-            Image.fromarray(image).save(byte_io, 'png')
+            Image.fromarray(image).save(byte_io, "png")
             byte_io.seek(0)
 
             binary_images.append(byte_io)
 
         multipart_form_data = [
-            ('files', ('data.png', bin_image, 'image/png')) for bin_image in binary_images
+            ("files", ("data.png", bin_image, "image/png"))
+            for bin_image in binary_images
         ]
 
         # send a request to the server
-        response = requests.post(self.url, files=multipart_form_data, params=params, timeout=self.timeout)
+        response = requests.post(
+            self.url, files=multipart_form_data, params=params, timeout=self.timeout
+        )
 
         # raise an error if the response is not as expected
         if response.status_code != 200:
-            raise ValueError('HTTP request for prediction not successful. Status code: %d' % response.status_code)
+            raise ValueError(
+                "HTTP request for prediction not successful. Status code: %d"
+                % response.status_code
+            )
 
         body = response.json()
 
-        if body['format_version'] != '0.2':
-            logging.warn('Using segmentation approach with unsupported version number!')
+        if body["format_version"] != "0.2":
+            logging.warn("Using segmentation approach with unsupported version number!")
 
         for i, frame_id in enumerate(frame_ids):
-            content = body['segmentation_data'][i]
+            content = body["segmentation_data"][i]
             for detection in content:
                 # label = detection['label']
-                contour = np.array(detection['contour_coordinates'], dtype=np.float32)
-                score = -1.
+                contour = np.array(detection["contour_coordinates"], dtype=np.float32)
+                score = -1.0
 
                 contours.append(Contour(contour, score, frame_id, -1))
 

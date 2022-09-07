@@ -32,7 +32,11 @@ def drawJointMask(image_id: int, height: int, width: int, overlay: Overlay):
             contour = np.array(contour.coordinates)
 
             # we need the contour mask as some contour points might lie outside of the image bondaries (they're simply neglected)
-            contour_mask = np.all(contour > 0, axis=1) & (contour[:, 0] < width) & (contour[:, 1] < height)
+            contour_mask = (
+                np.all(contour > 0, axis=1)
+                & (contour[:, 0] < width)
+                & (contour[:, 1] < height)
+            )
 
             # update the contour to only consist of points inside the image frame
             contour = contour[contour_mask]
@@ -53,12 +57,17 @@ def drawJointMask(image_id: int, height: int, width: int, overlay: Overlay):
         joint_mask |= mask
 
         # add the roi as coco annotation
-        category_info = {'id': 1, 'is_crowd': False}
+        category_info = {"id": 1, "is_crowd": False}
         binary_mask = mask
-        seg_index = int('%d%04d' % (image_id, local_seg_index))
+        seg_index = int("%d%04d" % (image_id, local_seg_index))
         annotation_info = pycococreatortools.create_annotation_info(
-            seg_index, image_id, category_info, binary_mask,
-            (width, height), tolerance=0.0)
+            seg_index,
+            image_id,
+            category_info,
+            binary_mask,
+            (width, height),
+            tolerance=0.0,
+        )
 
         if annotation_info is not None:
             annotations.append(annotation_info)
@@ -84,14 +93,13 @@ class DatasetExporter:
 
 
 class CocoDataset(DatasetExporter):
-
     def __init__(self, labels=None):
         self.labels = labels
         super().__init__()
 
     def write(self, base_folder: str, mode="train"):
         """
-            mode: 'train' | 'val'
+        mode: 'train' | 'val'
         """
 
         INFO = {
@@ -107,21 +115,17 @@ class CocoDataset(DatasetExporter):
             {
                 "id": 1,
                 "name": "Attribution-NonCommercial-ShareAlike License",
-                "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/"
+                "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
             }
         ]
 
         CATEGORIES = [
             {
-                'id': 1,
-                'name': 'cell',
-                'supercategory': 'cell',
+                "id": 1,
+                "name": "cell",
+                "supercategory": "cell",
             },
-            {
-                'id': 0,
-                'name': 'background',
-                'supercategory': 'background'
-            }
+            {"id": 0, "name": "background", "supercategory": "background"},
         ]
 
         coco_output = {
@@ -129,24 +133,30 @@ class CocoDataset(DatasetExporter):
             "licenses": LICENSES,
             "categories": CATEGORIES,
             "images": [],
-            "annotations": []
+            "annotations": [],
         }
 
-        if mode == 'train':
-            image_dir = os.path.join(base_folder, 'train2017')
-            stuffthings_dir = os.path.join(base_folder, 'stuffthingmaps/train2017')
-            annotation_file = os.path.join(base_folder, 'annotations/instances_train2017.json')
+        if mode == "train":
+            image_dir = os.path.join(base_folder, "train2017")
+            stuffthings_dir = os.path.join(base_folder, "stuffthingmaps/train2017")
+            annotation_file = os.path.join(
+                base_folder, "annotations/instances_train2017.json"
+            )
         else:
-            image_dir = os.path.join(base_folder, 'val2017')
-            stuffthings_dir = os.path.join(base_folder, 'stuffthingmaps/val2017')
-            annotation_file = os.path.join(base_folder, 'annotations/instances_val2017.json')
+            image_dir = os.path.join(base_folder, "val2017")
+            stuffthings_dir = os.path.join(base_folder, "stuffthingmaps/val2017")
+            annotation_file = os.path.join(
+                base_folder, "annotations/instances_val2017.json"
+            )
 
         if os.path.exists(image_dir):
             # delete it to prevent misconcepted datasets
-            logging.info('Delete existing image dir to prevent misconcepted datasets.')
+            logging.info("Delete existing image dir to prevent misconcepted datasets.")
             shutil.rmtree(image_dir)
         if os.path.exists(stuffthings_dir):
-            logging.info('Delete existing stuffthingsmaps to prevent misconcepted datasets.')
+            logging.info(
+                "Delete existing stuffthingsmaps to prevent misconcepted datasets."
+            )
             shutil.rmtree(stuffthings_dir)
 
         # create paths if needed
@@ -162,40 +172,57 @@ class CocoDataset(DatasetExporter):
         for input_index, image_roi_source in enumerate(tqdm.tqdm(self.sources)):
             for image_index, (image, rois) in enumerate(tqdm.tqdm(image_roi_source)):
                 if len(rois) == 0:
-                    logging.info('No detections in a frame! -> Skip')
+                    logging.info("No detections in a frame! -> Skip")
                     continue
 
                 # filter only wanted labels
-                rois = Overlay(list(filter(lambda o: len(self.labels) == 0 or o.label in self.labels, rois)))
+                rois = Overlay(
+                    list(
+                        filter(
+                            lambda o: len(self.labels) == 0 or o.label in self.labels,
+                            rois,
+                        )
+                    )
+                )
 
                 height, width = image.shape[:2]
 
                 # store the image
-                image_id = int('%04d%04d' % (input_index, image_index))
-                image_filename = '%04d_%04d.png' % (input_index, image_index)
+                image_id = int("%04d%04d" % (input_index, image_index))
+                image_filename = "%04d_%04d.png" % (input_index, image_index)
                 image_path = os.path.join(image_dir, image_filename)
                 skimage.io.imsave(image_path, image, check_contrast=False)
 
                 # TODO: fix date issue
                 image_info = pycococreatortools.create_image_info(
-                    image_id, os.path.basename(image_filename), (width, height), date_captured=datetime.datetime(2021, 1, 1).isoformat())
+                    image_id,
+                    os.path.basename(image_filename),
+                    (width, height),
+                    date_captured=datetime.datetime(2021, 1, 1).isoformat(),
+                )
 
                 image_infos.append(image_info)
 
-                joint_mask, local_annotations = drawJointMask(image_id, height, width, rois)
+                joint_mask, local_annotations = drawJointMask(
+                    image_id, height, width, rois
+                )
                 annotations += local_annotations
                 image_path = os.path.join(stuffthings_dir, image_filename)
                 skimage.io.imsave(image_path, joint_mask, check_contrast=False)
 
-        coco_output['images'] = image_infos
-        coco_output['annotations'] = annotations
+        coco_output["images"] = image_infos
+        coco_output["annotations"] = annotations
 
-        with open(os.path.join(annotation_file), 'w') as output_json_file:
+        with open(os.path.join(annotation_file), "w") as output_json_file:
             json.dump(coco_output, output_json_file)
 
 
 class MMSegmentationDataset(DatasetExporter):
-    def __init__(self, labels=["Stem", "ThickRoot", "MediumRoot", "ThinRoot"], label_coverter=lambda x: x):
+    def __init__(
+        self,
+        labels=["Stem", "ThickRoot", "MediumRoot", "ThinRoot"],
+        label_coverter=lambda x: x,
+    ):
         super().__init__()
         self.labels = labels
         self.label_converter = label_coverter
@@ -217,7 +244,9 @@ class MMSegmentationDataset(DatasetExporter):
                 # save image file
                 image_file_path = img_path / f"{input_index:03d}_{image_index:03d}.png"
                 mask_file_path = ann_path / f"{input_index:03d}_{image_index:03d}.png"
-                cv2.imwrite(str(image_file_path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(
+                    str(image_file_path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                )
 
                 height, width = image.shape[:2]
 
@@ -226,12 +255,19 @@ class MMSegmentationDataset(DatasetExporter):
                 # save roi masks
                 for i, label in enumerate(self.labels):
                     label_value = i + 1
-                    rois_for_label = filter(lambda r: self.label_converter(r.label) == label, rois)
+                    rois_for_label = filter(
+                        lambda r: self.label_converter(r.label) == label, rois
+                    )
 
                     label_mask = np.zeros((height, width), dtype=np.uint8)
 
                     for roi in rois_for_label:
-                        roi_mask = roi.toMask(height, width, fillValue=label_value, outlineValue=label_value)
+                        roi_mask = roi.toMask(
+                            height,
+                            width,
+                            fillValue=label_value,
+                            outlineValue=label_value,
+                        )
 
                         label_mask |= roi_mask
 
@@ -242,15 +278,17 @@ class MMSegmentationDataset(DatasetExporter):
 
                     label_mask = ero_label_mask
 
-                    image_mask[label_mask > 0] = (label_mask.astype(np.uint8) * label_value)[label_mask > 0]
+                    image_mask[label_mask > 0] = (
+                        label_mask.astype(np.uint8) * label_value
+                    )[label_mask > 0]
 
                 cv2.imwrite(str(mask_file_path), image_mask)
 
 
 class VideoExporter:
-    '''
-        Wrapper for opencv video writer. Simplifies usage
-    '''
+    """
+    Wrapper for opencv video writer. Simplifies usage
+    """
 
     def __init__(self, filename, framerate, codec="MJPG"):
         self.filename = filename
@@ -268,9 +306,16 @@ class VideoExporter:
         height, width = image.shape[:2]
         if self.out is None:
             self.frame_height, self.frame_width = image.shape[:2]
-            self.out = cv2.VideoWriter(self.filename, cv2.VideoWriter_fourcc(*self.codec), self.framerate, (self.frame_width, self.frame_height))
+            self.out = cv2.VideoWriter(
+                self.filename,
+                cv2.VideoWriter_fourcc(*self.codec),
+                self.framerate,
+                (self.frame_width, self.frame_height),
+            )
         if self.frame_height != height or self.frame_width != width:
-            logging.warning('You add images of different resolution to the VideoExporter. This may cause problems (e.g. black video output)!')
+            logging.warning(
+                "You add images of different resolution to the VideoExporter. This may cause problems (e.g. black video output)!"
+            )
         self.out.write(image)
 
     def close(self):
@@ -289,7 +334,17 @@ def no_crop(frame: int, overlay: Overlay):
     return (slice(0, frame.shape[0]), slice(0, frame.shape[1]))
 
 
-def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='output.mp4', framerate=3, codec="vp09", scaleBar: ScaleBar = None, draw_frame_number=False, cropper=no_crop, filter_contours=lambda i, cont: True):
+def renderVideo(
+    imageSource: ImageSequenceSource,
+    roiSource=None,
+    filename="output.mp4",
+    framerate=3,
+    codec="vp09",
+    scaleBar: ScaleBar = None,
+    draw_frame_number=False,
+    cropper=no_crop,
+    filter_contours=lambda i, cont: True,
+):
     """Render a video of the time-lapse.
 
     Args:
@@ -308,10 +363,13 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
         def always_none():
             while True:
                 yield None
+
         roiSource = iter(always_none())
 
     with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
-        for frame, (image, overlay) in enumerate(tqdm.tqdm(zip(imageSource, roiSource))):
+        for frame, (image, overlay) in enumerate(
+            tqdm.tqdm(zip(imageSource, roiSource))
+        ):
 
             # extract the numpy image
             if isinstance(image, BaseImage):
@@ -332,15 +390,35 @@ def renderVideo(imageSource: ImageSequenceSource, roiSource=None, filename='outp
             # TODO: Draw float based contours
             # Draw overlay
             if overlay:
-                image = cv2.drawContours(image, [np.array(cont.coordinates).astype(np.int32) for i, cont in enumerate(overlay.croppedContours(crop_parameters)) if filter_contours(i, cont)], -1, (255, 255, 0))  # RGB format
+                image = cv2.drawContours(
+                    image,
+                    [
+                        np.array(cont.coordinates).astype(np.int32)
+                        for i, cont in enumerate(
+                            overlay.croppedContours(crop_parameters)
+                        )
+                        if filter_contours(i, cont)
+                    ],
+                    -1,
+                    (255, 255, 0),
+                )  # RGB format
 
             if draw_frame_number:
-                cv2.putText(image, f'Frame: {frame}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+                cv2.putText(
+                    image,
+                    f"Frame: {frame}",
+                    (10, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 255),
+                )
 
             if scaleBar:
-                image = scaleBar.draw(image, width - scaleBar.pixelWidth - 10, height - 10)
+                image = scaleBar.draw(
+                    image, width - scaleBar.pixelWidth - 10, height - 10
+                )
 
             # output images
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            cv2.imwrite('images/%02d.png' % frame, image)
+            cv2.imwrite("images/%02d.png" % frame, image)
             ve.write(image)

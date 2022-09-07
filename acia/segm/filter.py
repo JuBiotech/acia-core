@@ -16,15 +16,19 @@ def bbox_to_rectangle(bbox: Tuple[float]):
 
 
 class NMSFilter:
-
     @staticmethod
-    def filter(overlay: Overlay, iou_thr=0.1, mode='iou') -> Overlay:
-        prefiltered_contours = [cont for cont in overlay.contours if len(cont.coordinates) >= 3]
+    def filter(overlay: Overlay, iou_thr=0.1, mode="iou") -> Overlay:
+        prefiltered_contours = [
+            cont for cont in overlay.contours if len(cont.coordinates) >= 3
+        ]
 
         # sort contours by their score (lowest first)
         sorted_contours = sorted(prefiltered_contours, key=lambda c: c.score)
         # make (valid) shapely polygons
-        polygons = [make_valid(shapely.geometry.polygon.Polygon(contour.coordinates)) for contour in sorted_contours]
+        polygons = [
+            make_valid(shapely.geometry.polygon.Polygon(contour.coordinates))
+            for contour in sorted_contours
+        ]
 
         keep_list = []
 
@@ -55,16 +59,22 @@ class NMSFilter:
             bottom = miny
             candidate_idx_list = idx.intersection((left, bottom, right, top))
 
-            candidate_idx_list = list(filter(lambda index: index > i and sorted_contours[i].frame == sorted_contours[index].frame, candidate_idx_list))
+            candidate_idx_list = list(
+                filter(
+                    lambda index: index > i
+                    and sorted_contours[i].frame == sorted_contours[index].frame,
+                    candidate_idx_list,
+                )
+            )
 
             # for those candidates we will compute the intersections in details
             for j in candidate_idx_list:
                 p_j = polygons[j]
 
                 # compute iou
-                if mode == 'i':
+                if mode == "i":
                     iou = p_i.intersection(p_j).area / p_i.area  # (p_i.union(p_j).area)
-                elif mode == 'iou':
+                elif mode == "iou":
                     iou = p_i.intersection(p_j).area / (p_i.union(p_j).area)
                 # compare to threshold
                 if iou >= iou_thr:
@@ -75,13 +85,14 @@ class NMSFilter:
 
             keep_list.append(keep)
 
-        overlay = Overlay([cont for i, cont in enumerate(sorted_contours) if keep_list[i]])
+        overlay = Overlay(
+            [cont for i, cont in enumerate(sorted_contours) if keep_list[i]]
+        )
 
         return overlay
 
 
 class SizeFilter:
-
     @staticmethod
     def filter(overlay: Overlay, min_area, max_area) -> Overlay:
         """Filter an overlay based on contour sizes
@@ -107,7 +118,9 @@ class SizeFilter:
 
 class EllipsoidFilter:
     @staticmethod
-    def filter(overlay: Overlay, min_width_height_ratio, max_width_height_ratio) -> Overlay:
+    def filter(
+        overlay: Overlay, min_width_height_ratio, max_width_height_ratio
+    ) -> Overlay:
         result_overlay = Overlay([])
         for cont in overlay.contours:
             if len(cont.coordinates) < 5:
@@ -138,7 +151,10 @@ class EllipsoidFilter:
             rect_area_error = np.abs(shape.area - min_rect.area) / shape.area
             ellipse_area_error = np.abs(ellr.area - shape.area) / shape.area
 
-            if min_width_height_ratio <= width_height_ratio and width_height_ratio <= max_width_height_ratio:
+            if (
+                min_width_height_ratio <= width_height_ratio
+                and width_height_ratio <= max_width_height_ratio
+            ):
                 if ellipse_area_error < rect_area_error:
                     # if an ellipse can better explain the cell detection than a rectangle
                     result_overlay.add_contour(cont)

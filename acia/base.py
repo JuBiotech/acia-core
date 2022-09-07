@@ -33,11 +33,11 @@ class Contour:
 
     def _toMask(self, img, maskValue=1, outlineValue=1, draw=None):
         """
-            Render contour mask onto existing image
+        Render contour mask onto existing image
 
-            img: pillow image
-            fillValue: mask values inside the contour
-            outlineValues: mask values on the outline (border)
+        img: pillow image
+        fillValue: mask values inside the contour
+        outlineValues: mask values on the outline (border)
         """
         if draw is None:
             draw = ImageDraw.Draw(img)
@@ -48,12 +48,12 @@ class Contour:
 
     def toMask(self, height, width, fillValue=1, outlineValue=1):
         """
-            Render contour mask onto new image
+        Render contour mask onto new image
 
-            height: height of the image
-            width: width of the image
-            fillValue: mask values inside the contour
-            outlineValues: mask values on the outline (border)
+        height: height of the image
+        width: width of the image
+        fillValue: mask values inside the contour
+        outlineValues: mask values on the outline (border)
         """
         img = Image.new("L", (width, height), 0)
         return self._toMask(img, maskValue=fillValue, outlineValue=outlineValue)
@@ -134,14 +134,18 @@ class Overlay:
         y, x = cropping_parameters
         miny, maxy, minx, maxx = y.start, y.stop, x.start, x.stop
 
-        crop_rectangle = Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
+        crop_rectangle = Polygon(
+            [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)]
+        )
 
         def __crop_function_filter(contour: Contour):
             try:
                 return crop_rectangle.contains(Polygon(contour.coordinates))
             except:
                 # if we have problems to convert to shapely polygon, we cannot include it
-                logging.warn('Have to drop Polygon: It cannot be converted into a shapely Polygon.')
+                logging.warn(
+                    "Have to drop Polygon: It cannot be converted into a shapely Polygon."
+                )
                 return False
 
         for cont in filter(lambda cont: __crop_function_filter(cont), self.contours):
@@ -151,12 +155,12 @@ class Overlay:
             yield new_cont
 
     def timeIterator(self, startFrame=None, endFrame=None, frame_range=None):
-        '''
-            Creates an iterator that returns an Overlay for every frame between starFrame and endFrame
+        """
+        Creates an iterator that returns an Overlay for every frame between starFrame and endFrame
 
-            startFrame: first frame number
-            endFrame: last frame number
-        '''
+        startFrame: first frame number
+        endFrame: last frame number
+        """
         if len(self.frames()) == 0:
             yield Overlay([])
 
@@ -175,20 +179,22 @@ class Overlay:
             if frame_range and frame not in frame_range:
                 continue
             # filter sub overlay with all contours in the frame
-            yield Overlay(list(filter(lambda contour: contour.frame == frame, self.contours)))
+            yield Overlay(
+                list(filter(lambda contour: contour.frame == frame, self.contours))
+            )
 
     def toMasks(self, height, width) -> List[np.array]:
         """
-            Turn the individual overlays into masks. For every time point we create a mask of all contours.
+        Turn the individual overlays into masks. For every time point we create a mask of all contours.
 
-            returns: List of masks (np.array[bool])
+        returns: List of masks (np.array[bool])
 
-            height: height of the image
-            width: width of the image
+        height: height of the image
+        width: width of the image
         """
         masks = []
         for timeOverlay in self.timeIterator():
-            img = Image.new('L', (width, height), 0)
+            img = Image.new("L", (width, height), 0)
             for cont in timeOverlay:
                 cont._toMask(img, maskValue=1, outlineValue=1)
             mask = np.array(img, np.bool)
@@ -196,7 +202,12 @@ class Overlay:
 
         return masks
 
-    def draw(self, image, outlineColor: str | Callable[[Contour], Tuple[int]] = None, fillColor: str | Callable[[Contour], Tuple[int]] = None):
+    def draw(
+        self,
+        image,
+        outlineColor: str | Callable[[Contour], Tuple[int]] = None,
+        fillColor: str | Callable[[Contour], Tuple[int]] = None,
+    ):
         imdraw = ImageDraw.Draw(image)
         for timeOverlay in self.timeIterator():
             for cont in timeOverlay:
@@ -243,9 +254,10 @@ class RoISource(object):
 
 
 class ImageRoISource(object):
-    '''
-        Contains both, the image and the RoI Source. Provides a joint iterator
-    '''
+    """
+    Contains both, the image and the RoI Source. Provides a joint iterator
+    """
+
     def __init__(self, imageSource: ImageSequenceSource, roiSource: RoISource):
         self.imageSource = imageSource
         self.roiSource = roiSource
@@ -259,6 +271,7 @@ class ImageRoISource(object):
     def apply_parallel(self, function, num_workers=None):
         import multiprocessing
         from tqdm.contrib.concurrent import process_map
+
         if num_workers is None:
             num_workers = int(np.floor(multiprocessing.cpu_count() * 2 / 3))
 
@@ -271,10 +284,16 @@ class ImageRoISource(object):
     def apply_parallel_star(self, function, num_workers=None):
         import multiprocessing
         from tqdm.contrib.concurrent import process_map
+
         if num_workers is None:
             num_workers = int(np.floor(multiprocessing.cpu_count() * 2 / 3))
 
-        return process_map(partial(unpack, function=function), self, max_workers=num_workers, chunksize=4)
+        return process_map(
+            partial(unpack, function=function),
+            self,
+            max_workers=num_workers,
+            chunksize=4,
+        )
 
     def apply(self, function):
         def limit():
