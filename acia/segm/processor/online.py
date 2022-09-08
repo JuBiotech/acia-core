@@ -109,12 +109,29 @@ class ModelDescriptor:
 
 
 def batch(iterable, size):
+    """Make iterable over packages of a certain size
+
+    Args:
+        iterable (_type_): source iterable
+        size (_type_): size of the batches
+
+    Yields:
+        _type_: iterable over individual batches
+    """
+
     sourceiter = iter(iterable)
     while True:
         batchiter = islice(sourceiter, size)
         try:
             logging.debug("Next batch...")
-            yield chain([next(batchiter)], batchiter)
+            # get first element to known when iterator is at end (will throw StopIteration)
+            first_element = next(batchiter)
+            if size == 1:
+                # single sized batches shall also be lists
+                yield [first_element]
+            else:
+                # chain longer batches
+                yield chain([first_element], batchiter)
         except StopIteration:
             # we have reached the end of the iterator
             # --> leave loop
@@ -165,20 +182,14 @@ class FlexibleOnlineModel(Processor):
             parameters=json.dumps(additional_parameters),
         )
 
-        if self.batch_size <= 1:
-            # iterate over images from image source
-            for frame, image in enumerate(tqdm.tqdm(source)):
-                # predict contours and collect them in a large array
-                contours += self.predict_single(frame, image, params)
-        else:
-            # Do batch prediction
-            for local_batch in batch(enumerate(tqdm.tqdm(source)), self.batch_size):
-                local_batch = np.array(local_batch, dtype=object)
+        # Do batch prediction
+        for local_batch in batch(enumerate(tqdm.tqdm(source)), self.batch_size):
+            local_batch = np.array(list(local_batch), dtype=object)
 
-                frames = local_batch[:, 0]
-                images = map(lambda img: img.raw, local_batch[:, 1])
+            frames = local_batch[:, 0]
+            images = map(lambda img: img.raw, local_batch[:, 1])
 
-                contours += self.predict_batch(frames, images, params)
+            contours += self.predict_batch(frames, images, params)
 
         for i, cont in enumerate(contours):
             cont.id = i
