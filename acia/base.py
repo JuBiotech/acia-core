@@ -22,14 +22,14 @@ def unpack(data, function):
 class Contour:
     """Class for object contour detection (e.g. Cell object)"""
 
-    def __init__(self, coordinates, score: float, frame: int, id: int, label=None):
+    def __init__(self, coordinates, score: float, frame: int, id, label=None):
         """Create Contour
 
         Args:
             coordinates ([type]): [description]
             score (float): segmentation score
             frame (int): frame index
-            id (int): unique id
+            id (any): unique id
             label: class-defining label of the contour
         """
         self.coordinates = np.array(coordinates, dtype=np.float32)
