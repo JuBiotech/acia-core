@@ -628,7 +628,41 @@ def upload_file(
     return file_ann
 
 
-def download_file(ann, output_path: Path, append_filename=False):
+def download_file_from_object(
+    omero_type: str,
+    omero_id: int,
+    file_name: str,
+    output_path: Path,
+    conn,
+    append_filename=False,
+):
+    """Download a file annotation with a given name from an OMERO object
+
+    Args:
+        omero_type (str): Image, Dataset or Project
+        omero_id (int): unique id of the OMERO object
+        file_name (str): the name of the file attachment to download
+        output_path (Path): output path to save the file
+        conn (_type_): OMERO connection
+        append_filename (bool, optional): If true the filename is appended to the output path. Defaults to False.
+
+    Raises:
+        ValueError: _description_
+    """
+    if not isinstance(output_path, Path):
+        output_path = Path(output_path)
+
+    anns = list_file_annotations(omero_type=omero_type, omero_id=omero_id, conn=conn)
+
+    anns = list(filter(lambda ann: ann.getFile().getName() == file_name, anns))
+
+    if len(anns) != 1:
+        raise ValueError(f"Annotation count is not 1 but: {len(anns)}")
+
+    download_file_from_annotation(anns[0], output_path, append_filename)
+
+
+def download_file_from_annotation(ann, output_path: Path, append_filename=False):
     """Download OMERO file attachment
 
     Args:
