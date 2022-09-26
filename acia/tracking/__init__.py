@@ -1,14 +1,14 @@
 """Tracking module contains all tools to work with tracking formats
 """
 
-from itertools import islice
 from pathlib import Path
 
 import networkx as nx
 import numpy as np
 
 from acia.base import Overlay
-from acia.segm.formats import parse_simple_tracking
+
+from .formats import parse_simple_tracking
 
 
 class TrackingSource:
