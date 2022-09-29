@@ -109,7 +109,7 @@ pages:
   stage: deploy
   extends: .deploy_common
   script:
-    - pip install sphinx sphinx-rtd-theme
+    - pip install sphinx sphinx-rtd-theme pint
     - cd docs ; make html
     - mv _build/html/ ../public/
   artifacts:
