@@ -37,8 +37,9 @@ def prepare_image(image, normalize_image=True):
 class LocalImage(BaseImage):
     """Class for a single image"""
 
-    def __init__(self, content):
+    def __init__(self, content, frame=None):
         self.content = content
+        self.frame = frame
 
     @property
     def raw(self):

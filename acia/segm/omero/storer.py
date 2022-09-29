@@ -489,7 +489,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         rendered_image = image.renderImage(z, t, compression=self.imageQuality)
 
         # return local image
-        return LocalImage(np.asarray(rendered_image, dtype=np.uint8))
+        return LocalImage(np.asarray(rendered_image, dtype=np.uint8), frame=frame)
 
     def __iter__(self):
         for frame in range(self.num_frames):
