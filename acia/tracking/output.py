@@ -10,7 +10,7 @@ import networkx as nx
 import numpy as np
 import tifffile
 
-from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
+from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay
 from acia.tracking import TrackingSource
 
 
@@ -88,7 +88,7 @@ class CellTrackingDatasetResult:
     def __init__(self):
         self.sources = []
 
-    def add(self, content: tuple[RoISource, TrackingSource]):
+    def add(self, content: tuple[TrackingSource, tuple[int, int]]):
         self.sources.append(content)
 
     def write(self, base_folder: str | Path = "data"):
@@ -97,7 +97,7 @@ class CellTrackingDatasetResult:
 
         base_folder.mkdir(exist_ok=True, parents=True)
 
-        for i, (overlay, tracking_source, (height, width)) in enumerate(self.sources):
+        for i, (tracking_source, (height, width)) in enumerate(self.sources):
 
             mode = "RES"
 
@@ -109,7 +109,7 @@ class CellTrackingDatasetResult:
             ann_dir.mkdir()
 
             tracking_helper = CTCTrackingHelper(
-                overlay, tracking_source.tracking_graph, height, width
+                tracking_source.overlay, tracking_source.tracking_graph, height, width
             )
             ctc_masks, ctc_tracking_format = tracking_helper.to_ctc_format()
 
