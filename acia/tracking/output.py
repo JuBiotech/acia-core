@@ -53,7 +53,7 @@ class CellTrackingChallengeDatasetGT:
                 if isinstance(image, BaseImage):
                     image = image.raw
                 height, width = image.shape[:2]
-                tifffile.imwrite(str(image_dir / f"t{t:04}.tif"), image)
+                tifffile.imwrite(str(image_dir / f"t{t:04}.tif"), image[..., 0])
 
             tracking_helper = CTCTrackingHelper(
                 tracking_source.overlay, tracking_source.tracking_graph, height, width
