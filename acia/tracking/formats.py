@@ -38,6 +38,8 @@ def parse_simple_tracking(file_content: str) -> Tuple[Overlay, nx.DiGraph]:
     # deal with the tracking
     tracking = nx.DiGraph()
 
+    tracking.add_nodes_from(map(lambda ov: ov.id, segmentation_overlay))
+
     # create graph from id links
     for link in tracking_data:
         tracking.add_edge(link["sourceId"], link["targetId"])
