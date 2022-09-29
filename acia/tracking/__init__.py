@@ -8,7 +8,7 @@ import numpy as np
 
 from acia.base import Overlay
 
-from .formats import parse_simple_tracking
+from .formats import gen_simple_tracking, parse_simple_tracking
 
 
 class TrackingSource:
@@ -30,6 +30,7 @@ class TrackingSourceInMemory(TrackingSource):
     """Tracking Source stored in memory"""
 
     def __init__(self, overlay: Overlay, tracking_graph: nx.DiGraph):
+        super().__init__()
         self.__overlay = overlay
         self.__tracking_graph = tracking_graph
 
@@ -61,13 +62,29 @@ class SimpleTrackingSource(TrackingSourceInMemory):
     """Tracking Source based on simple tracking json format"""
 
     def __init__(self, file_content: str):
-        overlay, tracking_graph = parse_simple_tracking(file_content)
-        TrackingSourceInMemory.__init__(self, overlay, tracking_graph)
+        super().__init__(*parse_simple_tracking(file_content))
 
     @staticmethod
     def from_file(file_path: Path) -> "SimpleTrackingSource":
+        """Loads segmentation and tracking from simple tracking json format
+
+        Args:
+            file_path (Path): path to the simple tracking file
+
+        Returns:
+            SimpleTrackingSource: the loaded simple tracking file
+        """
         with open(file_path, encoding="utf-8") as input_file:
             return SimpleTrackingSource(input_file.read())
+
+    def store(self, file_path: Path):
+        """Saves simple tracking json format
+
+        Args:
+            file_path (Path): file name to save
+        """
+        with open(file_path, "w", encoding="utf-8") as output_file:
+            output_file.write(gen_simple_tracking(self.overlay, self.tracking_graph))
 
 
 def subsample_tracking(
