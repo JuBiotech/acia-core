@@ -25,7 +25,12 @@ class CellTrackingChallengeDatasetGT:
     def add(self, content: tuple[ImageSequenceSource, TrackingSource]):
         self.sources.append(content)
 
-    def write(self, base_folder: str | Path = "data"):
+    def write(self, base_folder: str | Path = "data", offset=0):
+        """Exports a ctc ground truth dataset
+
+        Args:
+            base_folder (str | Path, optional): _description_. Defaults to "data".
+        """
 
         base_folder = Path(base_folder)
 
@@ -35,8 +40,8 @@ class CellTrackingChallengeDatasetGT:
 
             mode = "GT"
 
-            image_dir = base_folder / f"{i:02}"
-            ann_dir = base_folder / f"{i:02}_{mode}"
+            image_dir = base_folder / f"{i + offset:02}"
+            ann_dir = base_folder / f"{i + offset:02}_{mode}"
 
             if image_dir.exists():
                 shutil.rmtree(image_dir)
@@ -91,7 +96,7 @@ class CellTrackingDatasetResult:
     def add(self, content: tuple[TrackingSource, tuple[int, int]]):
         self.sources.append(content)
 
-    def write(self, base_folder: str | Path = "data"):
+    def write(self, base_folder: str | Path = "data", offset=0):
 
         base_folder = Path(base_folder)
 
@@ -101,7 +106,7 @@ class CellTrackingDatasetResult:
 
             mode = "RES"
 
-            ann_dir = base_folder / f"{i:02}_{mode}"
+            ann_dir = base_folder / f"{i+offset:02}_{mode}"
 
             if ann_dir.exists():
                 shutil.rmtree(ann_dir)
