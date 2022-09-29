@@ -73,6 +73,22 @@ class SimpleTrackingSource(TrackingSourceInMemory):
 def subsample_tracking(
     tracking: TrackingSource, subsampling_factor: int
 ) -> TrackingSource:
+    """Subsample the tracking source
+
+    Args:
+        tracking (TrackingSource): tracking source to subsample
+        subsampling_factor (int): subsampling factor defining the step of frames. 1 means no subsampling. 2 means every second frame, ...
+
+    Raises:
+        ValueError: when wrong subsampling factor is chosen
+
+    Returns:
+        TrackingSource: subsampled tracking source
+    """
+
+    if subsampling_factor < 1:
+        raise ValueError("Please chose a subsampling factor >= 1")
+
     # extract information from source
     overlay = tracking.overlay
     tracking_graph = tracking.tracking_graph
@@ -81,10 +97,22 @@ def subsample_tracking(
     subsampled_frames = set(
         np.arange(overlay.numFrames(), step=subsampling_factor, dtype=np.int32)
     )
+
+    frame_lookup = {
+        old_frame: new_frame
+        for new_frame, old_frame in zip(
+            range(len(subsampled_frames)), sorted(subsampled_frames)
+        )
+    }
+
     # and create overlay with remaining contours
     subsampled_overlay = Overlay(
-        list(filter(lambda cont: cont.frame in subsampled_frames, overlay))
+        list(filter(lambda cont: cont.frame in subsampled_frames, overlay)),
+        frames=list(range(len(subsampled_frames))),
     )
+
+    for cont in subsampled_overlay:
+        cont.frame = frame_lookup[cont.frame]
 
     # copy tracking graph
     subsampled_graph = tracking_graph.copy()
