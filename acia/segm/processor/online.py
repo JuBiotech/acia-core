@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from io import BytesIO
 from itertools import chain, islice
 from typing import List
@@ -166,19 +167,29 @@ class FlexibleOnlineModel(Processor):
                     'Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?'
                 )
 
+        # get username from environment
+        self.username = os.environ.get("USER", None)  # from jupyter notebook
+        if self.username is None:
+            self.username = os.environ.get(
+                "USERNAME", None
+            )  # from local bash information
+
     def predict(self, source: ImageSequenceSource, params=None):
         if params is None:
             params = {}
 
         contours = []
 
+        # Segmentation method parameters
         additional_parameters = dict(self.modelDesc.parameters)
         additional_parameters.update(**params)
 
+        # http request parameters
         params = dict(
             repo=self.modelDesc.repo,
             entry_point=self.modelDesc.entry_point,
             version=self.modelDesc.version,
+            username=self.username,
             parameters=json.dumps(additional_parameters),
         )
 
