@@ -292,6 +292,8 @@ class CTCTrackingHelper:
                 contour_life_cycle_lookup[cont.id] + 1
             )  # lifecycle ids must start with 1
             cont_mask = cont.toMask(height, width)
-            image_mask += (cont_mask * life_cycle_id).astype(np.uint16)
+            image_mask = np.maximum(
+                image_mask, (cont_mask * life_cycle_id).astype(np.uint16)
+            )
 
         return image_mask
