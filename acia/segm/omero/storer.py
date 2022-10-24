@@ -492,7 +492,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         return LocalImage(np.asarray(rendered_image, dtype=np.uint8), frame=frame)
 
     def __iter__(self):
-        for frame in range(self.num_frames):
+        for frame in self.frame_list:
             if self.range and frame not in self.range:
                 continue
             yield self.get_frame(frame)
@@ -507,6 +507,13 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
     @property
     def num_frames(self) -> int:
         return len(self)
+
+    @property
+    def frame_list(self) -> list[int]:
+        if self.range:
+            return list(self.range)
+        else:
+            return list(range(len(self)))
 
     def __len__(self):
         with self.make_connection() as conn:
