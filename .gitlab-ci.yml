@@ -41,7 +41,7 @@ test:
   extends: .venv
   script:
     - pip install --upgrade pip
-    - python setup.py install
+    - pip install .
     - pip install tox flake8  # you can also use tox
     - tox -e py38,flake8
   coverage: '/TOTAL.*\s+(\d+%)/'
@@ -53,6 +53,8 @@ test:
 
 installation:
   image: continuumio/miniconda3
+  tags:
+    - big-ram
   stage: build
   script:
     - conda env create -f conda.yaml
