@@ -39,6 +39,8 @@ def parse_simple_tracking(file_content: str) -> Tuple[Overlay, nx.DiGraph]:
     tracking = nx.DiGraph()
 
     tracking.add_nodes_from(map(lambda ov: ov.id, segmentation_overlay))
+    for cont in segmentation_overlay:
+        tracking.nodes[cont.id]["frame"] = cont.frame
 
     # create graph from id links
     for link in tracking_data:
