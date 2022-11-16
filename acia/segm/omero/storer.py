@@ -137,6 +137,7 @@ class OmeroRoIStorer:
         port=4064,
         secure=True,
         roiId=None,
+        conn=None,
     ) -> Overlay:
         """
         Loads overlay from omero. Only considers polygons.
@@ -149,14 +150,15 @@ class OmeroRoIStorer:
         """
         overlay = Overlay([])
         # open connection to omero
-        with BlitzGateway(
-            username, password, host=serverUrl, port=port, secure=secure
-        ) as conn:
+        # with BlitzGateway(
+        #    username, password, host=serverUrl, port=port, secure=secure
+        # ) as conn:
+        with BlitzConn(username, password, serverUrl, port, secure, conn) as omero_conn:
             # get the roi service
-            roi_service = conn.getRoiService()
+            roi_service = omero_conn.getRoiService()
             result = roi_service.findByImage(imageId, None)
 
-            image = image = conn.getObject("Image", imageId)
+            image = omero_conn.getObject("Image", imageId)
 
             # size_t = image.getSizeT()
             size_z = image.getSizeZ()
@@ -207,7 +209,7 @@ class OmeroRoIStorer:
             port=port,
             secure=secure,
             conn=conn,
-        ).make_connection() as omero_conn:
+        ) as omero_conn:
             # get the roi service
             roi_service = omero_conn.getRoiService()
             updateService = omero_conn.getUpdateService()
@@ -240,7 +242,7 @@ class IngoreWithWrapper:
         self.object = object
 
     def __getattr__(self, attr):
-        return self.object.__getattribute__(attr)
+        return getattr(self.object, attr)
 
     def __enter__(self):
         return self.object
@@ -284,12 +286,12 @@ class BlitzConn:
                 secure=self.secure,
             )
             conn.connect()
-            conn.SERVICE_OPTS.setOmeroGroup("-1")
+            # conn.SERVICE_OPTS.setOmeroGroup("-1")
             self.conn = conn
             return IngoreWithWrapper(self.conn)
 
     def __enter__(self):
-        self.make_connection()
+        return self.make_connection()
 
     def __exit__(self, type, value, traceback):
         pass
@@ -297,7 +299,7 @@ class BlitzConn:
     def __del__(self):
         # make sure the connection is always closed
         if self.conn:
-            self.conn.__exit__()
+            self.conn.close()
             self.conn = None
 
 
@@ -577,6 +579,7 @@ class OmeroRoISource(OmeroSource, RoISource):
                 serverUrl=self.serverUrl,
                 port=self.port,
                 secure=self.secure,
+                conn=self.make_connection(),
             )
 
             if self.scale:
