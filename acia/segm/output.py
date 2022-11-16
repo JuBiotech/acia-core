@@ -350,6 +350,10 @@ class VideoExporter:
         return self
 
     def __exit__(self, type, value, traceback):
+        if self.out is None:
+            logging.warning(
+                "Closing video writer without any images written and no video output generated! Did you forget to write the images="
+            )
         self.close()
 
 

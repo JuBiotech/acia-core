@@ -22,14 +22,14 @@ def unpack(data, function):
 class Contour:
     """Class for object contour detection (e.g. Cell object)"""
 
-    def __init__(self, coordinates, score: float, frame: int, id: int, label=None):
+    def __init__(self, coordinates, score: float, frame: int, id, label=None):
         """Create Contour
 
         Args:
             coordinates ([type]): [description]
             score (float): segmentation score
             frame (int): frame index
-            id (int): unique id
+            id (any): unique id
             label: class-defining label of the contour
         """
         self.coordinates = np.array(coordinates, dtype=np.float32)
@@ -102,8 +102,11 @@ class Contour:
 class Overlay:
     """Overlay contains Contours at different frames and provides functionalities iterate and modify them"""
 
-    def __init__(self, contours: list[Contour]):
+    def __init__(self, contours: list[Contour], frames=None):
         self.contours = contours
+        if frames is not None:
+            frames = sorted(list(frames))
+        self.__frames = frames
 
     def add_contour(self, contour: Contour):
         self.contours.append(contour)
@@ -126,7 +129,10 @@ class Overlay:
         return len(self.frames())
 
     def frames(self):
-        return np.unique([c.frame for c in self.contours])
+        if self.__frames:
+            return self.__frames
+        else:
+            return np.unique([c.frame for c in self.contours])
 
     def scale(self, scale: float):
         """Scale the contour with the specified scale factor
@@ -185,8 +191,13 @@ class Overlay:
         assert endFrame >= 0
         assert endFrame <= np.max(self.frames())
 
+        it_frames = range(startFrame, endFrame + 1)
+
+        if self.__frames:
+            it_frames = sorted(self.__frames)
+
         # iterate frames
-        for frame in range(startFrame, endFrame + 1):
+        for frame in it_frames:
             if frame_range and frame not in frame_range:
                 continue
             # filter sub overlay with all contours in the frame
