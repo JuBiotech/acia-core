@@ -288,7 +288,7 @@ class BlitzConn:
             return IngoreWithWrapper(self.conn)
 
     def __enter__(self):
-        self.make_connection()
+        return self.make_connection()
 
     def __exit__(self, type, value, traceback):
         pass
