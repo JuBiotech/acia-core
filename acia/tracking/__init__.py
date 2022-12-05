@@ -7,7 +7,6 @@ import networkx as nx
 import numpy as np
 
 from acia.base import Overlay
-from acia.tracking.output import CTCTrackingHelper
 
 from .formats import gen_simple_tracking, parse_simple_tracking
 
