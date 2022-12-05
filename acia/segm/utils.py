@@ -27,7 +27,7 @@ def compute_indices(frame: int, size_t: int, size_z: int) -> Tuple[int, int]:
     elif size_t > 1:
         t = frame
         z = 0
-    elif size_z > 1:
+    elif size_z >= 1:
         t = 0
         z = frame
     elif size_t == 1 and size_z == 1:
