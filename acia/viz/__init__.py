@@ -3,15 +3,35 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import cv2
 import numpy as np
+from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
 
 from acia import ureg
 from acia.base import BaseImage
 from acia.segm.local import LocalImage
 
-default_font = "/opt/conda/fonts/DejaVuSans.ttf"
+# list fonts in the file system
+font_list = list(
+    map(
+        Path,
+        font_manager.findSystemFonts(fontpaths=None, fontext="ttf"),
+    )
+)
+# filter for desired default font
+font_candidates = list(filter(lambda path: path.name == "DejaVuSans.ttf", font_list))
+
+if len(font_candidates) > 0:
+    # loda the deja vu sans default font
+    default_font = str(font_candidates[0].absolute())
+else:
+    # use the first available font
+    logging.warning("Could not find default font!")
+    default_font = str(font_list[0].absolute())
 
 
 def draw_scale_bar(
