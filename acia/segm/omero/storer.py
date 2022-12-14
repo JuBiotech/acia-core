@@ -495,7 +495,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
 
     def __iter__(self):
         for frame in self.frame_list:
-            if self.range and frame not in self.range:
+            if self.range and (frame not in self.range):
                 continue
             yield self.get_frame(frame)
 
