@@ -1,8 +1,9 @@
 """Classes for OMERO storage interaction"""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import omero
@@ -342,7 +343,7 @@ class OmeroSource(BlitzConn):
         self.imageId = imageId
 
     @property
-    def rawPixelSize(self) -> Tuple[LengthI, LengthI]:
+    def rawPixelSize(self) -> tuple[LengthI, LengthI]:
         """Return the pixel size in omero objects
 
         Returns:
@@ -357,7 +358,7 @@ class OmeroSource(BlitzConn):
             return size_x_obj, size_y_obj
 
     @property
-    def pixelSize(self) -> Tuple[float, float]:
+    def pixelSize(self) -> tuple[float, float]:
         """Return the pixel size in micron
 
         Returns:
@@ -368,7 +369,7 @@ class OmeroSource(BlitzConn):
         return size_x_obj.getValue(), size_y_obj.getValue()
 
     @property
-    def pixel_size(self) -> Tuple[ureg.Quantity, ureg.Quantity]:
+    def pixel_size(self) -> tuple[ureg.Quantity, ureg.Quantity]:
         """Return the pixel size in micrometer/pixel
 
         Returns:
