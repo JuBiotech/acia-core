@@ -15,23 +15,8 @@ from acia import ureg
 from acia.base import BaseImage
 from acia.segm.local import LocalImage
 
-# list fonts in the file system
-font_list = list(
-    map(
-        Path,
-        font_manager.findSystemFonts(fontpaths=None, fontext="ttf"),
-    )
-)
-# filter for desired default font
-font_candidates = list(filter(lambda path: path.name == "DejaVuSans.ttf", font_list))
-
-if len(font_candidates) > 0:
-    # loda the deja vu sans default font
-    default_font = str(font_candidates[0].absolute())
-else:
-    # use the first available font
-    logging.warning("Could not find default font!")
-    default_font = str(font_list[0].absolute())
+# loda the deja vu sans default font
+default_font = font_manager.findfont("DejaVuSans")
 
 
 def draw_scale_bar(
