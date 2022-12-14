@@ -11,6 +11,8 @@ from acia import ureg
 from acia.base import BaseImage
 from acia.segm.local import LocalImage
 
+default_font = "/opt/conda/fonts/DejaVuSans.ttf"
+
 
 def draw_scale_bar(
     image_iterator,
@@ -20,7 +22,7 @@ def draw_scale_bar(
     bar_height,
     color=(255, 255, 255),
     font_size=25,
-    font_path="/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    font_path=default_font,
     background_color=None,
     background_margin_pixel=3,
 ):
@@ -132,7 +134,7 @@ def draw_time(
     time_step,
     color=(255, 255, 255),
     font_size=25,
-    font_path="/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    font_path=default_font,
     background_color=None,
     background_margin_pixel=3,
 ):
