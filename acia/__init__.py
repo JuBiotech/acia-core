@@ -2,7 +2,7 @@
 
 __author__ = """Johannes Seiffarth"""
 __email__ = "j.seiffarth@fz-juelich.de"
-__version__ = "0.2.31"
+__version__ = "0.2.32"
 
 
 from pint import UnitRegistry
