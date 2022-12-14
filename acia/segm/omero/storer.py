@@ -10,6 +10,7 @@ import tqdm.auto as tqdm
 from omero.gateway import BlitzGateway
 from omero.model import LengthI
 
+from acia import ureg
 from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
 from acia.segm.local import LocalImage
 from acia.segm.omero.shapeUtils import make_coordinates
@@ -365,6 +366,26 @@ class OmeroSource(BlitzConn):
         size_x_obj, size_y_obj = self.rawPixelSize
 
         return size_x_obj.getValue(), size_y_obj.getValue()
+
+    @property
+    def pixel_size(self) -> Tuple[ureg.Quantity, ureg.Quantity]:
+        """Return the pixel size in micrometer/pixel
+
+        Returns:
+            Tuple[float,float]: x and y pixel size in micrometer/pixel
+        """
+        size_x_obj, size_y_obj = self.rawPixelSize
+
+        unit = "micrometer"
+
+        return (
+            omero.model.LengthI(size_x_obj, unit).getValue()
+            * ureg.micrometer
+            / ureg.pixel,
+            omero.model.LengthI(size_y_obj, unit).getValue()
+            * ureg.micrometer
+            / ureg.pixel,
+        )
 
     def printPixelSize(self, unit="MICROMETER"):
         """Output pixel sizes
