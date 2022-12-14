@@ -376,7 +376,7 @@ class OmeroSource(BlitzConn):
         """
         size_x_obj, size_y_obj = self.rawPixelSize
 
-        unit = "micrometer"
+        unit = "micrometer".upper()
 
         return (
             omero.model.LengthI(size_x_obj, unit).getValue()
