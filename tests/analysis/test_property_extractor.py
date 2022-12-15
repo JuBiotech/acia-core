@@ -92,6 +92,39 @@ class TestPropertyExtractors(unittest.TestCase):
         self.assertEqual(df["gfp"][0], 4)
         self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
 
+    def test_fluorescence_extractor_float(self):
+        """Testing that the fluorescence exporter can work with float values"""
+
+        contours = [Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23)]
+        overlay = Overlay(contours)
+
+        image = np.zeros((200, 200), dtype=np.float32)
+        image[0, 0] = 2.5
+        image[0, 1] = 5.5
+        image[1, 0] = 6
+        image[1, 1] = 10.1
+        image[2, 0:3] = 4
+        image[0:2, 2] = -4.3
+        image_source = LocalImageSource.from_array(image)
+
+        # test basic extractors
+        df = ExtractorExecutor().execute(
+            overlay=overlay,
+            images=image_source,
+            extractors=[
+                FluorescenceEx(channels=[0], channel_names=["gfp"], parallel=1),
+                FluorescenceEx(
+                    channels=[0],
+                    channel_names=["gfp_mean"],
+                    summarize_operator=np.mean,
+                    parallel=1,
+                ),
+            ],
+        )
+
+        self.assertEqual(df["gfp"][0], 3.25)
+        self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
+
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
         contours = [
