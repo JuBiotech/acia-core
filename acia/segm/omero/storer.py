@@ -370,10 +370,10 @@ class OmeroSource(BlitzConn):
 
     @property
     def pixel_size(self) -> tuple[ureg.Quantity, ureg.Quantity]:
-        """Return the pixel size in micrometer/pixel
+        """Return the pixel size in micrometer
 
         Returns:
-            Tuple[float,float]: x and y pixel size in micrometer/pixel
+            Tuple[float,float]: x and y pixel size in micrometer
         """
         size_x_obj, size_y_obj = self.rawPixelSize
 
@@ -381,11 +381,9 @@ class OmeroSource(BlitzConn):
 
         return (
             omero.model.LengthI(size_x_obj, unit).getValue()
-            * ureg.micrometer
-            / ureg.pixel,
+            * ureg.micrometer,
             omero.model.LengthI(size_y_obj, unit).getValue()
-            * ureg.micrometer
-            / ureg.pixel,
+            * ureg.micrometer,
         )
 
     def printPixelSize(self, unit="MICROMETER"):
