@@ -380,10 +380,8 @@ class OmeroSource(BlitzConn):
         unit = "micrometer".upper()
 
         return (
-            omero.model.LengthI(size_x_obj, unit).getValue()
-            * ureg.micrometer,
-            omero.model.LengthI(size_y_obj, unit).getValue()
-            * ureg.micrometer,
+            omero.model.LengthI(size_x_obj, unit).getValue() * ureg.micrometer,
+            omero.model.LengthI(size_y_obj, unit).getValue() * ureg.micrometer,
         )
 
     def printPixelSize(self, unit="MICROMETER"):
