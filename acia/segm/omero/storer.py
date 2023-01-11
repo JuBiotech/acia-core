@@ -457,8 +457,6 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         self.colorList = colorList
         self.range = range
 
-        self.omero_image = None
-
         assert len(self.channels) <= len(
             self.colorList
         ), f"you must specify a color for every channel! You have {len(self.channels)} channels ({self.channels}) but only {len(self.colorList)} color(s) ({self.colorList}). Please update your colorList!"
@@ -486,13 +484,8 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
 
     def __get_omero_image(self):
         # open the connection
-        self.conn = self.make_connection().__enter__()
-
-        # cache the image
-        if self.omero_image is None:
-            self.omero_image = self.conn.getObject("Image", self.imageId)
-
-        return self.omero_image
+        with self.make_connection() as conn:
+            return conn.getObject("Image", self.imageId)
 
     def __get_image(self, frame: int) -> BaseImage:
         # get the specified image
