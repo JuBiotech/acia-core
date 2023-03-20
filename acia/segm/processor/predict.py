@@ -255,7 +255,7 @@ def tiled_inference(
 
             # filter the detections
             #   -> no detections close to the border of the tile schould be considered
-            filter_mask = np.ones(len(tile_results), dtype=np.bool)
+            filter_mask = np.ones(len(tile_results), dtype=bool)
 
             for i, det in enumerate(tile_results):
                 det_mask = det["mask"]
@@ -277,9 +277,7 @@ def tiled_inference(
             tile_results = list(np.array(tile_results)[filter_mask])
             # tile_results += filter(partial(tile_touch_filter, image_tile_poly=image_tile_poly), tile_results)
 
-            new_masks = np.zeros(
-                (len(tile_results), *orig_image.shape[:2]), dtype=np.bool
-            )
+            new_masks = np.zeros((len(tile_results), *orig_image.shape[:2]), dtype=bool)
 
             # expand masks to full image
             for i, det in enumerate(tile_results):
@@ -483,7 +481,7 @@ def torch_mask_nms(
 
         # print(relative_intersections)
 
-    filter_mask = np.array(drops, dtype=np.bool)
+    filter_mask = np.array(drops, dtype=bool)
 
     return np.arange(len(masks))[filter_mask]
 

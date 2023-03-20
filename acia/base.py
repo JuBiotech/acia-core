@@ -49,7 +49,7 @@ class Contour:
         if draw is None:
             draw = ImageDraw.Draw(img)
         draw.polygon(self.coordinates, outline=outlineValue, fill=maskValue)
-        mask = np.array(img, np.bool)
+        mask = np.array(img, bool)
 
         return mask
 
@@ -226,7 +226,7 @@ class Overlay:
             img = Image.new("L", (width, height), 0)
             for cont in timeOverlay:
                 cont._toMask(img, maskValue=1, outlineValue=1)
-            mask = np.array(img, np.bool)
+            mask = np.array(img, bool)
             masks.append(mask)
 
         return masks
