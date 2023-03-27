@@ -196,21 +196,22 @@ class Overlay:
         if self.__frames:
             it_frames = sorted(self.__frames)
 
+        # frame for every contour
+        frame_information = np.array(
+            list(map(lambda cont: cont.frame, self.contours)), dtype=np.int64
+        )
+        # numpy array of contours (dtype=np.object)
+        contour_array = np.array(self.contours)
+
         # iterate frames
         for frame in it_frames:
             if frame_range and frame not in frame_range:
                 continue
-            # filter sub overlay with all contours in the frame
-            yield Overlay(
-                list(
-                    filter(
-                        partial(
-                            lambda contour, frame: contour.frame == frame, frame=frame
-                        ),
-                        self.contours,
-                    )
-                )
-            )
+
+            # mask for contour array for this frame
+            cont_mask = frame_information == frame
+            # filter sub overlay with all contours in the current frame
+            yield Overlay(list(contour_array[cont_mask]))
 
     def toMasks(self, height, width) -> list[np.array]:
         """
