@@ -26,6 +26,17 @@ class TestContour(unittest.TestCase):
             Contour(contour, 0, 0, 0).center, np.array([0.5, 0.5], dtype=np.float32)
         )
 
+    def test_rasterization(self):
+        """Make sure that contour to mask rasterization preserves area"""
+
+        contours = [[[0, 0], [10, 0], [10, 10], [0, 10]]]
+
+        for coordinates in contours:
+            cont = Contour(coordinates, -1, 0, -1)
+            mask = cont.toMask(40, 40)
+
+            self.assertEqual(cont.area, np.sum(mask))
+
 
 if __name__ == "__main__":
     unittest.main()

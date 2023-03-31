@@ -45,6 +45,7 @@ class TestPropertyExtractors(unittest.TestCase):
         )
 
     def test_extractors(self):
+        # in x,y coordinates
         contours = [Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23)]
         overlay = Overlay(contours)
 
@@ -89,8 +90,8 @@ class TestPropertyExtractors(unittest.TestCase):
         self.assertEqual(df["time"][0], 0 * 15 / 60)
         self.assertEqual(df["position_x"][0], 2 / 2 * ps)
         self.assertEqual(df["position_y"][0], 3 / 2 * ps)
-        self.assertEqual(df["gfp"][0], 4)
-        self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
+        self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
+        self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
 
     def test_fluorescence_extractor_float(self):
         """Testing that the fluorescence exporter can work with float values"""
@@ -122,13 +123,13 @@ class TestPropertyExtractors(unittest.TestCase):
             ],
         )
 
-        self.assertEqual(df["gfp"][0], 3.25)
-        self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
+        self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
+        self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
 
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
         contours = [
-            Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=frame, id=id)
+            Contour([[0, 0], [2, 0], [2, 2], [0, 2]], -1, frame=frame, id=id)
             for id, frame in product(list(range(squared_num)), list(range(squared_num)))
         ]
         overlay = Overlay(contours)

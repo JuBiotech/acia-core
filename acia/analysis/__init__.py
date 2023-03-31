@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 import papermill as pm
 from numpy import ma
-from PIL import Image, ImageDraw
 from pint._typing import UnitLike
 from tqdm.auto import tqdm
 
@@ -309,11 +308,9 @@ class FluorescenceEx(PropertyExtractor):
                 raw_image = image.get_channel(channel)
 
                 height, width = raw_image.shape[:2]
-                img = Image.new("L", (width, height), 0)
-                draw = ImageDraw.Draw(img)
 
                 # draw cell mask
-                roi_mask = cont._toMask(img, draw=draw)
+                roi_mask = cont.toMask(height=height, width=width)
 
                 # create masked array
                 masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
