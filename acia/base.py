@@ -10,9 +10,11 @@ from typing import Callable, Iterator
 
 import numpy as np
 import tqdm
-from PIL import Image, ImageDraw
+from PIL import ImageDraw
 from shapely.geometry import Polygon
 from tqdm.contrib.concurrent import process_map
+
+from .utils import polygon_to_mask
 
 
 def unpack(data, function):
@@ -22,11 +24,13 @@ def unpack(data, function):
 class Contour:
     """Class for object contour detection (e.g. Cell object)"""
 
-    def __init__(self, coordinates, score: float, frame: int, id, label=None):
+    def __init__(
+        self, coordinates: np.ndarray, score: float, frame: int, id, label=None
+    ):
         """Create Contour
 
         Args:
-            coordinates ([type]): [description]
+            coordinates (np.ndarray): coordinates in (x,y) list
             score (float): segmentation score
             frame (int): frame index
             id (any): unique id
@@ -38,7 +42,7 @@ class Contour:
         self.id = id
         self.label = label
 
-    def _toMask(self, img, maskValue=1, outlineValue=1, draw=None):
+    def _toMask(self, height: int, width: int) -> np.ndarray:
         """
         Render contour mask onto existing image
 
@@ -46,24 +50,17 @@ class Contour:
         fillValue: mask values inside the contour
         outlineValues: mask values on the outline (border)
         """
-        if draw is None:
-            draw = ImageDraw.Draw(img)
-        draw.polygon(self.coordinates, outline=outlineValue, fill=maskValue)
-        mask = np.array(img, bool)
+        # perform rasterization into mask
+        return polygon_to_mask(self.polygon, height, width)
 
-        return mask
-
-    def toMask(self, height, width, fillValue=1, outlineValue=1):
+    def toMask(self, height, width):
         """
         Render contour mask onto new image
 
         height: height of the image
         width: width of the image
-        fillValue: mask values inside the contour
-        outlineValues: mask values on the outline (border)
         """
-        img = Image.new("L", (width, height), 0)
-        return self._toMask(img, maskValue=fillValue, outlineValue=outlineValue)
+        return self._toMask(height=height, width=width)
 
     def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
         if draw is None:
@@ -224,11 +221,15 @@ class Overlay:
         """
         masks = []
         for timeOverlay in self.timeIterator():
-            img = Image.new("L", (width, height), 0)
+            local_mask = np.zeros((height, width), dtype=bool)
+
+            # combine all contours in one mask
             for cont in timeOverlay:
-                cont._toMask(img, maskValue=1, outlineValue=1)
-            mask = np.array(img, bool)
-            masks.append(mask)
+                mask = cont.toMask(height=height, width=width)
+                local_mask = np.maximum(mask, local_mask)
+
+            # append frame mask to list of masks
+            masks.append(local_mask)
 
         return masks
 
