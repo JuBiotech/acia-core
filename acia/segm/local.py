@@ -176,7 +176,7 @@ class LocalSequenceSource(ImageSequenceSource):
 
             image = prepare_image(image, self.normalize_image)
 
-            yield image
+            yield LocalImage(image)
 
     def get_frame(self, frame: int) -> BaseImage:
         # TODO: this is super slow access for indiviudal images
