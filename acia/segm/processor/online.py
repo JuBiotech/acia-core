@@ -190,11 +190,15 @@ class FlexibleOnlineModel(Processor):
             parameters=json.dumps(additional_parameters),
         )
 
+        # collect all the frame indices that we use for prediction
+        all_frames = []
+
         # Do batch prediction
         for local_batch in batch(enumerate(tqdm.tqdm(source)), self.batch_size):
             local_batch = np.array(list(local_batch), dtype=object)
 
             frames = local_batch[:, 0]
+            all_frames += list(frames)
             images = map(lambda img: img.raw, local_batch[:, 1])
 
             contours += self.predict_batch(frames, images, params)
@@ -202,8 +206,8 @@ class FlexibleOnlineModel(Processor):
         for i, cont in enumerate(contours):
             cont.id = i
 
-        # create new overlay based on all contours
-        return Overlay(contours)
+        # create new overlay based on all contours and frame numbers
+        return Overlay(contours, frames=all_frames)
 
     def predict_single(self, frame_id, image, params):
         contours = []
