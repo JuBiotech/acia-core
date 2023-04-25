@@ -167,12 +167,9 @@ class FlexibleOnlineModel(Processor):
                     'Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?'
                 )
 
-        # get username from environment
-        self.username = os.environ.get("USER", None)  # from jupyter notebook
-        if self.username is None:
-            self.username = os.environ.get(
-                "USERNAME", None
-            )  # from local bash information
+        # get username from environment for statistics
+        # 1. try to get jupyter user, then try to readout other usernames
+        self.username = os.environ.get("JUPYTERHUB_USER", None) or os.environ.get("USER", None) or os.environ.get("USERNAME", None)
 
     def predict(self, source: ImageSequenceSource, params=None):
         if params is None:
