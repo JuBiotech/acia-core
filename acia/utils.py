@@ -57,6 +57,20 @@ def mask_to_polygons(mask: np.ndarray) -> Polygon | MultiPolygon:
     return all_polygons
 
 
+def multi_mask_to_polygons(
+    mask: np.ndarray,
+) -> list[tuple[int, Polygon | MultiPolygon]]:
+    unique_values = np.unique(mask)
+    instance_ids = unique_values[unique_values > 0]
+
+    polygons = []
+
+    for instance_id in instance_ids:
+        polygons.append((instance_id, mask_to_polygons(mask == instance_id)))
+
+    return polygons
+
+
 def polygon_to_mask(polygon, height: int, width: int):
     """Converts a polygon to a mask
 
