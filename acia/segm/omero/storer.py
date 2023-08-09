@@ -536,6 +536,96 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
             return int(image.getSizeT() * image.getSizeZ())
 
 
+class OmeroRawSource(ImageSequenceSource, OmeroSource):
+    """Raw OMERO source: Allows to easily access raw that is, e.g. 16-bit data of your OMERO images"""
+
+    def __init__(
+        self,
+        imageId: int,
+        username: str = None,
+        password: str = None,
+        serverUrl: str = None,
+        port=4064,
+        secure=True,
+        conn=None,
+        channels=None,
+    ):
+        OmeroSource.__init__(
+            self,
+            imageId=imageId,
+            username=username,
+            password=password,
+            serverUrl=serverUrl,
+            port=port,
+            secure=secure,
+            conn=conn,
+        )
+
+        if channels is None:
+            channels = [0]
+
+        self.channels = channels
+
+    def __len__(self):
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+
+            size_z = image.getSizeZ()
+            size_t = image.getSizeT()
+
+            return size_z * size_t
+
+    def get_frame(self, frame):
+        with self.make_connection() as conn:
+            # Use the pixelswrapper to retrieve the plane as
+            # a 2D numpy array see [https://github.com/scipy/scipy]
+            #
+            # Numpy array can be used for various analysis routines
+            #
+            image = conn.getObject("Image", self.imageId)
+            size_z = image.getSizeZ()
+            size_t = image.getSizeT()
+
+            pixels = image.getPrimaryPixels()
+
+            t, z = compute_indices(frame, size_t, size_z)
+
+            planes = []
+            for channel in self.channels:
+                c = channel
+
+                planes.append(pixels.getPlane(z, c, t))
+            return LocalImage(np.stack(planes, axis=-1))
+
+    def __iter__(self):
+        with self.make_connection() as conn:
+            # Use the pixelswrapper to retrieve the plane as
+            # a 2D numpy array see [https://github.com/scipy/scipy]
+            #
+            # Numpy array can be used for various analysis routines
+            #
+            image = conn.getObject("Image", self.imageId)
+            size_z = image.getSizeZ()
+            size_c = image.getSizeC()
+            size_t = image.getSizeT()
+
+            pixels = image.getPrimaryPixels()
+
+            for t in range(size_t):
+                for z in range(size_z):
+                    planes = []
+                    for channel in self.channels:
+                        assert channel < size_c, "Please specify a valid channel"
+                        c = channel
+
+                        planes.append(pixels.getPlane(z, c, t))
+                    yield LocalImage(np.stack(planes, axis=-1))
+
+    @property
+    def num_channels(self) -> int:
+        return len(self.channels)
+
+
 class OmeroRoISource(OmeroSource, RoISource):
     """Source for OMERO RoIs beloging to an OMERO image sequence"""
 
