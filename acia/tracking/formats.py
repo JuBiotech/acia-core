@@ -1,9 +1,10 @@
 """ Module to convert tracking formats """
 
+from __future__ import annotations
+
 import json
 import re
 from pathlib import Path
-from typing import Tuple
 
 import networkx as nx
 import numpy as np
@@ -11,7 +12,7 @@ import numpy as np
 from acia.base import Contour, Overlay
 
 
-def parse_simple_tracking(file_content: str) -> Tuple[Overlay, nx.DiGraph]:
+def parse_simple_tracking(file_content: str) -> tuple[Overlay, nx.DiGraph]:
     """Parse simple tracking format from file content string
 
     Args:
