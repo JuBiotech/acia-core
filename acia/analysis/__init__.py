@@ -388,6 +388,8 @@ def scale(
         exist_ok (Bool): True when it is okay that the directory exists, False will throw an error when the directory exists.
     """
 
+    analysis_script = Path(analysis_script)
+
     if additional_parameters is None:
         additional_parameters = {}
 
