@@ -374,6 +374,7 @@ def scale(
     analysis_script: Path,
     image_ids: list[int],
     additional_parameters=None,
+    exist_ok=False,
 ):
     """Scale an analysis notebook to several image sequences
 
@@ -383,6 +384,8 @@ def scale(
         output_path (Path): the general output path to the storage
         analysis_script (Path): the template script
         image_ids (List[int]): list of (OMERO) image sources
+        additional_parameters (dict): Parameters to be inserted into the jupyter script
+        exist_ok (Bool): True when it is okay that the directory exists, False will throw an error when the directory exists.
     """
 
     if additional_parameters is None:
@@ -397,7 +400,7 @@ def scale(
         output_file = output_path / f"execution_{image_id}" / "notebook.ipynb"
 
         # create the directory (should not exist) and copy file to that
-        os.makedirs(Path(output_file).parent, exist_ok=False)
+        os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
         shutil.copy(analysis_script, output_file)
 
         # parameters to integrate into notebook
