@@ -397,7 +397,7 @@ def scale(
 
         # path to the new notebook file
         # every execution should have its own folder to store local files
-        output_file = output_path / f"execution_{image_id}" / "notebook.ipynb"
+        output_file = output_path / f"execution_{image_id}" / analysis_script.name
 
         # create the directory (should not exist) and copy file to that
         os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
