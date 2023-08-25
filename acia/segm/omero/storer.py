@@ -259,7 +259,14 @@ class BlitzConn:
     """
 
     def __init__(
-        self, username, password, serverUrl, port=4064, secure=True, conn=None
+        self,
+        username,
+        password,
+        serverUrl,
+        port=4064,
+        secure=True,
+        conn=None,
+        readonly=True,
     ):
 
         assert username is not None, "Please provide a username"
@@ -273,6 +280,7 @@ class BlitzConn:
         self.secure = secure
 
         self.conn = conn
+        self.readonly = readonly
 
     def make_connection(self):
         # try to keep connection alive
@@ -288,7 +296,8 @@ class BlitzConn:
                 secure=self.secure,
             )
             conn.connect()
-            # conn.SERVICE_OPTS.setOmeroGroup("-1")
+            if self.readonly:
+                conn.SERVICE_OPTS.setOmeroGroup("-1")
             self.conn = conn
             return IngoreWithWrapper(self.conn)
 
@@ -319,6 +328,7 @@ class OmeroSource(BlitzConn):
         port=4064,
         secure=True,
         conn=None,
+        readonly=True,
     ):
         """
         Args:
@@ -338,6 +348,7 @@ class OmeroSource(BlitzConn):
             port=port,
             secure=secure,
             conn=conn,
+            readonly=readonly,
         )
 
         self.imageId = imageId
@@ -443,6 +454,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
             port=port,
             secure=secure,
             conn=conn,
+            readonly=True,
         )
 
         if channels is None:
