@@ -269,9 +269,11 @@ class BlitzConn:
         readonly=True,
     ):
 
-        assert username is not None, "Please provide a username"
-        assert password is not None, "Please provide a password"
-        assert serverUrl is not None, "Please provide a OMERO server"
+        assert username is not None or conn is not None, "Please provide a username"
+        assert password is not None or conn is not None, "Please provide a password"
+        assert (
+            serverUrl is not None or conn is not None
+        ), "Please provide a OMERO server"
 
         self.username = username
         self.password = password
