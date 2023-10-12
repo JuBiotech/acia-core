@@ -375,6 +375,7 @@ def scale(
     image_ids: list[int],
     additional_parameters=None,
     exist_ok=False,
+    execution_naming=lambda image_id: f"execution_{image_id}",
 ):
     """Scale an analysis notebook to several image sequences
 
@@ -399,7 +400,7 @@ def scale(
 
         # path to the new notebook file
         # every execution should have its own folder to store local files
-        output_file = output_path / f"execution_{image_id}" / analysis_script.name
+        output_file = output_path / execution_naming(image_id) / analysis_script.name
 
         # create the directory (should not exist) and copy file to that
         os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
