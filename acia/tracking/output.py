@@ -10,8 +10,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import tifffile
-import tqdm
 from shapely.geometry import MultiPolygon
+from tqdm.auto import tqdm
 
 from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay
 from acia.tracking import TrackingSource
