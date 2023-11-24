@@ -326,7 +326,7 @@ class CTCTrackingHelper:
         contours = []
 
         for frame, frame_polygons in enumerate(
-            tqdm(all_polygons, desc="Convert to df...")
+            tqdm(all_polygons, desc="Convert to overlay...")
         ):
             for id, poly in frame_polygons:
 
