@@ -8,10 +8,14 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
+import pandas as pd
 import tifffile
+from shapely.geometry import MultiPolygon
+from tqdm.auto import tqdm
 
 from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay
 from acia.tracking import TrackingSource
+from acia.utils import multi_mask_to_polygons
 
 
 class CellTrackingChallengeDatasetGT:
@@ -297,3 +301,140 @@ class CTCTrackingHelper:
             )
 
         return image_mask
+
+    @staticmethod
+    def __load_masks(mask_path: Path) -> Overlay:
+        """Load CTC masks into an overlay
+
+        Args:
+            mask_path (Path): Path to the folder containing the masks
+
+        Returns:
+            Overlay: Overlay containing all cell detections
+        """
+
+        mask_path = Path(mask_path)
+
+        # load masks
+        mask_files = sorted(mask_path.glob("man_seg*.tif"))
+        masks = [tifffile.imread(file) for file in mask_files]
+
+        all_polygons = map(
+            multi_mask_to_polygons, tqdm(masks, desc="Convert masks to polygon...")
+        )
+
+        contours = []
+
+        for frame, frame_polygons in enumerate(
+            tqdm(all_polygons, desc="Convert to overlay...")
+        ):
+            for id, poly in frame_polygons:
+
+                if isinstance(poly, MultiPolygon):
+                    # if it comes to parsing problems take the polygon with the largest area
+                    polygons = list(poly.geoms)
+                    areas = [p.area for p in polygons]
+                    poly = polygons[np.argmax(areas)]
+
+                cc = np.stack(poly.exterior.coords.xy, axis=-1)
+                contours.append(Contour(cc, -1, frame, f"{frame}_{id}"))
+
+        return Overlay(contours, frames=list(range(0, len(masks))))
+
+    @staticmethod
+    def __load_tracking(tracking_path: Path) -> nx.DiGraph:
+        """Load tracking from CTC txt file
+
+        Args:
+            tracking_path (Path): path to the folder containing the man_track.txt file
+
+        Returns:
+            nx.DiGraph: tracking graph with nodes and edges of every cell detection
+        """
+
+        track_annotation = pd.read_csv(
+            tracking_path / "man_track.txt",
+            delimiter=" ",
+            names=["track_id", "start_frame", "end_frame", "parent_id"],
+            header=None,
+        )
+
+        tracking_graph = nx.DiGraph()
+        lc_lookup = {}
+
+        for _, row in track_annotation.iterrows():
+            start_frame = row["start_frame"]
+            end_frame = row["end_frame"]
+            id = row["track_id"]
+            parent_id = row["parent_id"]
+
+            node_items = [
+                f"{frame}_{id}" for frame in range(start_frame, end_frame + 1)
+            ]
+
+            # add trajectory nodes
+            for frame in range(start_frame, end_frame + 1):
+                lc_lookup[f"{frame}_{id}"] = id
+                tracking_graph.add_node(f"{frame}_{id}", frame=frame)
+
+            # add trajectory edges
+            for a, b in zip(node_items, node_items[1:]):
+                tracking_graph.add_edge(a, b)
+
+            # add edge to parent (0 means no parent)
+            if parent_id != 0:
+                tracking_graph.add_edge(
+                    f"{start_frame - 1}_{parent_id}", f"{start_frame}_{id}"
+                )
+
+        return tracking_graph
+
+    @staticmethod
+    def load_ctc_format(
+        segmentation_path: Path, tracking_path: Path
+    ) -> tuple[Overlay, nx.DiGraph]:
+        """Load ctc format from paths
+
+        Args:
+            segmentation_path (Path): path to the segmentation masks
+            tracking_path (Path): path to the tracking gt/st
+
+        Returns:
+            tuple[Overlay, nx.DiGraph]: the overlay and tracking graph
+        """
+
+        # load segmentation overlay
+        overlay = CTCTrackingHelper.__load_masks(mask_path=segmentation_path)
+
+        # load tracking overlay
+        tracking_graph = CTCTrackingHelper.__load_tracking(tracking_path=tracking_path)
+
+        # Remove items only available in segmentation or tracking
+
+        seg_ids = list(cont.id for cont in overlay)
+        track_ids = set(tracking_graph.nodes())
+
+        id_sym_difference = set(seg_ids).symmetric_difference(track_ids)
+
+        # remove nodes in graph
+        nodes_to_remove = set(tracking_graph.nodes()).intersection(id_sym_difference)
+        for n in nodes_to_remove:
+            tracking_graph.remove_node(n)
+
+        # remove nodes in overlay
+        conts_to_remove = set(seg_ids).intersection(id_sym_difference)
+        for cont_id in conts_to_remove:
+            seg_ids = np.array([cont.id for cont in overlay])
+            index = np.argmin(seg_ids == cont_id)
+            del overlay.contours[index]
+
+        assert (
+            len(
+                {cont.id for cont in overlay}.symmetric_difference(
+                    tracking_graph.nodes()
+                )
+            )
+            == 0
+        )
+
+        return overlay, tracking_graph
