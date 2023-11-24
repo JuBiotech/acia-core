@@ -2,10 +2,13 @@
 
 
 import json
+from pathlib import Path
 
 import numpy as np
+from tifffile import imread
 
 from acia.base import Contour, Overlay
+from acia.utils import multi_mask_to_polygons
 
 
 def parse_simple_segmentation(file_content: str) -> Overlay:
@@ -80,3 +83,23 @@ def gen_simple_segmentation(overlay: Overlay) -> str:
 
     # serialize into json format
     return json.dumps(frame_packages, separators=(",", ":"))
+
+
+def load_ctc_segmentation(segmentation_path: Path) -> Overlay:
+    segmentation_path = Path(segmentation_path)
+
+    segm_mask_files = sorted(segmentation_path.glob("*.tif"))
+
+    overlay = Overlay([], frames=list(range(len(segm_mask_files))))
+
+    c_id = 0
+
+    for frame_id, segm_file in enumerate(segm_mask_files):
+        polygons = multi_mask_to_polygons(imread(segm_file))
+
+        for _, poly in polygons:
+            points = np.array(poly.exterior.coords.xy)
+            overlay.add_contour(Contour(points, -1, frame_id, c_id, "cell"))
+            c_id += 1
+
+    return overlay
