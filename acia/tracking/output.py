@@ -414,15 +414,15 @@ class CTCTrackingHelper:
         seg_ids = list(cont.id for cont in overlay)
         track_ids = set(tracking_graph.nodes())
 
-        id_intersection = set(seg_ids).intersection(track_ids)
+        id_sym_difference = set(seg_ids).symmetric_difference(track_ids)
 
         # remove nodes in graph
-        nodes_to_remove = set(tracking_graph.nodes()).difference(id_intersection)
+        nodes_to_remove = set(tracking_graph.nodes()).intersection(id_sym_difference)
         for n in nodes_to_remove:
             tracking_graph.remove_node(n)
 
         # remove nodes in overlay
-        conts_to_remove = set(seg_ids).difference(id_intersection)
+        conts_to_remove = set(seg_ids).intersection(id_sym_difference)
         for cont_id in conts_to_remove:
             seg_ids = np.array([cont.id for cont in overlay])
             index = np.argmin(seg_ids == cont_id)
