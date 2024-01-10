@@ -57,8 +57,8 @@ def draw_scale_bar(
     font = ImageFont.truetype(font_path, font_size)
 
     # compute width and height of the scale bar in pixels (we need to round here)
-    bar_pixel_width = int(np.round((bar_width / size_of_pixel).magnitude))
-    bar_pixel_height = int(np.round((bar_height / size_of_pixel).magnitude))
+    bar_pixel_width = int(np.round((bar_width / size_of_pixel).to_base_units().magnitude))
+    bar_pixel_height = int(np.round((bar_height / size_of_pixel).to_base_units().magnitude))
 
     # extract position
     xstart, ystart = xy_position
