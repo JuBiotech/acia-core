@@ -9,7 +9,7 @@ import os
 import shutil
 from functools import partial
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Literal
 
 import cv2
 import numpy as np
@@ -18,8 +18,8 @@ import tqdm.auto as tqdm
 from pycococreatortools import pycococreatortools
 
 from acia.base import BaseImage, ImageRoISource, ImageSequenceSource, Overlay
-from acia.segm.omero.utils import ScaleBar
-from acia.viz import VideoExporter
+from acia.utils import ScaleBar
+from acia.viz import VideoExporter2
 
 
 def drawJointMask(image_id: int, height: int, width: int, overlay: Overlay):
@@ -313,12 +313,42 @@ def no_crop(frame: int, _: Overlay):
     return (slice(0, frame.shape[0]), slice(0, frame.shape[1]))
 
 
+def __video_export_from_str(
+    filename: str, codec: Literal["vp09", "mjpg", "h264", "h265"], framerate: int
+) -> VideoExporter2:
+    """Create video exporter from string
+
+    Args:
+        filename (str): video filename
+        codec (Literal[&quot;vp09&quot;, &quot;mjpg&quot;, &quot;h264&quot;, &quot;h265&quot;]): codec string
+        framerate (int): framerate (in fps)
+
+    Raises:
+        ValueError: If codec is not found
+
+    Returns:
+        VideoExporter2: generate appropriate video exporter
+    """
+    if codec == "vp09":
+        ve = VideoExporter2.default_vp9(filename=filename, framerate=framerate)
+    elif codec == "h264":
+        ve = VideoExporter2.default_h264(filename=filename, framerate=framerate)
+    elif codec == "h265":
+        ve = VideoExporter2.default_h265(filename=filename, framerate=framerate)
+    elif codec == "mjpg":
+        ve = VideoExporter2.default_mjpg(filename=filename, framerate=framerate)
+    else:
+        raise ValueError(f"Unknown/Unsupported codec: {codec}")
+
+    return ve
+
+
 def renderVideo(
     imageSource: ImageSequenceSource,
     roiSource=None,
     filename="output.mp4",
     framerate=3,
-    codec="vp09",
+    codec: Literal["vp09", "mjpg", "h264", "h265"] = "vp09",
     scaleBar: ScaleBar = None,
     draw_frame_number=False,
     cropper=no_crop,
@@ -345,7 +375,13 @@ def renderVideo(
 
         roiSource = iter(always_none())
 
-    with VideoExporter(filename, framerate=framerate, codec=codec) as ve:
+    # make codec lower case
+    codec = codec.lower()
+
+    # create the video exporter
+    ve = __video_export_from_str(filename, codec, framerate)
+
+    with ve:
         for frame, (image, overlay) in enumerate(
             tqdm.tqdm(zip(imageSource, roiSource))
         ):

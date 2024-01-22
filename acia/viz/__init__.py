@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import cv2
+import moviepy.editor as mpy
 import numpy as np
 from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
@@ -266,4 +268,99 @@ class VideoExporter:
             logging.warning(
                 "Closing video writer without any images written and no video output generated! Did you forget to write the images="
             )
+        self.close()
+
+
+class VideoExporter2:
+    """
+    Wrapper for opencv video writer. Simplifies usage
+    """
+
+    def __init__(
+        self, filename: Path, framerate: int, codec="mjpeg", ffmpeg_params=None
+    ):
+        self.filename = Path(filename)
+        self.framerate = framerate
+        self.codec = codec
+
+        if ffmpeg_params is None:
+            ffmpeg_params = []
+
+        self.ffmpeg_params = ffmpeg_params
+
+        self.images = []
+
+    @staticmethod
+    def default_vp9(
+        filename: Path,
+        framerate: int,
+    ):
+        ffmpeg_params = ["-crf", "30", "-b:v", "0", "-speed", "1"]
+        return VideoExporter2(
+            filename, framerate, codec="libvpx-vp9", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def fast_vp9(
+        filename: Path,
+        framerate: int,
+    ):
+        ffmpeg_params = ["-crf", "35", "-b:v", "0", "-speed", "3"]
+        return VideoExporter2(
+            filename, framerate, codec="libvpx-vp9", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def default_h264(
+        filename: Path,
+        framerate: int,
+    ):
+        ffmpeg_params = ["-crf", "30", "-preset", "fast"]
+        return VideoExporter2(
+            filename, framerate, codec="libx264", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def default_h265(filename: Path, framerate: int):
+        ffmpeg_params = ["-crf", "26", "-preset", "fast"]
+        return VideoExporter2(
+            filename, framerate, codec="libx265", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def default_mjpg(filename: Path, framerate: int):
+        ffmpeg_params = []
+        return VideoExporter2(
+            filename, framerate, codec="mjpeg", ffmpeg_params=ffmpeg_params
+        )
+
+    # av1 not yet supported
+    #    @staticmethod
+    #    def default_av1(filename: Path, framerate: int, ffmpeg_params=["-crf", "26", "-preset", "2", "-strict", "2"]):
+    #        return VideoExporter2(filename, framerate, codec="libaom-av1", ffmpeg_params=ffmpeg_params)
+
+    def write(self, image):
+        self.images.append(image)
+
+    def close(self):
+        if len(self.images) == 0:
+            logging.warning(
+                "Closing video writer without any images written and no video output generated! Did you forget to write the images?"
+            )
+        else:
+            # do the video rendering
+            clip = mpy.ImageSequenceClip(self.images, fps=self.framerate)
+            clip.write_videofile(
+                str(self.filename.absolute()),
+                codec=self.codec,
+                ffmpeg_params=self.ffmpeg_params,
+                verbose=False,
+                logger=None,
+            )
+            self.images = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
         self.close()
