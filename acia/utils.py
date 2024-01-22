@@ -86,3 +86,10 @@ def polygon_to_mask(polygon, height: int, width: int):
         [polygon],
         out_shape=(height, width),
     ).astype(bool)
+
+
+class ScaleBar:
+    """Scalebar class"""
+
+    def draw(self, image: np.ndarray, xstart: int, ystart: int):
+        raise NotImplementedError("Do not use the base class")
