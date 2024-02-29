@@ -59,8 +59,12 @@ def draw_scale_bar(
     font = ImageFont.truetype(font_path, font_size)
 
     # compute width and height of the scale bar in pixels (we need to round here)
-    bar_pixel_width = int(np.round((bar_width / size_of_pixel).to_base_units().magnitude))
-    bar_pixel_height = int(np.round((bar_height / size_of_pixel).to_base_units().magnitude))
+    bar_pixel_width = int(
+        np.round((bar_width / size_of_pixel).to_base_units().magnitude)
+    )
+    bar_pixel_height = int(
+        np.round((bar_height / size_of_pixel).to_base_units().magnitude)
+    )
 
     # extract position
     xstart, ystart = xy_position
@@ -349,7 +353,10 @@ class VideoExporter2:
             )
         else:
             # do the video rendering
-            clip = mpy.ImageSequenceClip(self.images, fps=self.framerate)
+            clip = mpy.ImageSequenceClip(
+                (cv2.cvtColor(im, cv2.COLOR_BGR2RGB) for im in self.images),
+                fps=self.framerate,
+            )
             clip.write_videofile(
                 str(self.filename.absolute()),
                 codec=self.codec,
