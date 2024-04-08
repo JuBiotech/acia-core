@@ -77,7 +77,7 @@ class Contour:
 
     @property
     def center(self):
-        return np.array(Polygon(self.coordinates).centroid, dtype=np.float32)
+        return np.array(Polygon(self.coordinates).centroid.coords[0], dtype=np.float32)
 
     @property
     def area(self) -> float:
