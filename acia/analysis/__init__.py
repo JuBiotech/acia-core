@@ -376,6 +376,7 @@ def scale(
     additional_parameters=None,
     exist_ok=False,
     execution_naming=lambda image_id: f"execution_{image_id}",
+    exist_skip=False,
 ):
     """Scale an analysis notebook to several image sequences
 
@@ -387,6 +388,7 @@ def scale(
         image_ids (List[int]): list of (OMERO) image sources
         additional_parameters (dict): Parameters to be inserted into the jupyter script
         exist_ok (Bool): True when it is okay that the directory exists, False will throw an error when the directory exists.
+        exist_skip (Bool): If true existing executions are skipped.
     """
 
     analysis_script = Path(analysis_script)
@@ -401,6 +403,10 @@ def scale(
         # path to the new notebook file
         # every execution should have its own folder to store local files
         output_file = output_path / execution_naming(image_id) / analysis_script.name
+
+        if output_file.exists() and exist_skip:
+            # the notebook exists and we should skip it
+            continue
 
         # create the directory (should not exist) and copy file to that
         os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
