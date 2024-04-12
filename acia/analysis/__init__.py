@@ -235,6 +235,49 @@ class TimeEx(PropertyExtractor):
         return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
 
 
+class DynamicTimeEx(PropertyExtractor):
+    """Extract time information for every contour when timepoints are not equi-distant"""
+
+    def __init__(
+        self,
+        timepoints: list,
+        relative=True,
+        input_unit: UnitLike = "second",
+        output_unit: UnitLike | None = "hour",
+    ):
+        super().__init__("time", input_unit, output_unit)
+
+        if len(timepoints) == 0:
+            raise ValueError("Need non-empty timepoint list")
+
+        self.timepoints = np.array(timepoints)
+
+        if relative:
+            self.timepoints -= self.timepoints[0]
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+
+        # get the number of frames
+        num_frames = np.unique(df["frame"])
+
+        if len(self.timepoints) != len(num_frames):
+            raise ValueError(
+                f"Number of specified timepoints does not match with number of frames: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
+            )
+
+        times = []
+        for _, row in df.iterrows():
+            times.append(
+                # convert to timepoint units
+                self.convert(
+                    # lookup frame timepoint
+                    self.timepoints[row["frame"]]
+                )
+            )
+
+        return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
+
+
 class PositionEx(PropertyExtractor):
     """Extract cell center information from image RoI detections"""
 
