@@ -297,9 +297,20 @@ class BlitzConn:
                 port=self.port,
                 secure=self.secure,
             )
-            conn.connect()
+
+            # establish connection
+            connect_res = conn.connect()
+
+            # check connection
+            if connect_res is False:
+                raise ConnectionError(
+                    "Connection to OMERO failed! Please check your OMERO settings (username, password, omero host, ...)!"
+                )
+
+            # if readonly -> set group so that we can immediately access all data
             if self.readonly:
                 conn.SERVICE_OPTS.setOmeroGroup("-1")
+            # store the connection
             self.conn = conn
             return IngoreWithWrapper(self.conn)
 
