@@ -354,7 +354,7 @@ class VideoExporter2:
         else:
             # do the video rendering
             clip = mpy.ImageSequenceClip(
-                [cv2.cvtColor(im, cv2.COLOR_BGR2RGB) for im in self.images],
+                list(self.images),
                 fps=self.framerate,
             )
             clip.write_videofile(
