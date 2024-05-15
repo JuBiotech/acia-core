@@ -434,4 +434,4 @@ def renderVideo(
                 )
 
             # output images
-            ve.write(image)
+            ve.write(cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
