@@ -353,6 +353,7 @@ def renderVideo(
     draw_frame_number=False,
     cropper=no_crop,
     filter_contours=lambda i, cont: True,
+    cell_color=(255, 255, 0),
 ):
     """Render a video of the time-lapse.
 
@@ -415,7 +416,7 @@ def renderVideo(
                         if filter_contours(i, cont)
                     ],
                     -1,
-                    (255, 255, 0),
+                    cell_color,
                 )  # RGB format
 
             if draw_frame_number:
