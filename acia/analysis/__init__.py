@@ -441,35 +441,56 @@ def scale(
 
     experiment_executions = []
 
+    failed_ids = []
+
     for image_id in tqdm(image_ids):
 
-        # path to the new notebook file
-        # every execution should have its own folder to store local files
-        output_file = output_path / execution_naming(image_id) / analysis_script.name
+        try:
 
-        if output_file.exists() and exist_skip:
-            # the notebook exists and we should skip it
-            continue
+            # path to the new notebook file
+            # every execution should have its own folder to store local files
+            output_file = (
+                output_path / execution_naming(image_id) / analysis_script.name
+            )
 
-        # create the directory (should not exist) and copy file to that
-        os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
-        shutil.copy(analysis_script, output_file)
+            if output_file.exists() and exist_skip:
+                # the notebook exists and we should skip it
+                continue
 
-        # parameters to integrate into notebook
-        parameters = dict(
-            storage_folder=str(output_file.parent.absolute()),
-            image_id=image_id,
-            **additional_parameters,
+            # create the directory (should not exist) and copy file to that
+            os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
+            shutil.copy(analysis_script, output_file)
+
+            # parameters to integrate into notebook
+            parameters = dict(
+                storage_folder=str(output_file.parent.absolute()),
+                image_id=image_id,
+                **additional_parameters,
+            )
+
+            # execute the notebook
+            pm.execute_notebook(
+                output_file, output_file, parameters=parameters, cwd=output_file.parent
+            )
+
+            # save experiment in list
+            experiment_executions.append(
+                dict(parameters=parameters, storage_folder=output_file.parent)
+            )
+        except pm.PapermillExecutionError:
+            failed_ids.append(image_id)
+
+    if len(failed_ids) > 0:
+        error_ratio = len(failed_ids) / len(image_ids) * 100
+
+        logging.warning(
+            "The scaling failed in %d/%d (%.3f%%) executions. Please report failes with the link to the script and the image id to your administrator in order to further improve the software.",
+            len(failed_ids),
+            len(image_ids),
+            error_ratio,
         )
-
-        # execute the notebook
-        pm.execute_notebook(
-            output_file, output_file, parameters=parameters, cwd=output_file.parent
-        )
-
-        # save experiment in list
-        experiment_executions.append(
-            dict(parameters=parameters, storage_folder=output_file.parent)
-        )
+        if error_ratio > 10:
+            # error rates of more than 10% are definitively acceptable
+            logging.error("Such a high error rate is not acceptable!")
 
     return experiment_executions
