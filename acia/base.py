@@ -282,7 +282,7 @@ class Overlay:
             # filter sub overlay with all contours in the current frame
             yield Overlay(list(contour_array[cont_mask]))
 
-    def toMasks(self, height, width) -> list[np.array]:
+    def toMasks(self, height, width, binary_mask=True) -> list[np.array]:
         """
         Turn the individual overlays into masks. For every time point we create a mask of all contours.
 
@@ -293,11 +293,21 @@ class Overlay:
         """
         masks = []
         for timeOverlay in self.timeIterator():
-            local_mask = np.zeros((height, width), dtype=bool)
+            if binary_mask:
+                local_mask = np.zeros((height, width), dtype=bool)
+            else:
+                # non-binary
+                local_mask = np.zeros((height, width), dtype=np.uint16)
 
             # combine all contours in one mask
-            for cont in timeOverlay:
+            for i, cont in enumerate(timeOverlay):
                 mask = cont.toMask(height=height, width=width)
+                if not binary_mask:
+                    mask = mask.astype(np.uint16) * (
+                        i + 1
+                    )  # convert into a non-binary mask
+
+                # combine into a single mask
                 local_mask = np.maximum(mask, local_mask)
 
             # append frame mask to list of masks
