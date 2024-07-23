@@ -8,6 +8,7 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
+import pandas as pd
 
 from acia.base import Contour, Overlay
 
@@ -82,6 +83,72 @@ def gen_simple_tracking(overlay: Overlay, tracking_graph: nx.Graph) -> str:
     simpleTracking = dict(segmentation=segmentation_data, tracking=tracking_data)
 
     return json.dumps(simpleTracking)
+
+
+def load_ctc_tracklet_graph(file: Path):
+    colnames = ["label", "t_start", "t_end", "parent"]
+
+    ctc_df = pd.read_csv(
+        file,
+        names=colnames,
+        header=None,
+        dtype={"label": "int", "t_start": "int", "t_end": "int", "parent": "int"},
+        delim_whitespace=" ",
+    )
+
+    tracklet_graph = nx.DiGraph()
+
+    for _, row in ctc_df.iterrows():
+        label, t_start, t_end, parent_label = row.to_list()
+        tracklet_graph.add_node(label, start_frame=t_start, end_frame=t_end)
+
+        if parent_label != 0:
+            tracklet_graph.add_edge(parent_label, label)
+
+    return tracklet_graph
+
+
+def ctc_track_graph(ov: Overlay, tracklet_graph: nx.DiGraph):
+    """Computes the ctc track graph (every cell detection is a node) based on cell detections (overlay) and the tracklet graph (every tracklet is one node).
+
+    Hint: overlay labels and tracklet_graph node ids need to align.
+
+    Args:
+        ov (Overlay): _description_
+        tracklet_graph (nx.DiGraph): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    track_graph = nx.DiGraph()
+
+    # add all the nodes
+    for cont in ov:
+        track_graph.add_node(cont.id)
+
+    tracklets = {}
+    for cont in ov:
+        tracklets[cont.label] = tracklets.get(cont.label, []) + [cont]
+
+    for tracklet_label in tracklets:
+        tracklets[tracklet_label] = sorted(
+            tracklets[tracklet_label], key=lambda c: c.frame
+        )
+
+    for tracklet_label, tracklet_nodes in tracklets.items():
+
+        # add tracklet edges
+        for contA, contB in zip(tracklet_nodes, tracklet_nodes[1:]):
+            track_graph.add_edge(contA.id, contB.id)
+
+        for pred_label in tracklet_graph.predecessors(tracklet_label):
+            track_graph.add_edge(tracklets[pred_label][-1].id, tracklet_nodes[0].id)
+
+        for succ_label in tracklet_graph.successors(tracklet_label):
+            track_graph.add_edge(tracklet_nodes[-1].id, tracklets[succ_label][0].id)
+
+    return track_graph
 
 
 def read_ctc_tracking(file: Path) -> list[dict]:

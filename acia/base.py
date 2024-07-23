@@ -14,11 +14,71 @@ from PIL import ImageDraw
 from shapely.geometry import Polygon
 from tqdm.contrib.concurrent import process_map
 
-from .utils import polygon_to_mask
+from .utils import mask_to_polygons, polygon_to_mask
 
 
 def unpack(data, function):
     return function(*data)
+
+
+class Instance:
+    """Cell instance based on an image mask and a label"""
+
+    def __init__(self, mask: np.ndarray, frame: int, label: int):
+        self.mask = mask
+        self.frame = frame
+        self.label = label
+        self.id = None  # id is unique in an overlay
+
+        self._polygon = None
+
+    @property
+    def binary_mask(self):
+        return self.mask == self.label
+
+    @property
+    def center(self):
+        # compute (x,y) center on pixel level
+
+        bin_mask = self.binary_mask
+
+        x = np.median(np.nonzero(np.max(bin_mask, axis=0)))
+        y = np.median(np.nonzero(np.max(bin_mask, axis=1)))
+
+        return (x, y)
+
+    @property
+    def area(self) -> float:
+        """Compute the area inside the contour
+
+        Returns:
+            [float]: area
+        """
+        return np.sum(self.binary_mask)
+
+    def toMask(self, height, width):
+        """
+        Render contour mask onto new image
+
+        height: height of the image
+        width: width of the image
+        """
+        bin_mask = self.binary_mask
+        m_height, m_width = bin_mask.shape
+        assert m_height == height
+        assert m_width == width
+
+        return bin_mask
+
+    @property
+    def polygon(self) -> Polygon:
+        if self._polygon is None:
+            # TODO: need to get polygon from mask
+            self._polygon = mask_to_polygons(self.binary_mask)
+
+        return self._polygon
+
+        # return Polygon(self.coordinates)
 
 
 class Contour:
@@ -105,12 +165,24 @@ class Overlay:
             frames = sorted(list(frames))
         self.__frames = frames
 
-    def add_contour(self, contour: Contour):
+        self.id_counter = 0
+
+        self.cont_lookup = {}
+
+    def add_contour(self, contour: Contour | Instance):
+        if isinstance(contour, Instance):
+            contour.id = self.id_counter
+            self.id_counter += 1
+
         self.contours.append(contour)
+        self.cont_lookup[contour.id] = contour
 
     def add_contours(self, contours: list[Contour]):
         for cont in contours:
             self.add_contour(cont)
+
+    def __getitem__(self, id):
+        return self.cont_lookup[id]
 
     def __iter__(self):
         return iter(self.contours)

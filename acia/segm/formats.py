@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from tifffile import imread
 
-from acia.base import Contour, Overlay
+from acia.base import Contour, Instance, Overlay
 from acia.utils import multi_mask_to_polygons
 
 
@@ -101,5 +101,26 @@ def load_ctc_segmentation(segmentation_path: Path) -> Overlay:
             points = np.array(poly.exterior.coords.xy)
             overlay.add_contour(Contour(points, -1, frame_id, c_id, "cell"))
             c_id += 1
+
+    return overlay
+
+
+def load_ctc_segmentation_native(segmentation_path: Path) -> Overlay:
+    segmentation_path = Path(segmentation_path)
+
+    segm_mask_files = sorted(segmentation_path.glob("*.tif"))
+
+    overlay = Overlay([], frames=list(range(len(segm_mask_files))))
+
+    for frame_id, segm_file in enumerate(segm_mask_files):
+
+        mask = imread(segm_file)
+
+        # ids (without 0)
+        labels = np.unique(mask)[1:]
+        for label in labels:
+            instance = Instance(mask=mask, frame=frame_id, label=label)
+
+            overlay.add_contour(instance)
 
     return overlay
