@@ -8,10 +8,11 @@ import multiprocessing
 from functools import partial
 from typing import Callable, Iterator
 
+import cv2
 import numpy as np
 import tqdm
-from PIL import ImageDraw
-from shapely.geometry import Polygon
+from PIL import Image, ImageDraw
+from shapely.geometry import MultiPolygon, Polygon
 from tqdm.contrib.concurrent import process_map
 
 from .utils import mask_to_polygons, polygon_to_mask
@@ -75,10 +76,37 @@ class Instance:
         if self._polygon is None:
             # TODO: need to get polygon from mask
             self._polygon = mask_to_polygons(self.binary_mask)
+            if self._polygon is None:
+                print("Error")
 
         return self._polygon
 
-        # return Polygon(self.coordinates)
+    def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
+        """Draws instance onto an image
+
+        Args:
+            image (np.array | PIL.Image): the image to draw onto
+            draw (PIL.ImageDraw, optional): Drawing Tool. Defaults to None.
+            outlineColor (tuple, optional): Color of the Instance contour. None means no contour is drawn. Defaults to (255, 255, 0).
+            fillColor (tuple, optional): Color of the contour fill. Defaults to None (no filling).
+
+        Returns:
+            np.array | PIL.Image: The image containing the drawn contour.
+        """
+        # TODO: make this more efficient
+        if draw is None:
+            draw = ImageDraw.Draw(image)
+
+        def get_largest(poly):
+            if isinstance(poly, MultiPolygon):
+                return poly.geoms[np.argmax([p.area for p in poly.geoms])]
+            else:
+                return poly
+
+        # get the contour coordinates
+        coords = np.stack(get_largest(self.polygon).exterior.coords, axis=0).astype(int)
+        # draw the polygon
+        draw.polygon(tuple(coords.flatten()), outline=outlineColor, fill=fillColor)
 
 
 class Contour:
@@ -317,22 +345,56 @@ class Overlay:
 
     def draw(
         self,
-        image,
+        image: np.ndarray | Image.Image,
         outlineColor: str | Callable[[Contour], tuple[int]] = None,
         fillColor: str | Callable[[Contour], tuple[int]] = None,
     ):
+        """Draw an overly onto an image frame. Hint: overlay should only contain contours for a single frame
+
+        Args:
+            image (np.ndarray | Image): Image to draw onto
+            outlineColor (str | Callable[[Contour], tuple[int]], optional): Color of the object outlines. If this is a function, the function computes the color for every contour/instance individually. Defaults to None (no contour is drawn).
+            fillColor (str | Callable[[Contour], tuple[int]], optional): Fill color of the object. If this is a function, the function computes the color for every contour/instance individually. Defaults to None (no fill). Defaults to None.
+
+        Returns:
+            np.ndarray | Image: the updated image object
+        """
+
+        if self.numFrames() > 1:
+            logging.warning(
+                "Drawing overlay onto a frame while the overlay contains instances from multiple frames!"
+            )
+
+        is_numpy = isinstance(image, np.ndarray)
+
+        # Deal with numpy or PIL.Image
+        if is_numpy:
+            # convert into rgb PIL image
+            if len(image.shape) == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            image = Image.fromarray(image)
+
         imdraw = ImageDraw.Draw(image)
         for timeOverlay in self.timeIterator():
             for cont in timeOverlay:
                 oc_local = outlineColor
                 fc_local = fillColor
 
+                # compute the contour color for the object
                 if oc_local and isinstance(oc_local, Callable):
                     oc_local = oc_local(cont)
+                # compute the fill color for the object
                 if fc_local and isinstance(fc_local, Callable):
                     fc_local = fc_local(cont)
 
                 cont.draw(image, outlineColor=oc_local, fillColor=fc_local, draw=imdraw)
+
+        if is_numpy:
+            # return the numpy version
+            return np.asarray(image)
+        else:
+            # return the PIL image
+            return image
 
 
 class BaseImage:
