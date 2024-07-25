@@ -361,8 +361,8 @@ class VideoExporter2:
                 str(self.filename.absolute()),
                 codec=self.codec,
                 ffmpeg_params=self.ffmpeg_params,
-                verbose=False,
-                logger=None,
+                # verbose=False,
+                # logger=None,
             )
             self.images = []
 
