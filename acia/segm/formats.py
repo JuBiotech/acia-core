@@ -106,21 +106,39 @@ def load_ctc_segmentation(segmentation_path: Path) -> Overlay:
 
 
 def load_ctc_segmentation_native(segmentation_path: Path) -> Overlay:
-    segmentation_path = Path(segmentation_path)
+    """Fast loading of CTC segmentation masks into an Overlay
 
+    Args:
+        segmentation_path (Path): Path to the folder containing all the *.tif masks
+
+    Returns:
+        Overlay: Overlay containing all masks
+    """
+
+    # List all the segmentation masks
+    segmentation_path = Path(segmentation_path)
     segm_mask_files = sorted(segmentation_path.glob("*.tif"))
 
     overlay = Overlay([], frames=list(range(len(segm_mask_files))))
 
+    # unique id for instances
+    uid = 1
+
+    # Iterate all the mask files
     for frame_id, segm_file in enumerate(segm_mask_files):
 
+        # read the tif
         mask = imread(segm_file)
 
-        # ids (without 0)
+        # Find all cell labels (except 0)
         labels = np.unique(mask)[1:]
+
+        # for every label create an instance and add it to the contour
         for label in labels:
             instance = Instance(mask=mask, frame=frame_id, label=label)
+            instance.id = uid
 
             overlay.add_contour(instance)
+            uid += 1
 
     return overlay
