@@ -221,6 +221,19 @@ class IdEx(PropertyExtractor):
         return pd.DataFrame({self.name: ids}), {self.name: self.output_unit}
 
 
+class LabelEx(PropertyExtractor):
+    """Extract single-cell label (from tracking) for every contour"""
+
+    def __init__(self):
+        super().__init__("label", 1)
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        labels = []
+        for cont in overlay:
+            labels.append(self.convert(cont.label))
+        return pd.DataFrame({self.name: labels}), {self.name: self.output_unit}
+
+
 class TimeEx(PropertyExtractor):
     """Extract time information for every contour"""
 
