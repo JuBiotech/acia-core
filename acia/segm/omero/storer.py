@@ -480,14 +480,19 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         self.z = z
         self.imageQuality = imageQuality
         self.colorList = colorList
-        self.range = list(range)
+        self.range = range
 
-        if np.max(self.range) > len(self):
-            logging.warning(
-                "Range exceeds number of images! Truncate to %d images", len(self)
-            )
-            np_range = np.array(self.range)
-            self.range = np_range[np_range < len(self)]
+        if self.range is not None:
+            # we make it a list
+            self.range = list(self.range)
+
+            # we have a look that it is not tool long
+            if np.max(self.range) > len(self):
+                logging.warning(
+                    "Range exceeds number of images! Truncate to %d images", len(self)
+                )
+                np_range = np.array(self.range)
+                self.range = np_range[np_range < len(self)]
 
         assert len(self.channels) <= len(
             self.colorList
