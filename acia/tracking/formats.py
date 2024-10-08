@@ -125,7 +125,7 @@ def ctc_track_graph(ov: Overlay, tracklet_graph: nx.DiGraph):
 
     # add all the nodes
     for cont in ov:
-        track_graph.add_node(cont.id)
+        track_graph.add_node(cont.id, frame=cont.frame)
 
     tracklets = {}
     for cont in ov:
