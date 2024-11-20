@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections.abc import Iterable
 from functools import reduce
 from itertools import starmap
 from multiprocessing import Pool
@@ -452,6 +453,8 @@ def scale(
         analysis_script = [Path(analysis_script)]
     elif isinstance(analysis_script, Path):
         analysis_script = [analysis_script]
+    elif isinstance(analysis_script, Iterable):
+        analysis_script = list(map(Path, analysis_script))
 
     for script in analysis_script:
         if not script.exists():
