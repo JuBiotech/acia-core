@@ -159,3 +159,46 @@ def subsample_tracking(
 
     # return the subsampled tracking source
     return TrackingSourceInMemory(subsampled_overlay, subsampled_graph)
+
+
+def ctc_track_graph(ov: Overlay, tracklet_graph: nx.DiGraph):
+    """Computes the ctc track graph (every cell detection is a node) based on cell detections (overlay) and the tracklet graph (every tracklet is one node).
+
+    Hint: overlay labels and tracklet_graph node ids need to align.
+
+    Args:
+        ov (Overlay): _description_
+        tracklet_graph (nx.DiGraph): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    track_graph = nx.DiGraph()
+
+    # add all the nodes
+    for cont in ov:
+        track_graph.add_node(cont.id, frame=cont.frame)
+
+    tracklets = {}
+    for cont in ov:
+        tracklets[cont.label] = tracklets.get(cont.label, []) + [cont]
+
+    for tracklet_label in tracklets:
+        tracklets[tracklet_label] = sorted(
+            tracklets[tracklet_label], key=lambda c: c.frame
+        )
+
+    for tracklet_label, tracklet_nodes in tracklets.items():
+
+        # add tracklet edges
+        for contA, contB in zip(tracklet_nodes, tracklet_nodes[1:]):
+            track_graph.add_edge(contA.id, contB.id)
+
+        for pred_label in tracklet_graph.predecessors(tracklet_label):
+            track_graph.add_edge(tracklets[pred_label][-1].id, tracklet_nodes[0].id)
+
+        for succ_label in tracklet_graph.successors(tracklet_label):
+            track_graph.add_edge(tracklet_nodes[-1].id, tracklets[succ_label][0].id)
+
+    return track_graph
