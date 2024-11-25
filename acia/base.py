@@ -193,9 +193,13 @@ class Overlay:
             frames = sorted(list(frames))
         self.__frames = frames
 
-        self.id_counter = 0
+        self.cont_lookup = {cont.id: cont for cont in self.contours}
 
-        self.cont_lookup = {}
+        # set the appropriate counter for the next id
+        if len(self.contours) == 0:
+            self.id_counter = 0
+        else:
+            self.id_counter = np.max(list(self.cont_lookup.keys())) + 1
 
     def add_contour(self, contour: Contour | Instance):
         if isinstance(contour, Instance):
