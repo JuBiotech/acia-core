@@ -1,6 +1,5 @@
 shapely>=1.8.0,<2.0.0
 tqdm>=4.61.2
-pycococreatortools@git+https://github.com/waspinator/pycococreator.git@0.2.0
 opencv-python-headless==4.5.5.64
 rtree>=0.9.7
 pillow>=8.3.1
