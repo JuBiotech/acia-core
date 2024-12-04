@@ -72,9 +72,7 @@ class TestInstance(unittest.TestCase):
     def test_load_native(self):
         print("native")
         t_start = time.time()
-        ov = load_ctc_segmentation_native(
-            "/home/johannes/projects/work/acia/ctc_data/00_GT/SEG"
-        )
+        ov = load_ctc_segmentation_native("00_GT/SEG")
         t_end = time.time()
         print(len(ov))
         print("Loading time (s) ", t_end - t_start)
@@ -93,17 +91,13 @@ class TestInstance(unittest.TestCase):
 
         print("native")
         t_start = time.time()
-        ov = load_ctc_segmentation_native(
-            "/home/johannes/projects/work/acia/ctc_data/00_GT/TRA"
-        )
+        ov = load_ctc_segmentation_native("00_GT/TRA")
         t_end = time.time()
         print(len(ov))
         print("Load overlay time (s) ", t_end - t_start)
 
         t_start = time.time()
-        tracklet_graph = load_ctc_tracklet_graph(
-            "/home/johannes/projects/work/acia/ctc_data/00_GT/TRA/man_track.txt"
-        )
+        tracklet_graph = load_ctc_tracklet_graph("00_GT/TRA/man_track.txt")
         t_end = time.time()
         print("Load tracking time (s) ", t_end - t_start)
 
