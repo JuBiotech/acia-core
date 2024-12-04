@@ -436,3 +436,62 @@ def renderVideo(
 
             # output images
             ve.write(image)
+
+
+def fast_mask_rendering(masks, im, colors, alpha=0.5):
+    """
+    Plot masks on image.
+
+    Args:
+        masks (tensor): Predicted masks on cuda, shape: [n, h, w]
+        colors (List[List[Int]]): Colors for predicted masks, [[r, g, b] * n]
+        im_gpu (tensor): Image is in cuda, shape: [3, h, w], range: [0, 1]
+        alpha (float): Mask transparency: 0.0 fully transparent, 1.0 opaque
+        retina_masks (bool): Whether to use high resolution masks or not. Defaults to False.
+    """
+
+    colors = np.array(colors, dtype=np.float32) / 255.0  # shape(n,3)
+    colors = colors[:, None, None]  # shape(n,1,1,3)
+
+    masks = np.expand_dims(masks, 3)  # shape(n,h,w,1)
+    masks_color = masks * (colors * alpha)  # shape(n,h,w,3)
+
+    inv_alpha_masks = (1 - masks * alpha).cumprod(0)  # shape(n,h,w,1)
+    mcs = masks_color.max(axis=0)  # shape(n,h,w,3)
+
+    im = im.astype(np.float) / 255
+    im = im * inv_alpha_masks[-1] + mcs
+    im_mask = (im * 255).astype(np.uint8)
+
+    return im_mask
+
+
+def fast_mask_rendering_torch(masks, im, colors, alpha=0.5):
+    """
+    Plot masks on image.
+
+    Args:
+        masks (tensor): Predicted masks on cuda, shape: [n, h, w]
+        colors (List[List[Int]]): Colors for predicted masks, [[r, g, b] * n]
+        im_gpu (tensor): Image is in cuda, shape: [3, h, w], range: [0, 1]
+        alpha (float): Mask transparency: 0.0 fully transparent, 1.0 opaque
+        retina_masks (bool): Whether to use high resolution masks or not. Defaults to False.
+    """
+    ## pylint: disable=import-outside-toplevel
+    import torch
+
+    colors = torch.tensor(colors, dtype=torch.float32) / 255.0  # shape(n,3)
+    colors = colors[:, None, None]  # shape(n,1,1,3)
+
+    masks = torch.tensor(masks)
+    masks = masks.unsqueeze(3)  # shape(n,h,w,1)
+    masks_color = masks * (colors * alpha)  # shape(n,h,w,3)
+
+    inv_alpha_masks = (1 - masks * alpha).cumprod(0)  # shape(n,h,w,1)
+    mcs = masks_color.max(dim=0).values  # shape(n,h,w,3)
+
+    im = torch.tensor(im, dtype=torch.float) / 255
+    im = im * inv_alpha_masks[-1] + mcs
+    im_mask = (im * 255).byte().numpy()
+
+    return im_mask
