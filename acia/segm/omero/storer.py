@@ -482,6 +482,18 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         self.colorList = colorList
         self.range = range
 
+        if self.range is not None:
+            # we make it a list
+            self.range = list(self.range)
+
+            # we have a look that it is not tool long
+            if np.max(self.range) > len(self):
+                logging.warning(
+                    "Range exceeds number of images! Truncate to %d images", len(self)
+                )
+                np_range = np.array(self.range)
+                self.range = np_range[np_range < len(self)]
+
         assert len(self.channels) <= len(
             self.colorList
         ), f"you must specify a color for every channel! You have {len(self.channels)} channels ({self.channels}) but only {len(self.colorList)} color(s) ({self.colorList}). Please update your colorList!"
@@ -531,7 +543,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
 
     def __iter__(self):
         for frame in self.frame_list:
-            if self.range and (frame not in self.range):
+            if self.range is not None and (frame not in self.range):
                 continue
             yield self.get_frame(frame)
 
@@ -548,7 +560,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
 
     @property
     def frame_list(self) -> list[int]:
-        if self.range:
+        if self.range is not None:
             return list(self.range)
         else:
             return list(range(len(self)))
@@ -556,7 +568,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
     def __len__(self):
         with self.make_connection() as conn:
             image = conn.getObject("Image", self.imageId)
-            if self.range:
+            if self.range is not None:
                 return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return int(image.getSizeT() * image.getSizeZ())
 
@@ -716,7 +728,7 @@ class OmeroRoISource(OmeroSource, RoISource):
     def __len__(self) -> int:
         with self.make_connection() as conn:
             image = conn.getObject("Image", self.imageId)
-            if self.range:
+            if self.range is not None:
                 return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return image.getSizeT() * image.getSizeZ()
 
