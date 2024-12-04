@@ -39,6 +39,8 @@ test:
   image: python:3.8
   stage: test
   extends: .venv
+  tags:
+  - largemem
   script:
     - pip install --upgrade pip
     - pip install .
