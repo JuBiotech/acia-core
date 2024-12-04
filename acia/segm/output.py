@@ -477,7 +477,7 @@ def fast_mask_rendering_torch(masks, im, colors, alpha=0.5):
         alpha (float): Mask transparency: 0.0 fully transparent, 1.0 opaque
         retina_masks (bool): Whether to use high resolution masks or not. Defaults to False.
     """
-    ## pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel
     import torch
 
     colors = torch.tensor(colors, dtype=torch.float32) / 255.0  # shape(n,3)
