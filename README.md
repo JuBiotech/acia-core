@@ -1,7 +1,7 @@
 # **acia**: Automated single-cell image analysis
 
-![pipeline](https://jugit.fz-juelich.de/j.seiffarth/acia/badges/master/pipeline.svg)
-![coverage](https://jugit.fz-juelich.de/j.seiffarth/acia/badges/master/coverage.svg)
+![pipeline](https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia/badges/master/pipeline.svg)
+![coverage](https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia/badges/master/coverage.svg)
 
 The `acia` library provides utility functionality for analysing 2D+t time-lapse image sequences in microfluidic live-cell imaging experiments. It provides:
 - Abstraction for various image sources (local, OMERO)
@@ -12,9 +12,18 @@ Although the funtionality is developed with microfluidic applications in mind, t
 
 ## Installation
 
+Install `acia` from pypi:
+
+```bash
+pip install acia
+```
+
+
+## Developers
+
 1. Clone this repository
     ```bash
-    git clone https://jugit.fz-juelich.de/j.seiffarth/acia.git
+    git clone https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia
     ```
 
 2. Create the conda environment (including dependencies) and install `acia`
