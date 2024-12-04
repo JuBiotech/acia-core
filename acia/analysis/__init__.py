@@ -467,6 +467,8 @@ def scale(
 
     failed_ids = []
 
+    failed_ids = []
+
     for image_id in tqdm(image_ids):
 
         try:
