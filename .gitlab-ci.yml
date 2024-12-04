@@ -43,6 +43,11 @@ test:
     - pip install --upgrade pip
     - pip install .
     - pip install tox flake8  # you can also use tox
+    # download data for testing
+    - wget -O output.zip https://zenodo.org/records/7260137/files/ctc_format.zip?download=1
+    - unzip output.zip
+    - ls
+    # perform the tests
     - tox -e py38,flake8
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
