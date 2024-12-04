@@ -3,13 +3,23 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import cv2
+import moviepy.editor as mpy
+import networkx as nx
 import numpy as np
+from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
+from tqdm.auto import tqdm
 
 from acia import ureg
-from acia.base import BaseImage
-from acia.segm.local import LocalImage
+from acia.base import BaseImage, ImageSequenceSource, Overlay
+from acia.segm.local import InMemorySequenceSource, LocalImage
+
+# loda the deja vu sans default font
+default_font = font_manager.findfont("DejaVuSans")
 
 
 def draw_scale_bar(
@@ -20,7 +30,7 @@ def draw_scale_bar(
     bar_height,
     color=(255, 255, 255),
     font_size=25,
-    font_path="/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    font_path=default_font,
     background_color=None,
     background_margin_pixel=3,
 ):
@@ -51,8 +61,12 @@ def draw_scale_bar(
     font = ImageFont.truetype(font_path, font_size)
 
     # compute width and height of the scale bar in pixels (we need to round here)
-    bar_pixel_width = int(np.round((bar_width / size_of_pixel).magnitude))
-    bar_pixel_height = int(np.round((bar_height / size_of_pixel).magnitude))
+    bar_pixel_width = int(
+        np.round((bar_width / size_of_pixel).to_base_units().magnitude)
+    )
+    bar_pixel_height = int(
+        np.round((bar_height / size_of_pixel).to_base_units().magnitude)
+    )
 
     # extract position
     xstart, ystart = xy_position
@@ -132,7 +146,7 @@ def draw_time(
     time_step,
     color=(255, 255, 255),
     font_size=25,
-    font_path="/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    font_path=default_font,
     background_color=None,
     background_margin_pixel=3,
 ):
@@ -212,3 +226,264 @@ def draw_time(
             yield LocalImage(image)
         else:
             yield image
+
+
+class VideoExporter:
+    """
+    Wrapper for opencv video writer. Simplifies usage
+    """
+
+    def __init__(self, filename, framerate, codec="MJPG"):
+        self.filename = filename
+        self.framerate = framerate
+        self.out = None
+        self.frame_height = None
+        self.frame_width = None
+        self.codec = codec
+
+    def __del__(self):
+        if self.out:
+            self.close()
+
+    def write(self, image):
+        height, width = image.shape[:2]
+        if self.out is None:
+            self.frame_height, self.frame_width = image.shape[:2]
+            self.out = cv2.VideoWriter(
+                self.filename,
+                cv2.VideoWriter_fourcc(*self.codec),
+                self.framerate,
+                (self.frame_width, self.frame_height),
+            )
+        if self.frame_height != height or self.frame_width != width:
+            logging.warning(
+                "You add images of different resolution to the VideoExporter. This may cause problems (e.g. black video output)!"
+            )
+        self.out.write(image)
+
+    def close(self):
+        if self.out:
+            self.out.release()
+            self.out = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.out is None:
+            logging.warning(
+                "Closing video writer without any images written and no video output generated! Did you forget to write the images="
+            )
+        self.close()
+
+
+class VideoExporter2:
+    """
+    Wrapper for opencv video writer. Simplifies usage
+    """
+
+    def __init__(
+        self, filename: Path, framerate: int, codec="mjpeg", ffmpeg_params=None
+    ):
+        self.filename = Path(filename)
+        self.framerate = framerate
+        self.codec = codec
+
+        if ffmpeg_params is None:
+            ffmpeg_params = []
+
+        self.ffmpeg_params = ffmpeg_params
+
+        self.images = []
+
+    @staticmethod
+    def default_vp9(
+        filename: Path,
+        framerate: int,
+    ):
+        ffmpeg_params = ["-crf", "30", "-b:v", "0", "-speed", "1"]
+        return VideoExporter2(
+            filename, framerate, codec="libvpx-vp9", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def fast_vp9(
+        filename: Path,
+        framerate: int,
+    ):
+        ffmpeg_params = ["-crf", "35", "-b:v", "0", "-speed", "3"]
+        return VideoExporter2(
+            filename, framerate, codec="libvpx-vp9", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def default_h264(
+        filename: Path,
+        framerate: int,
+    ):
+        ffmpeg_params = ["-crf", "30", "-preset", "fast"]
+        return VideoExporter2(
+            filename, framerate, codec="libx264", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def default_h265(filename: Path, framerate: int):
+        ffmpeg_params = ["-crf", "26", "-preset", "fast"]
+        return VideoExporter2(
+            filename, framerate, codec="libx265", ffmpeg_params=ffmpeg_params
+        )
+
+    @staticmethod
+    def default_mjpg(filename: Path, framerate: int):
+        ffmpeg_params = []
+        return VideoExporter2(
+            filename, framerate, codec="mjpeg", ffmpeg_params=ffmpeg_params
+        )
+
+    # av1 not yet supported
+    #    @staticmethod
+    #    def default_av1(filename: Path, framerate: int, ffmpeg_params=["-crf", "26", "-preset", "2", "-strict", "2"]):
+    #        return VideoExporter2(filename, framerate, codec="libaom-av1", ffmpeg_params=ffmpeg_params)
+
+    def write(self, image):
+        self.images.append(image)
+
+    def close(self):
+        if len(self.images) == 0:
+            logging.warning(
+                "Closing video writer without any images written and no video output generated! Did you forget to write the images?"
+            )
+        else:
+            # do the video rendering
+            clip = mpy.ImageSequenceClip(
+                list(self.images),
+                fps=self.framerate,
+            )
+            clip.write_videofile(
+                str(self.filename.absolute()),
+                codec=self.codec,
+                ffmpeg_params=self.ffmpeg_params,
+                # verbose=False,
+                # logger=None,
+            )
+            self.images = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
+
+def render_segmentation(
+    imageSource: ImageSequenceSource,
+    overlay: Overlay = None,
+    cell_color=(255, 255, 0),
+) -> ImageSequenceSource:
+    """Render a video of the time-lapse including the segmentaiton information.
+
+    Args:
+        imageSource (ImageSequenceSource): Your time-lapse source object.
+        Overlay ([type]): Your source of RoIs for the image (e.g. cells). If None, no RoIs are visualized. Defaults to None.
+        cell_color: rgb color of the cell outlines
+    """
+
+    if overlay is None:
+        # when we have no rois -> create iterator that always returns None
+        def always_none():
+            while True:
+                yield None
+
+        overlay = iter(always_none())
+
+    images = []
+
+    for image, frame_overlay in tqdm.tqdm(zip(imageSource, overlay.timeIterator())):
+        # extract the numpy image
+        if isinstance(image, BaseImage):
+            image = image.raw
+        elif isinstance(image, np.ndarray):
+            pass
+        else:
+            raise Exception("Unsupported image type!")
+
+        # copy image as we draw onto it
+        image = np.copy(image)
+
+        # Draw overlay
+        if frame_overlay:
+            image = frame_overlay.draw(cell_color)  # RGB format
+
+        images.append(image)
+
+    # return as sequence source again
+    return InMemorySequenceSource(np.stack(images))
+
+
+def render_tracking(
+    image_source: ImageSequenceSource,
+    overlay: Overlay,
+    tracking_graph: nx.DiGraph,
+) -> ImageSequenceSource:
+    """Render the tracking to an image source
+
+    Args:
+        image_source (ImageSequenceSource): Image source
+        overlay (Overlay): overla of cell detections (for center points)
+        tracking_graph (nx.DiGraph): the tracking graph where every cell detection is a node in the graph.
+
+    Returns:
+        ImageSequenceSource: Rendered image source
+    """
+
+    images = []
+
+    contour_lookup = {cont.id: cont for cont in overlay}
+
+    for image, frame_overlay in tqdm(zip(image_source, overlay.timeIterator())):
+
+        np_image = np.copy(image.raw)
+
+        for cont in frame_overlay:
+            if cont.id in tracking_graph.nodes:
+                edges = tracking_graph.out_edges(cont.id)
+
+                born = tracking_graph.in_degree(cont.id) == 0
+
+                for edge in edges:
+                    source = contour_lookup[edge[0]].center
+                    target = contour_lookup[edge[1]].center
+
+                    line_color = (0, 0, 255)  # bgr: red
+
+                    if len(edges) > 1:
+                        line_color = (255, 0, 0)  # bgr: blue
+
+                    cv2.line(
+                        np_image,
+                        tuple(map(int, source)),
+                        tuple(map(int, target)),
+                        line_color,
+                        thickness=3,
+                    )
+
+                    if born:
+                        cv2.circle(
+                            np_image,
+                            tuple(map(int, source)),
+                            3,
+                            (203, 192, 255),
+                            thickness=1,
+                        )
+
+                if len(edges) == 0:
+                    cv2.rectangle(
+                        np_image,
+                        np.array(cont.center).astype(np.int32) - 2,
+                        np.array(cont.center).astype(np.int32) + 2,
+                        (203, 192, 255),
+                    )
+
+        images.append(np_image)
+
+    return InMemorySequenceSource(images)

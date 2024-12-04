@@ -12,6 +12,7 @@ import numpy as np
 import requests
 import tqdm.auto as tqdm
 from PIL import Image
+from retry import retry
 
 from acia.base import Contour, ImageSequenceSource, Overlay, Processor
 
@@ -167,12 +168,13 @@ class FlexibleOnlineModel(Processor):
                     'Could not determine port! Did you specify "http://" or "https://" at the beginning of your url?'
                 )
 
-        # get username from environment
-        self.username = os.environ.get("USER", None)  # from jupyter notebook
-        if self.username is None:
-            self.username = os.environ.get(
-                "USERNAME", None
-            )  # from local bash information
+        # get username from environment for statistics
+        # 1. try to get jupyter user, then try to readout other usernames
+        self.username = (
+            os.environ.get("JUPYTERHUB_USER", None)
+            or os.environ.get("USER", None)
+            or os.environ.get("USERNAME", None)
+        )
 
     def predict(self, source: ImageSequenceSource, params=None):
         if params is None:
@@ -193,11 +195,15 @@ class FlexibleOnlineModel(Processor):
             parameters=json.dumps(additional_parameters),
         )
 
+        # collect all the frame indices that we use for prediction
+        all_frames = []
+
         # Do batch prediction
         for local_batch in batch(enumerate(tqdm.tqdm(source)), self.batch_size):
             local_batch = np.array(list(local_batch), dtype=object)
 
             frames = local_batch[:, 0]
+            all_frames += list(frames)
             images = map(lambda img: img.raw, local_batch[:, 1])
 
             contours += self.predict_batch(frames, images, params)
@@ -205,8 +211,8 @@ class FlexibleOnlineModel(Processor):
         for i, cont in enumerate(contours):
             cont.id = i
 
-        # create new overlay based on all contours
-        return Overlay(contours)
+        # create new overlay based on all contours and frame numbers
+        return Overlay(contours, frames=all_frames)
 
     def predict_single(self, frame_id, image, params):
         contours = []
@@ -250,6 +256,7 @@ class FlexibleOnlineModel(Processor):
 
         return contours
 
+    @retry(requests.exceptions.ReadTimeout, tries=3)
     def predict_batch(self, frame_ids: List[int], images: List, params) -> Overlay:
         """Predict segmentation for a batch of frames
 

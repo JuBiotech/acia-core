@@ -6,9 +6,6 @@ import cv2
 import numpy as np
 import torch
 import tqdm.auto as tqdm
-from cellpose import models
-from mmcv.runner import wrap_fp16_model
-from mmdet.apis import init_detector
 
 from acia.base import Contour, ImageSequenceSource, Overlay, Processor
 
@@ -48,6 +45,9 @@ class OfflineModel(Processor):
         device: device type, e.g. 'cpu' or 'cuda'
         cfg_options: overwrite configuration options e.g. {'test_cfg.rpn.nms_thr': 0.7}
         """
+        from mmcv.runner import wrap_fp16_model
+        from mmdet.apis import init_detector
+
         # init model
         if self.model is None:
             self.model = init_detector(
@@ -135,6 +135,7 @@ class PoseModel(Processor):
         """
         Load model from definitions
         """
+        from cellpose import models
         logging.info("Loading model %s", self.model_name)
         self.model = models.Cellpose(
             gpu=self.use_gpu, model_type=self.model_name, omni=self.omni

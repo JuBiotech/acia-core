@@ -9,6 +9,7 @@ from omero.gateway import BlitzGateway, DatasetWrapper, ImageWrapper, ProjectWra
 from PIL import Image, ImageDraw, ImageFont
 
 from acia.segm.omero.storer import OmeroSequenceSource
+from acia.utils import ScaleBar
 
 
 def getImage(conn: BlitzGateway, imageId: int) -> ImageWrapper:
@@ -186,7 +187,7 @@ def create_dataset(
     return new_dataset
 
 
-class ScaleBar:
+class OmeroScaleBar(ScaleBar):
     """Renderer for scale bar to show metric size of pixels on image"""
 
     def __init__(

@@ -1,7 +1,9 @@
 """Classes for OMERO storage interaction"""
 
+from __future__ import annotations
+
 import logging
-from typing import Tuple
+from pathlib import Path
 
 import numpy as np
 import omero
@@ -9,6 +11,7 @@ import tqdm.auto as tqdm
 from omero.gateway import BlitzGateway
 from omero.model import LengthI
 
+from acia import ureg
 from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
 from acia.segm.local import LocalImage
 from acia.segm.omero.shapeUtils import make_coordinates
@@ -136,6 +139,7 @@ class OmeroRoIStorer:
         port=4064,
         secure=True,
         roiId=None,
+        conn=None,
     ) -> Overlay:
         """
         Loads overlay from omero. Only considers polygons.
@@ -148,14 +152,15 @@ class OmeroRoIStorer:
         """
         overlay = Overlay([])
         # open connection to omero
-        with BlitzGateway(
-            username, password, host=serverUrl, port=port, secure=secure
-        ) as conn:
+        # with BlitzGateway(
+        #    username, password, host=serverUrl, port=port, secure=secure
+        # ) as conn:
+        with BlitzConn(username, password, serverUrl, port, secure, conn) as omero_conn:
             # get the roi service
-            roi_service = conn.getRoiService()
+            roi_service = omero_conn.getRoiService()
             result = roi_service.findByImage(imageId, None)
 
-            image = image = conn.getObject("Image", imageId)
+            image = omero_conn.getObject("Image", imageId)
 
             # size_t = image.getSizeT()
             size_z = image.getSizeZ()
@@ -206,7 +211,7 @@ class OmeroRoIStorer:
             port=port,
             secure=secure,
             conn=conn,
-        ).make_connection() as omero_conn:
+        ) as omero_conn:
             # get the roi service
             roi_service = omero_conn.getRoiService()
             updateService = omero_conn.getUpdateService()
@@ -239,7 +244,7 @@ class IngoreWithWrapper:
         self.object = object
 
     def __getattr__(self, attr):
-        return self.object.__getattribute__(attr)
+        return getattr(self.object, attr)
 
     def __enter__(self):
         return self.object
@@ -254,12 +259,21 @@ class BlitzConn:
     """
 
     def __init__(
-        self, username, password, serverUrl, port=4064, secure=True, conn=None
+        self,
+        username,
+        password,
+        serverUrl,
+        port=4064,
+        secure=True,
+        conn=None,
+        readonly=True,
     ):
 
-        assert username is not None, "Please provide a username"
-        assert password is not None, "Please provide a password"
-        assert serverUrl is not None, "Please provide a OMERO server"
+        assert username is not None or conn is not None, "Please provide a username"
+        assert password is not None or conn is not None, "Please provide a password"
+        assert (
+            serverUrl is not None or conn is not None
+        ), "Please provide a OMERO server"
 
         self.username = username
         self.password = password
@@ -268,6 +282,7 @@ class BlitzConn:
         self.secure = secure
 
         self.conn = conn
+        self.readonly = readonly
 
     def make_connection(self):
         # try to keep connection alive
@@ -282,8 +297,20 @@ class BlitzConn:
                 port=self.port,
                 secure=self.secure,
             )
-            conn.connect()
-            conn.SERVICE_OPTS.setOmeroGroup("-1")
+
+            # establish connection
+            connect_res = conn.connect()
+
+            # check connection
+            if connect_res is False:
+                raise ConnectionError(
+                    "Connection to OMERO failed! Please check your OMERO settings (username, password, omero host, ...)!"
+                )
+
+            # if readonly -> set group so that we can immediately access all data
+            if self.readonly:
+                conn.SERVICE_OPTS.setOmeroGroup("-1")
+            # store the connection
             self.conn = conn
             return IngoreWithWrapper(self.conn)
 
@@ -296,7 +323,7 @@ class BlitzConn:
     def __del__(self):
         # make sure the connection is always closed
         if self.conn:
-            self.conn.__exit__()
+            self.conn.close()
             self.conn = None
 
 
@@ -314,6 +341,7 @@ class OmeroSource(BlitzConn):
         port=4064,
         secure=True,
         conn=None,
+        readonly=True,
     ):
         """
         Args:
@@ -333,12 +361,13 @@ class OmeroSource(BlitzConn):
             port=port,
             secure=secure,
             conn=conn,
+            readonly=readonly,
         )
 
         self.imageId = imageId
 
     @property
-    def rawPixelSize(self) -> Tuple[LengthI, LengthI]:
+    def rawPixelSize(self) -> tuple[LengthI, LengthI]:
         """Return the pixel size in omero objects
 
         Returns:
@@ -353,7 +382,7 @@ class OmeroSource(BlitzConn):
             return size_x_obj, size_y_obj
 
     @property
-    def pixelSize(self) -> Tuple[float, float]:
+    def pixelSize(self) -> tuple[float, float]:
         """Return the pixel size in micron
 
         Returns:
@@ -362,6 +391,22 @@ class OmeroSource(BlitzConn):
         size_x_obj, size_y_obj = self.rawPixelSize
 
         return size_x_obj.getValue(), size_y_obj.getValue()
+
+    @property
+    def pixel_size(self) -> tuple[ureg.Quantity, ureg.Quantity]:
+        """Return the pixel size in micrometer
+
+        Returns:
+            Tuple[float,float]: x and y pixel size in micrometer
+        """
+        size_x_obj, size_y_obj = self.rawPixelSize
+
+        unit = "micrometer".upper()
+
+        return (
+            omero.model.LengthI(size_x_obj, unit).getValue() * ureg.micrometer,
+            omero.model.LengthI(size_y_obj, unit).getValue() * ureg.micrometer,
+        )
 
     def printPixelSize(self, unit="MICROMETER"):
         """Output pixel sizes
@@ -422,6 +467,7 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
             port=port,
             secure=secure,
             conn=conn,
+            readonly=True,
         )
 
         if channels is None:
@@ -436,7 +482,17 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         self.colorList = colorList
         self.range = range
 
-        self.omero_image = None
+        if self.range is not None:
+            # we make it a list
+            self.range = list(self.range)
+
+            # we have a look that it is not tool long
+            if np.max(self.range) > len(self):
+                logging.warning(
+                    "Range exceeds number of images! Truncate to %d images", len(self)
+                )
+                np_range = np.array(self.range)
+                self.range = np_range[np_range < len(self)]
 
         assert len(self.channels) <= len(
             self.colorList
@@ -465,13 +521,8 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
 
     def __get_omero_image(self):
         # open the connection
-        self.conn = self.make_connection().__enter__()
-
-        # cache the image
-        if self.omero_image is None:
-            self.omero_image = self.conn.getObject("Image", self.imageId)
-
-        return self.omero_image
+        with self.make_connection() as conn:
+            return conn.getObject("Image", self.imageId)
 
     def __get_image(self, frame: int) -> BaseImage:
         # get the specified image
@@ -488,11 +539,11 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
         rendered_image = image.renderImage(z, t, compression=self.imageQuality)
 
         # return local image
-        return LocalImage(np.asarray(rendered_image, dtype=np.uint8))
+        return LocalImage(np.asarray(rendered_image, dtype=np.uint8), frame=frame)
 
     def __iter__(self):
-        for frame in range(self.num_frames):
-            if self.range and frame not in self.range:
+        for frame in self.frame_list:
+            if self.range is not None and (frame not in self.range):
                 continue
             yield self.get_frame(frame)
 
@@ -507,12 +558,109 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
     def num_frames(self) -> int:
         return len(self)
 
+    @property
+    def frame_list(self) -> list[int]:
+        if self.range is not None:
+            return list(self.range)
+        else:
+            return list(range(len(self)))
+
     def __len__(self):
         with self.make_connection() as conn:
             image = conn.getObject("Image", self.imageId)
-            if self.range:
+            if self.range is not None:
                 return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return int(image.getSizeT() * image.getSizeZ())
+
+
+class OmeroRawSource(ImageSequenceSource, OmeroSource):
+    """Raw OMERO source: Allows to easily access raw that is, e.g. 16-bit data of your OMERO images"""
+
+    def __init__(
+        self,
+        imageId: int,
+        username: str = None,
+        password: str = None,
+        serverUrl: str = None,
+        port=4064,
+        secure=True,
+        conn=None,
+        channels=None,
+    ):
+        OmeroSource.__init__(
+            self,
+            imageId=imageId,
+            username=username,
+            password=password,
+            serverUrl=serverUrl,
+            port=port,
+            secure=secure,
+            conn=conn,
+        )
+
+        if channels is None:
+            channels = [0]
+
+        self.channels = channels
+
+    def __len__(self):
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+
+            size_z = image.getSizeZ()
+            size_t = image.getSizeT()
+
+            return size_z * size_t
+
+    def get_frame(self, frame):
+        with self.make_connection() as conn:
+            # Use the pixelswrapper to retrieve the plane as
+            # a 2D numpy array see [https://github.com/scipy/scipy]
+            #
+            # Numpy array can be used for various analysis routines
+            #
+            image = conn.getObject("Image", self.imageId)
+            size_z = image.getSizeZ()
+            size_t = image.getSizeT()
+
+            pixels = image.getPrimaryPixels()
+
+            t, z = compute_indices(frame, size_t, size_z)
+
+            planes = []
+            for channel in self.channels:
+                c = channel
+
+                planes.append(pixels.getPlane(z, c, t))
+            return LocalImage(np.stack(planes, axis=-1))
+
+    def __iter__(self):
+        with self.make_connection() as conn:
+            # Use the pixelswrapper to retrieve the plane as
+            # a 2D numpy array see [https://github.com/scipy/scipy]
+            #
+            # Numpy array can be used for various analysis routines
+            #
+            image = conn.getObject("Image", self.imageId)
+            size_z = image.getSizeZ()
+            size_c = image.getSizeC()
+            size_t = image.getSizeT()
+
+            pixels = image.getPrimaryPixels()
+
+            for t in range(size_t):
+                for z in range(size_z):
+                    planes = []
+                    for channel in self.channels:
+                        assert channel < size_c, "Please specify a valid channel"
+                        c = channel
+
+                        planes.append(pixels.getPlane(z, c, t))
+                    yield LocalImage(np.stack(planes, axis=-1))
+
+    @property
+    def num_channels(self) -> int:
+        return len(self.channels)
 
 
 class OmeroRoISource(OmeroSource, RoISource):
@@ -569,6 +717,7 @@ class OmeroRoISource(OmeroSource, RoISource):
                 serverUrl=self.serverUrl,
                 port=self.port,
                 secure=self.secure,
+                conn=self.make_connection(),
             )
 
             if self.scale:
@@ -579,6 +728,206 @@ class OmeroRoISource(OmeroSource, RoISource):
     def __len__(self) -> int:
         with self.make_connection() as conn:
             image = conn.getObject("Image", self.imageId)
-            if self.range:
+            if self.range is not None:
                 return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return image.getSizeT() * image.getSizeZ()
+
+
+def upload_file(
+    omero_type: str,
+    omero_id: int,
+    file_path: Path,
+    conn: BlitzGateway,
+    mime_type="text/plain",
+    namespace: str = None,
+):
+    """Upload a file attachement for an OMERO object (Image, Datase, Project)
+
+    Args:
+        omero_type (str): Image, Dataset or Project
+        omero_id (int): id of the omero object
+        file_path (Path): file path of the file to upload
+        conn (BlitzGateway): connection to OMERO
+        mime_type (str, optional): mime type of the uploaded data. Defaults to "text/plain".
+        namespace(str, optional): OMERO namespace of the uploaded file
+
+    Returns:
+        _type_: created annotation object
+    """
+
+    omero_object = conn.getObject(omero_type, omero_id)
+
+    # create the original file and file annotation (uploads the file etc.)
+    file_ann = conn.createFileAnnfromLocalFile(
+        file_path, mimetype=mime_type, ns=namespace, desc=None
+    )
+
+    logging.info(
+        "Attaching FileAnnotation to OMERO object: File ID: %d, %s Size: %d",
+        file_ann.getId(),
+        file_ann.getFile().getName(),
+        file_ann.getFile().getSize(),
+    )
+
+    # link it to dataset.
+    omero_object.linkAnnotation(file_ann)
+
+    # return OMERO annotation
+    return file_ann
+
+
+def download_file_from_object(
+    omero_type: str,
+    omero_id: int,
+    file_name: str,
+    output_path: Path,
+    conn,
+    append_filename=False,
+):
+    """Download a file annotation with a given name from an OMERO object
+
+    Args:
+        omero_type (str): Image, Dataset or Project
+        omero_id (int): unique id of the OMERO object
+        file_name (str): the name of the file attachment to download
+        output_path (Path): output path to save the file
+        conn (_type_): OMERO connection
+        append_filename (bool, optional): If true the filename is appended to the output path. Defaults to False.
+
+    Raises:
+        ValueError: _description_
+    """
+    if not isinstance(output_path, Path):
+        output_path = Path(output_path)
+
+    anns = list_file_annotations(omero_type=omero_type, omero_id=omero_id, conn=conn)
+
+    anns = list(filter(lambda ann: ann.getFile().getName() == file_name, anns))
+
+    if len(anns) != 1:
+        raise ValueError(f"Annotation count is not 1 but: {len(anns)}")
+
+    download_file_from_annotation(anns[0], output_path, append_filename)
+
+
+def download_file_from_annotation(ann, output_path: Path, append_filename=False):
+    """Download OMERO file attachment
+
+    Args:
+        ann (_type_): OMERO annotation object
+        output_path (Path): path to write the file to
+        append_filename (bool, optional): If True treats output_path as a folder and appends the OMERO file name. Defaults to False.
+    """
+    assert isinstance(ann, omero.gateway.FileAnnotationWrapper)
+
+    if not isinstance(output_path, Path):
+        output_path = Path(output_path)
+
+    logging.info(
+        "File ID: %d %s Size: %d",
+        ann.getFile().getId(),
+        ann.getFile().getName(),
+        ann.getFile().getSize(),
+    )
+
+    file_path = output_path
+
+    if append_filename:
+        file_path = file_path / ann.getFile().getName()
+
+    with open(str(file_path), "wb") as f:
+        logging.info("\nDownloading file to %s...", file_path)
+        for chunk in ann.getFileInChunks():
+            f.write(chunk)
+    logging.info("File downloaded!")
+
+
+def delete_file_annotation(annotation_id: int, conn: BlitzGateway):
+    """Delete an OMERO file attachement
+
+    Args:
+        annotation_id (int): id of the annotation object
+        conn (BlitzGateway): OMERO connection
+    """
+    # ann_obj = conn.getObject('Annotation', annotation_id)
+    conn.deleteObjects("Annotation", [annotation_id], wait=True)
+
+
+def list_file_annotations(omero_type: str, omero_id: int, conn: BlitzGateway):
+    """List all file annotations of an OMERO object
+
+    Args:
+        omero_type (str): Image, Dataset or Project OMERO object type
+        omero_id (int): unique OMERO id of the object
+        conn (BlitzGateway): OMERO connection
+
+    Returns:
+        _type_: List of OMERO annotation objects for files
+    """
+    # get OMERO object
+    omero_object = conn.getObject(omero_type, omero_id)
+
+    annotations = []
+
+    for ann in omero_object.listAnnotations():
+        if isinstance(ann, omero.gateway.FileAnnotationWrapper):
+            # add file annotations
+            annotations.append(ann)
+
+    return annotations
+
+
+def replace_file_annotation(
+    omero_type: str, omero_id: int, file_path: Path, conn, mime_type: str = "text/plain"
+):
+    """Replace an OMERO file by a new version.
+
+    Deletes existing file attachements on OMERO with the same name and uploads the new file.
+
+    Args:
+        omero_type (str): Image, Dataset or Project OMERO object type
+        omero_id (int): unique OMERO id of the object
+        file_path (Path): path of the file to upload
+        conn (_type_): OMERO connection
+        mime_type (str, optional): MIME type of the data file to upload. Defaults to "text/plain".
+
+    Returns:
+        _type_: new annotation object of the uploaded file
+    """
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+
+    # only get annotations with the same filename
+    anns = filter(
+        lambda ann: ann.getFile().getName() == file_path.name,
+        list_file_annotations(omero_type, omero_id, conn),
+    )
+
+    # upload the new file version first
+    new_ann = upload_file(omero_type, omero_id, file_path, conn, mime_type=mime_type)
+
+    # delete every other annotation with the same name
+    for ann in anns:
+        delete_file_annotation(ann.getId(), conn)
+
+    return new_ann
+
+
+def print_file_annotations(omero_type: str, omero_id: int, conn: BlitzGateway):
+    """List all file annotations
+
+    Args:
+        omero_type (str): Image, Dataset or Project OMERO object type
+        omero_id (int): unique OMERO id of the object
+        conn (BlitzGateway): OMERO connection
+    """
+    for ann in list_file_annotations(omero_type, omero_id, conn):
+        print(
+            "File ID:",
+            ann.getFile().getId(),
+            ann.getFile().getName(),
+            "Size:",
+            ann.getFile().getSize(),
+            "Namespace:",
+            ann.getNs(),
+        )

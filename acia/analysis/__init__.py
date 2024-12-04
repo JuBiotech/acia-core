@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections.abc import Iterable
 from functools import reduce
 from itertools import starmap
 from multiprocessing import Pool
@@ -14,7 +15,6 @@ import numpy as np
 import pandas as pd
 import papermill as pm
 from numpy import ma
-from PIL import Image, ImageDraw
 from pint._typing import UnitLike
 from tqdm.auto import tqdm
 
@@ -222,6 +222,19 @@ class IdEx(PropertyExtractor):
         return pd.DataFrame({self.name: ids}), {self.name: self.output_unit}
 
 
+class LabelEx(PropertyExtractor):
+    """Extract single-cell label (from tracking) for every contour"""
+
+    def __init__(self):
+        super().__init__("label", 1)
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        labels = []
+        for cont in overlay:
+            labels.append(self.convert(cont.label))
+        return pd.DataFrame({self.name: labels}), {self.name: self.output_unit}
+
+
 class TimeEx(PropertyExtractor):
     """Extract time information for every contour"""
 
@@ -232,6 +245,49 @@ class TimeEx(PropertyExtractor):
         times = []
         for _, row in df.iterrows():
             times.append(self.convert(row["frame"]))
+
+        return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
+
+
+class DynamicTimeEx(PropertyExtractor):
+    """Extract time information for every contour when timepoints are not equi-distant"""
+
+    def __init__(
+        self,
+        timepoints: list,
+        relative=True,
+        input_unit: UnitLike = "second",
+        output_unit: UnitLike | None = "hour",
+    ):
+        super().__init__("time", input_unit, output_unit)
+
+        if len(timepoints) == 0:
+            raise ValueError("Need non-empty timepoint list")
+
+        self.timepoints = np.array(timepoints)
+
+        if relative:
+            self.timepoints -= self.timepoints[0]
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+
+        # get the number of frames
+        num_frames = np.unique(df["frame"])
+
+        if len(self.timepoints) != len(num_frames):
+            raise ValueError(
+                f"Number of specified timepoints does not match with number of frames: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
+            )
+
+        times = []
+        for _, row in df.iterrows():
+            times.append(
+                # convert to timepoint units
+                self.convert(
+                    # lookup frame timepoint
+                    self.timepoints[row["frame"]]
+                )
+            )
 
         return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
 
@@ -309,11 +365,9 @@ class FluorescenceEx(PropertyExtractor):
                 raw_image = image.get_channel(channel)
 
                 height, width = raw_image.shape[:2]
-                img = Image.new("L", (width, height), 0)
-                draw = ImageDraw.Draw(img)
 
                 # draw cell mask
-                roi_mask = cont._toMask(img, draw=draw)
+                roi_mask = cont.toMask(height=height, width=width)
 
                 # create masked array
                 masked_roi = ma.masked_array(raw_image, mask=~roi_mask)
@@ -374,9 +428,12 @@ class FluorescenceEx(PropertyExtractor):
 
 def scale(
     output_path: Path,
-    analysis_script: Path,
+    analysis_script: Path | list[Path],
     image_ids: list[int],
     additional_parameters=None,
+    exist_ok=False,
+    execution_naming=lambda image_id: f"execution_{image_id}",
+    exist_skip=False,
 ):
     """Scale an analysis notebook to several image sequences
 
@@ -386,38 +443,84 @@ def scale(
         output_path (Path): the general output path to the storage
         analysis_script (Path): the template script
         image_ids (List[int]): list of (OMERO) image sources
+        additional_parameters (dict): Parameters to be inserted into the jupyter script
+        exist_ok (Bool): True when it is okay that the directory exists, False will throw an error when the directory exists.
+        exist_skip (Bool): If true existing executions are skipped.
     """
+
+    if isinstance(analysis_script, str):
+        # if this is just a single string, then we make it a list of a single path
+        analysis_script = [Path(analysis_script)]
+    elif isinstance(analysis_script, Path):
+        analysis_script = [analysis_script]
+    elif isinstance(analysis_script, Iterable):
+        analysis_script = list(map(Path, analysis_script))
+
+    for script in analysis_script:
+        if not script.exists():
+            raise ValueError(f"Analysis script {script} does not exist!")
 
     if additional_parameters is None:
         additional_parameters = {}
 
     experiment_executions = []
 
+    failed_ids = []
+
+    failed_ids = []
+
     for image_id in tqdm(image_ids):
 
-        # path to the new notebook file
-        # every execution should have its own folder to store local files
-        output_file = output_path / f"execution_{image_id}" / "notebook.ipynb"
+        try:
 
-        # create the directory (should not exist) and copy file to that
-        os.makedirs(Path(output_file).parent, exist_ok=False)
-        shutil.copy(analysis_script, output_file)
+            # create the main output folder
+            output_parent = output_path / execution_naming(image_id)
+            os.makedirs(output_parent, exist_ok=exist_ok)
 
-        # parameters to integrate into notebook
-        parameters = dict(
-            storage_folder=str(output_file.parent.absolute()),
-            image_id=image_id,
-            **additional_parameters,
+            for script in analysis_script:
+                # path to the new notebook file
+                # every execution should have its own folder to store local files
+                output_file = output_parent / script.name
+
+                if output_file.exists() and exist_skip:
+                    # the notebook exists and we should skip it
+                    continue
+
+                shutil.copy(script, output_file)
+
+                # parameters to integrate into notebook
+                parameters = dict(
+                    storage_folder=str(output_file.parent.absolute()),
+                    image_id=image_id,
+                    **additional_parameters,
+                )
+
+                # execute the notebook
+                pm.execute_notebook(
+                    output_file,
+                    output_file,
+                    parameters=parameters,
+                    cwd=output_file.parent,
+                )
+
+                # save experiment in list
+                experiment_executions.append(
+                    dict(parameters=parameters, storage_folder=output_file.parent)
+                )
+        except pm.PapermillExecutionError:
+            failed_ids.append(image_id)
+
+    if len(failed_ids) > 0:
+        error_ratio = len(failed_ids) / len(image_ids) * 100
+
+        logging.warning(
+            "The scaling failed in %d/%d (%.3f%%) executions. Please report failes with the link to the script and the image id to your administrator in order to further improve the software.",
+            len(failed_ids),
+            len(image_ids),
+            error_ratio,
         )
-
-        # execute the notebook
-        pm.execute_notebook(
-            output_file, output_file, parameters=parameters, cwd=output_file.parent
-        )
-
-        # save experiment in list
-        experiment_executions.append(
-            dict(parameters=parameters, storage_folder=output_file.parent)
-        )
+        if error_ratio > 10:
+            # error rates of more than 10% are definitively acceptable
+            logging.error("Such a high error rate is not acceptable!")
 
     return experiment_executions

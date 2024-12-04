@@ -30,6 +30,9 @@ def compute_indices(frame: int, size_t: int, size_z: int) -> Tuple[int, int]:
     elif size_z >= 1:
         t = 0
         z = frame
+    elif size_t == 1 and size_z == 1:
+        t = 0
+        z = 0
     else:
         raise ValueError("This state should not be reachable!")
 

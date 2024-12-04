@@ -37,8 +37,9 @@ def prepare_image(image, normalize_image=True):
 class LocalImage(BaseImage):
     """Class for a single image"""
 
-    def __init__(self, content):
+    def __init__(self, content, frame=None):
         self.content = content
+        self.frame = frame
 
     @property
     def raw(self):
@@ -175,7 +176,7 @@ class LocalSequenceSource(ImageSequenceSource):
 
             image = prepare_image(image, self.normalize_image)
 
-            yield image
+            yield LocalImage(image)
 
     def get_frame(self, frame: int) -> BaseImage:
         # TODO: this is super slow access for indiviudal images

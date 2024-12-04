@@ -15,6 +15,7 @@ data/
 *.xml
 *.mp4
 yolo_dataset/
+examples_old/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

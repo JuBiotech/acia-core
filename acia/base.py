@@ -8,28 +8,120 @@ import multiprocessing
 from functools import partial
 from typing import Callable, Iterator
 
+import cv2
 import numpy as np
 import tqdm
 from PIL import Image, ImageDraw
-from shapely.geometry import Polygon
+from shapely.geometry import MultiPolygon, Polygon
 from tqdm.contrib.concurrent import process_map
+
+from .utils import mask_to_polygons, polygon_to_mask
 
 
 def unpack(data, function):
     return function(*data)
 
 
+class Instance:
+    """Cell instance based on an image mask and a label"""
+
+    def __init__(self, mask: np.ndarray, frame: int, label: int):
+        self.mask = mask
+        self.frame = frame
+        self.label = label
+        self.id = None  # id is unique in an overlay
+
+        self._polygon = None
+
+    @property
+    def binary_mask(self):
+        return self.mask == self.label
+
+    @property
+    def center(self):
+        # compute (x,y) center on pixel level
+
+        bin_mask = self.binary_mask
+
+        x = np.median(np.nonzero(np.max(bin_mask, axis=0)))
+        y = np.median(np.nonzero(np.max(bin_mask, axis=1)))
+
+        return (x, y)
+
+    @property
+    def area(self) -> float:
+        """Compute the area inside the contour
+
+        Returns:
+            [float]: area
+        """
+        return np.sum(self.binary_mask)
+
+    def toMask(self, height, width):
+        """
+        Render contour mask onto new image
+
+        height: height of the image
+        width: width of the image
+        """
+        bin_mask = self.binary_mask
+        m_height, m_width = bin_mask.shape
+        assert m_height == height
+        assert m_width == width
+
+        return bin_mask
+
+    @property
+    def polygon(self) -> Polygon:
+        if self._polygon is None:
+            # TODO: need to get polygon from mask
+            self._polygon = mask_to_polygons(self.binary_mask)
+            if self._polygon is None:
+                print("Error")
+
+        return self._polygon
+
+    def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
+        """Draws instance onto an image
+
+        Args:
+            image (np.array | PIL.Image): the image to draw onto
+            draw (PIL.ImageDraw, optional): Drawing Tool. Defaults to None.
+            outlineColor (tuple, optional): Color of the Instance contour. None means no contour is drawn. Defaults to (255, 255, 0).
+            fillColor (tuple, optional): Color of the contour fill. Defaults to None (no filling).
+
+        Returns:
+            np.array | PIL.Image: The image containing the drawn contour.
+        """
+        # TODO: make this more efficient
+        if draw is None:
+            draw = ImageDraw.Draw(image)
+
+        def get_largest(poly):
+            if isinstance(poly, MultiPolygon):
+                return poly.geoms[np.argmax([p.area for p in poly.geoms])]
+            else:
+                return poly
+
+        # get the contour coordinates
+        coords = np.stack(get_largest(self.polygon).exterior.coords, axis=0).astype(int)
+        # draw the polygon
+        draw.polygon(tuple(coords.flatten()), outline=outlineColor, fill=fillColor)
+
+
 class Contour:
     """Class for object contour detection (e.g. Cell object)"""
 
-    def __init__(self, coordinates, score: float, frame: int, id: int, label=None):
+    def __init__(
+        self, coordinates: np.ndarray, score: float, frame: int, id, label=None
+    ):
         """Create Contour
 
         Args:
-            coordinates ([type]): [description]
+            coordinates (np.ndarray): coordinates in (x,y) list
             score (float): segmentation score
             frame (int): frame index
-            id (int): unique id
+            id (any): unique id
             label: class-defining label of the contour
         """
         self.coordinates = np.array(coordinates, dtype=np.float32)
@@ -38,7 +130,7 @@ class Contour:
         self.id = id
         self.label = label
 
-    def _toMask(self, img, maskValue=1, outlineValue=1, draw=None):
+    def _toMask(self, height: int, width: int) -> np.ndarray:
         """
         Render contour mask onto existing image
 
@@ -46,24 +138,17 @@ class Contour:
         fillValue: mask values inside the contour
         outlineValues: mask values on the outline (border)
         """
-        if draw is None:
-            draw = ImageDraw.Draw(img)
-        draw.polygon(self.coordinates, outline=outlineValue, fill=maskValue)
-        mask = np.array(img, np.bool)
+        # perform rasterization into mask
+        return polygon_to_mask(self.polygon, height, width)
 
-        return mask
-
-    def toMask(self, height, width, fillValue=1, outlineValue=1):
+    def toMask(self, height, width):
         """
         Render contour mask onto new image
 
         height: height of the image
         width: width of the image
-        fillValue: mask values inside the contour
-        outlineValues: mask values on the outline (border)
         """
-        img = Image.new("L", (width, height), 0)
-        return self._toMask(img, maskValue=fillValue, outlineValue=outlineValue)
+        return self._toMask(height=height, width=width)
 
     def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
         if draw is None:
@@ -80,7 +165,7 @@ class Contour:
 
     @property
     def center(self):
-        return np.array(Polygon(self.coordinates).centroid, dtype=np.float32)
+        return np.array(Polygon(self.coordinates).centroid.coords[0], dtype=np.float32)
 
     @property
     def area(self) -> float:
@@ -102,15 +187,34 @@ class Contour:
 class Overlay:
     """Overlay contains Contours at different frames and provides functionalities iterate and modify them"""
 
-    def __init__(self, contours: list[Contour]):
+    def __init__(self, contours: list[Contour], frames=None):
         self.contours = contours
+        if frames is not None:
+            frames = sorted(list(frames))
+        self.__frames = frames
 
-    def add_contour(self, contour: Contour):
+        self.cont_lookup = {cont.id: cont for cont in self.contours}
+
+        # set the appropriate counter for the next id
+        if len(self.contours) == 0:
+            self.id_counter = 0
+        else:
+            self.id_counter = np.max(list(self.cont_lookup.keys())) + 1
+
+    def add_contour(self, contour: Contour | Instance):
+        if isinstance(contour, Instance):
+            contour.id = self.id_counter
+            self.id_counter += 1
+
         self.contours.append(contour)
+        self.cont_lookup[contour.id] = contour
 
     def add_contours(self, contours: list[Contour]):
         for cont in contours:
             self.add_contour(cont)
+
+    def __getitem__(self, id):
+        return self.cont_lookup[id]
 
     def __iter__(self):
         return iter(self.contours)
@@ -126,7 +230,10 @@ class Overlay:
         return len(self.frames())
 
     def frames(self):
-        return np.unique([c.frame for c in self.contours])
+        if self.__frames:
+            return self.__frames
+        else:
+            return np.unique([c.frame for c in self.contours])
 
     def scale(self, scale: float):
         """Scale the contour with the specified scale factor
@@ -185,23 +292,29 @@ class Overlay:
         assert endFrame >= 0
         assert endFrame <= np.max(self.frames())
 
+        it_frames = range(startFrame, endFrame + 1)
+
+        if self.__frames:
+            it_frames = sorted(self.__frames)
+
+        # frame for every contour
+        frame_information = np.array(
+            list(map(lambda cont: cont.frame, self.contours)), dtype=np.int64
+        )
+        # numpy array of contours (dtype=np.object)
+        contour_array = np.array(self.contours)
+
         # iterate frames
-        for frame in range(startFrame, endFrame + 1):
+        for frame in it_frames:
             if frame_range and frame not in frame_range:
                 continue
-            # filter sub overlay with all contours in the frame
-            yield Overlay(
-                list(
-                    filter(
-                        partial(
-                            lambda contour, frame: contour.frame == frame, frame=frame
-                        ),
-                        self.contours,
-                    )
-                )
-            )
 
-    def toMasks(self, height, width) -> list[np.array]:
+            # mask for contour array for this frame
+            cont_mask = frame_information == frame
+            # filter sub overlay with all contours in the current frame
+            yield Overlay(list(contour_array[cont_mask]))
+
+    def toMasks(self, height, width, binary_mask=True) -> list[np.array]:
         """
         Turn the individual overlays into masks. For every time point we create a mask of all contours.
 
@@ -212,32 +325,80 @@ class Overlay:
         """
         masks = []
         for timeOverlay in self.timeIterator():
-            img = Image.new("L", (width, height), 0)
-            for cont in timeOverlay:
-                cont._toMask(img, maskValue=1, outlineValue=1)
-            mask = np.array(img, np.bool)
-            masks.append(mask)
+            if binary_mask:
+                local_mask = np.zeros((height, width), dtype=bool)
+            else:
+                # non-binary
+                local_mask = np.zeros((height, width), dtype=np.uint16)
+
+            # combine all contours in one mask
+            for i, cont in enumerate(timeOverlay):
+                mask = cont.toMask(height=height, width=width)
+                if not binary_mask:
+                    mask = mask.astype(np.uint16) * (
+                        i + 1
+                    )  # convert into a non-binary mask
+
+                # combine into a single mask
+                local_mask = np.maximum(mask, local_mask)
+
+            # append frame mask to list of masks
+            masks.append(local_mask)
 
         return masks
 
     def draw(
         self,
-        image,
+        image: np.ndarray | Image.Image,
         outlineColor: str | Callable[[Contour], tuple[int]] = None,
         fillColor: str | Callable[[Contour], tuple[int]] = None,
     ):
+        """Draw an overly onto an image frame. Hint: overlay should only contain contours for a single frame
+
+        Args:
+            image (np.ndarray | Image): Image to draw onto
+            outlineColor (str | Callable[[Contour], tuple[int]], optional): Color of the object outlines. If this is a function, the function computes the color for every contour/instance individually. Defaults to None (no contour is drawn).
+            fillColor (str | Callable[[Contour], tuple[int]], optional): Fill color of the object. If this is a function, the function computes the color for every contour/instance individually. Defaults to None (no fill). Defaults to None.
+
+        Returns:
+            np.ndarray | Image: the updated image object
+        """
+
+        if self.numFrames() > 1:
+            logging.warning(
+                "Drawing overlay onto a frame while the overlay contains instances from multiple frames!"
+            )
+
+        is_numpy = isinstance(image, np.ndarray)
+
+        # Deal with numpy or PIL.Image
+        if is_numpy:
+            # convert into rgb PIL image
+            if len(image.shape) == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            image = Image.fromarray(image)
+
         imdraw = ImageDraw.Draw(image)
         for timeOverlay in self.timeIterator():
             for cont in timeOverlay:
                 oc_local = outlineColor
                 fc_local = fillColor
 
+                # compute the contour color for the object
                 if oc_local and isinstance(oc_local, Callable):
                     oc_local = oc_local(cont)
+                # compute the fill color for the object
                 if fc_local and isinstance(fc_local, Callable):
                     fc_local = fc_local(cont)
 
                 cont.draw(image, outlineColor=oc_local, fillColor=fc_local, draw=imdraw)
+
+        if is_numpy:
+            # return the numpy version
+            return np.asarray(image)
+        else:
+            # return the PIL image
+            return image
 
 
 class BaseImage:

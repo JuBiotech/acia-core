@@ -8,6 +8,7 @@ import numpy as np
 from acia import ureg
 from acia.analysis import (
     AreaEx,
+    DynamicTimeEx,
     ExtractorExecutor,
     FluorescenceEx,
     FrameEx,
@@ -45,6 +46,7 @@ class TestPropertyExtractors(unittest.TestCase):
         )
 
     def test_extractors(self):
+        # in x,y coordinates
         contours = [Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23)]
         overlay = Overlay(contours)
 
@@ -89,13 +91,90 @@ class TestPropertyExtractors(unittest.TestCase):
         self.assertEqual(df["time"][0], 0 * 15 / 60)
         self.assertEqual(df["position_x"][0], 2 / 2 * ps)
         self.assertEqual(df["position_y"][0], 3 / 2 * ps)
-        self.assertEqual(df["gfp"][0], 4)
-        self.assertEqual(df["gfp_mean"][0], np.mean(image[0:3, 0:4]))
+        self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
+        self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
+
+    def test_dynamic_time_extractor(self):
+        # in x,y coordinates
+        contours = [
+            Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23),
+            Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=1, id=24),
+            Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=2, id=25),
+        ]
+        overlay = Overlay(contours)
+
+        timepoints = [1710326746.8015938, 1710326987.554663, 1710327228.3607492]
+        rel_timepoints = np.array(timepoints) - timepoints[0]
+
+        df = ExtractorExecutor().execute(
+            overlay=overlay,
+            images=[LocalImageSource(None)] * 3,
+            extractors=[IdEx(), FrameEx(), DynamicTimeEx(timepoints, relative=True)],
+        )
+
+        self.assertEqual(df["time"][0], 0)
+        self.assertEqual(df["time"][1], rel_timepoints[1] / 3600)
+        self.assertEqual(df["time"][2], rel_timepoints[2] / 3600)
+
+    def test_dynamic_time_extractor_failures(self):
+        contours = [
+            Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23),
+            Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=1, id=24),
+            Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=2, id=25),
+        ]
+        overlay = Overlay(contours)
+
+        with self.assertRaises(ValueError) as _:
+            DynamicTimeEx([])
+
+        with self.assertRaises(ValueError) as _:
+            _ = ExtractorExecutor().execute(
+                overlay=overlay,
+                images=[LocalImageSource(None)] * 3,
+                extractors=[
+                    IdEx(),
+                    FrameEx(),
+                    DynamicTimeEx(timepoints=[1, 2], relative=True),
+                ],
+            )
+
+    def test_fluorescence_extractor_float(self):
+        """Testing that the fluorescence exporter can work with float values"""
+
+        contours = [Contour([[0, 0], [2, 0], [2, 3], [0, 3]], -1, frame=0, id=23)]
+        overlay = Overlay(contours)
+
+        image = np.zeros((200, 200), dtype=np.float32)
+        image[0, 0] = 2.5
+        image[0, 1] = 5.5
+        image[1, 0] = 6
+        image[1, 1] = 10.1
+        image[2, 0:3] = 4
+        image[0:2, 2] = -4.3
+        image_source = LocalImageSource.from_array(image)
+
+        # test basic extractors
+        df = ExtractorExecutor().execute(
+            overlay=overlay,
+            images=image_source,
+            extractors=[
+                FluorescenceEx(channels=[0], channel_names=["gfp"], parallel=1),
+                FluorescenceEx(
+                    channels=[0],
+                    channel_names=["gfp_mean"],
+                    summarize_operator=np.mean,
+                    parallel=1,
+                ),
+            ],
+        )
+
+        self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
+        self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
 
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
         contours = [
-            Contour([[0, 0], [1, 0], [1, 1], [0, 1]], -1, frame=frame, id=id)
+            Contour([[0, 0], [2, 0], [2, 2], [0, 2]], -1, frame=frame, id=id)
             for id, frame in product(list(range(squared_num)), list(range(squared_num)))
         ]
         overlay = Overlay(contours)
