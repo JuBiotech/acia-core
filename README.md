@@ -13,7 +13,7 @@ Although the funtionality is developed with microfluidic applications in mind, t
 ## Installation
 
 1. Clone this repository
-    bash```
+    ```bash
     git clone https://jugit.fz-juelich.de/j.seiffarth/acia.git
     ```
 
