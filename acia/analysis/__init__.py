@@ -471,17 +471,19 @@ def scale(
 
         try:
 
+            # create the main output folder
+            output_parent = output_path / execution_naming(image_id)
+            os.makedirs(output_parent, exist_ok=exist_ok)
+
             for script in analysis_script:
                 # path to the new notebook file
                 # every execution should have its own folder to store local files
-                output_file = output_path / execution_naming(image_id) / script.name
+                output_file = output_parent / script.name
 
                 if output_file.exists() and exist_skip:
                     # the notebook exists and we should skip it
                     continue
 
-                # create the directory (should not exist) and copy file to that
-                os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
                 shutil.copy(script, output_file)
 
                 # parameters to integrate into notebook
