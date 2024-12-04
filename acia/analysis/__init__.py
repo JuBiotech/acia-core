@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections.abc import Iterable
 from functools import reduce
 from itertools import starmap
 from multiprocessing import Pool
@@ -221,6 +222,19 @@ class IdEx(PropertyExtractor):
         return pd.DataFrame({self.name: ids}), {self.name: self.output_unit}
 
 
+class LabelEx(PropertyExtractor):
+    """Extract single-cell label (from tracking) for every contour"""
+
+    def __init__(self):
+        super().__init__("label", 1)
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        labels = []
+        for cont in overlay:
+            labels.append(self.convert(cont.label))
+        return pd.DataFrame({self.name: labels}), {self.name: self.output_unit}
+
+
 class TimeEx(PropertyExtractor):
     """Extract time information for every contour"""
 
@@ -414,7 +428,7 @@ class FluorescenceEx(PropertyExtractor):
 
 def scale(
     output_path: Path,
-    analysis_script: Path,
+    analysis_script: Path | list[Path],
     image_ids: list[int],
     additional_parameters=None,
     exist_ok=False,
@@ -434,7 +448,17 @@ def scale(
         exist_skip (Bool): If true existing executions are skipped.
     """
 
-    analysis_script = Path(analysis_script)
+    if isinstance(analysis_script, str):
+        # if this is just a single string, then we make it a list of a single path
+        analysis_script = [Path(analysis_script)]
+    elif isinstance(analysis_script, Path):
+        analysis_script = [analysis_script]
+    elif isinstance(analysis_script, Iterable):
+        analysis_script = list(map(Path, analysis_script))
+
+    for script in analysis_script:
+        if not script.exists():
+            raise ValueError(f"Analysis script {script} does not exist!")
 
     if additional_parameters is None:
         additional_parameters = {}
@@ -443,40 +467,46 @@ def scale(
 
     failed_ids = []
 
+    failed_ids = []
+
     for image_id in tqdm(image_ids):
 
         try:
 
-            # path to the new notebook file
-            # every execution should have its own folder to store local files
-            output_file = (
-                output_path / execution_naming(image_id) / analysis_script.name
-            )
+            # create the main output folder
+            output_parent = output_path / execution_naming(image_id)
+            os.makedirs(output_parent, exist_ok=exist_ok)
 
-            if output_file.exists() and exist_skip:
-                # the notebook exists and we should skip it
-                continue
+            for script in analysis_script:
+                # path to the new notebook file
+                # every execution should have its own folder to store local files
+                output_file = output_parent / script.name
 
-            # create the directory (should not exist) and copy file to that
-            os.makedirs(Path(output_file).parent, exist_ok=exist_ok)
-            shutil.copy(analysis_script, output_file)
+                if output_file.exists() and exist_skip:
+                    # the notebook exists and we should skip it
+                    continue
 
-            # parameters to integrate into notebook
-            parameters = dict(
-                storage_folder=str(output_file.parent.absolute()),
-                image_id=image_id,
-                **additional_parameters,
-            )
+                shutil.copy(script, output_file)
 
-            # execute the notebook
-            pm.execute_notebook(
-                output_file, output_file, parameters=parameters, cwd=output_file.parent
-            )
+                # parameters to integrate into notebook
+                parameters = dict(
+                    storage_folder=str(output_file.parent.absolute()),
+                    image_id=image_id,
+                    **additional_parameters,
+                )
 
-            # save experiment in list
-            experiment_executions.append(
-                dict(parameters=parameters, storage_folder=output_file.parent)
-            )
+                # execute the notebook
+                pm.execute_notebook(
+                    output_file,
+                    output_file,
+                    parameters=parameters,
+                    cwd=output_file.parent,
+                )
+
+                # save experiment in list
+                experiment_executions.append(
+                    dict(parameters=parameters, storage_folder=output_file.parent)
+                )
         except pm.PapermillExecutionError:
             failed_ids.append(image_id)
 

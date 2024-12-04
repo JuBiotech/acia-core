@@ -1,12 +1,30 @@
-# AutomatedCellularImageAnalysis
+# **acia**: Automated single-cell image analysis
 
-[![coverage report](https://jugit.fz-juelich.de/j.seiffarth/acia/badges/master/coverage.svg)](https://jugit.fz-juelich.de/j.seiffarth/acia/-/commits/master)
+![pipeline](https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia/badges/master/pipeline.svg)
+![coverage](https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia/badges/master/coverage.svg)
 
-The `acia` library allows to work with different image sources, process data (segmentation) and extract single-object properties for RoIs. Although the funtionality is developed with microfluidic applications in mind, the library can be used for any objects detected in images.
+The `acia` library provides utility functionality for analysing 2D+t time-lapse image sequences in microfluidic live-cell imaging experiments. It provides:
+- Abstraction for various image sources (local, OMERO)
+- automated image analysis for instance segmentation and tracking
+- automated and unit-aware single-object property extraction.
+
+Although the funtionality is developed with microfluidic applications in mind, the library can be used for any objects detected in images.
 
 ## Installation
 
+Install `acia` from pypi:
+
+```bash
+pip install acia
+```
+
+
+## Developers
+
 1. Clone this repository
+    ```bash
+    git clone https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia
+    ```
 
 2. Create the conda environment (including dependencies) and install `acia`
 
@@ -15,19 +33,3 @@ The `acia` library allows to work with different image sources, process data (se
     conda activate acia
     pip install -e .
     ```
-
-
-Features
---------
-
-tba
-
-Developer installation
--------
-
-tba
-
-Credits
--------
-
-This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [audreyr/cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage) project template.
