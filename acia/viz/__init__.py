@@ -15,9 +15,8 @@ from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
 
 from acia import ureg
-from acia.base import BaseImage, Overlay
+from acia.base import BaseImage, ImageSequenceSource, Overlay
 from acia.segm.local import InMemorySequenceSource, LocalImage
-from acia.segm.output import ImageSequenceSource
 
 # loda the deja vu sans default font
 default_font = font_manager.findfont("DejaVuSans")
