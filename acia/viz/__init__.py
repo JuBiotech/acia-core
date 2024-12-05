@@ -398,7 +398,7 @@ def render_segmentation(
 
     images = []
 
-    for image, frame_overlay in tqdm.tqdm(zip(imageSource, overlay.timeIterator())):
+    for image, frame_overlay in tqdm(zip(imageSource, overlay.timeIterator())):
         # extract the numpy image
         if isinstance(image, BaseImage):
             image = image.raw
