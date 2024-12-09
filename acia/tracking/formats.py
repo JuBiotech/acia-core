@@ -33,8 +33,16 @@ def parse_simple_tracking(file_content: str) -> tuple[Overlay, nx.DiGraph]:
 
     # create contours
     for det in segmentation_data:
+
+        det_id = det["id"]
+        # try to convert to integer
+        try:
+            det_id = int(det_id)
+        except ValueError:
+            pass
+
         all_detections.append(
-            Contour(det["contour"], -1, det["frame"], det["id"], det["label"])
+            Contour(det["contour"], -1, det["frame"], det_id, det["label"])
         )
 
     segmentation_overlay = Overlay(all_detections)
