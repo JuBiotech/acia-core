@@ -50,13 +50,15 @@ def parse_simple_tracking(file_content: str) -> tuple[Overlay, nx.DiGraph]:
     # deal with the tracking
     tracking = nx.DiGraph()
 
-    tracking.add_nodes_from(map(lambda ov: ov.id, segmentation_overlay))
+    tracking.add_nodes_from(map(lambda cont: cont.id, segmentation_overlay))
+    node_set = set(tracking.nodes)
     for cont in segmentation_overlay:
         tracking.nodes[cont.id]["frame"] = cont.frame
 
     # create graph from id links
     for link in tracking_data:
-        tracking.add_edge(link["sourceId"], link["targetId"])
+        if link["sourceId"] in node_set and link["targetId"] in node_set:
+            tracking.add_edge(link["sourceId"], link["targetId"])
 
     return segmentation_overlay, tracking
 
