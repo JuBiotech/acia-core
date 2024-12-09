@@ -412,7 +412,7 @@ def render_segmentation(
 
         # Draw overlay
         if frame_overlay:
-            image = frame_overlay.draw(cell_color)  # RGB format
+            image = frame_overlay.draw(image, cell_color)  # RGB format
 
         images.append(image)
 
