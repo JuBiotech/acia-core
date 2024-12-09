@@ -25,11 +25,11 @@ def unpack(data, function):
 class Instance:
     """Cell instance based on an image mask and a label"""
 
-    def __init__(self, mask: np.ndarray, frame: int, label: int):
+    def __init__(self, mask: np.ndarray, frame: int, label: int, id=None):
         self.mask = mask
         self.frame = frame
         self.label = label
-        self.id = None  # id is unique in an overlay
+        self.id = id  # id is unique in an overlay
 
         self._polygon = None
 
@@ -195,17 +195,7 @@ class Overlay:
 
         self.cont_lookup = {cont.id: cont for cont in self.contours}
 
-        # set the appropriate counter for the next id
-        if len(self.contours) == 0:
-            self.id_counter = 0
-        else:
-            self.id_counter = np.max(list(self.cont_lookup.keys())) + 1
-
     def add_contour(self, contour: Contour | Instance):
-        if isinstance(contour, Instance):
-            contour.id = self.id_counter
-            self.id_counter += 1
-
         self.contours.append(contour)
         self.cont_lookup[contour.id] = contour
 

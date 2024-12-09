@@ -135,9 +135,7 @@ def load_ctc_segmentation_native(segmentation_path: Path) -> Overlay:
 
         # for every label create an instance and add it to the contour
         for label in labels:
-            instance = Instance(mask=mask, frame=frame_id, label=label)
-            instance.id = uid
-
+            instance = Instance(mask=mask, frame=frame_id, label=label, id=uid)
             overlay.add_contour(instance)
             uid += 1
 
