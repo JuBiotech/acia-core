@@ -487,3 +487,23 @@ def render_tracking(
         images.append(np_image)
 
     return InMemorySequenceSource(images)
+
+
+def render_video(
+    image_source: ImageSequenceSource,
+    filename: str,
+    framerate: int,
+    codec: str,
+) -> None:
+    """Render video
+
+    Args:
+        image_source (ImageSequenceSource): sequence of images
+        filename (str): video filename
+        framerate (int): framerate of the video
+        codec (str): the codec for video encoding
+    """
+
+    with VideoExporter2(filename, framerate=framerate, codec=codec) as ve:
+        for im in image_source:
+            ve.write(im.raw)
