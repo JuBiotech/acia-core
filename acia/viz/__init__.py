@@ -19,7 +19,7 @@ from acia.base import BaseImage, ImageSequenceSource, Overlay
 from acia.segm.local import InMemorySequenceSource, LocalImage
 
 # loda the deja vu sans default font
-default_font = font_manager.findfont("DejaVuSans")
+default_font = font_manager.findfont("DejaVu Sans")
 
 
 def draw_scale_bar(
