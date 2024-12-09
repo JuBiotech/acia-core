@@ -454,10 +454,10 @@ def render_tracking(
                     source = contour_lookup[edge[0]].center
                     target = contour_lookup[edge[1]].center
 
-                    line_color = (0, 0, 255)  # bgr: red
+                    line_color = (255, 0, 0)  # rgb: red
 
                     if len(edges) > 1:
-                        line_color = (255, 0, 0)  # bgr: blue
+                        line_color = (0, 0, 255)  # bgr: blue
 
                     cv2.line(
                         np_image,
