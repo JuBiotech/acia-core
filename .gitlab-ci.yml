@@ -36,7 +36,6 @@ cache:
     - source venv/bin/activate
 
 test:
-  image: python:3.8
   stage: test
   extends: .venv
   tags:
