@@ -59,14 +59,14 @@ test:
       junit: report.xml
 
 installation:
-  image: continuumio/miniconda3
+  image: mambaorg/micromamba:2.0.5-debian12-slim
   tags:
     - big-ram
   stage: build
   script:
-    - conda env create -f conda.yaml
-    - conda run -n acia pip install -e .
-    - conda run -n acia python -c "import acia"
+    - micromamba env create -f conda.yaml
+    - micromamba run -n acia pip install -e .
+    - micromamba run -n acia python -c "import acia"
 
 run:
   stage: build
