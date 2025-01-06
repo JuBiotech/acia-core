@@ -1,6 +1,5 @@
 name: acia
 channels:
-  - defaults
   - conda-forge
   - ome
 dependencies:
