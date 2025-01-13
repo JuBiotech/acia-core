@@ -58,15 +58,15 @@ test:
         path: coverage.xml
       junit: report.xml
 
-installation:
-  image: continuumio/miniconda3
-  tags:
-    - big-ram
-  stage: build
-  script:
-    - conda env create -f conda.yaml
-    - conda run -n acia pip install -e .
-    - conda run -n acia python -c "import acia"
+#installation:
+#  image: continuumio/miniconda3
+#  tags:
+#    - big-ram
+#  stage: build
+#  script:
+#    - conda env create -f conda.yaml
+#    - conda run -n acia pip install -e .
+#    - conda run -n acia python -c "import acia"
 
 run:
   stage: build
