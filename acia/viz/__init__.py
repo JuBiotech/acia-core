@@ -625,9 +625,6 @@ def render_scalebar(
     bar_height = ureg.Quantity(bar_height)
     size_of_pixel = ureg.Quantity(size_of_pixel)
 
-    print(bar_width)
-    print(size_of_pixel)
-
     # load font
     font = ImageFont.truetype(font_path, font_size)
 
