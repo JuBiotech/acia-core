@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from pathlib import Path
 
 import cv2
@@ -18,6 +19,8 @@ from tqdm.auto import tqdm
 from acia import ureg
 from acia.base import BaseImage, ImageSequenceSource, Overlay
 from acia.segm.local import InMemorySequenceSource, LocalImage
+
+from .utils import strfdelta
 
 # loda the deja vu sans default font
 default_font = font_manager.findfont("DejaVu Sans")
@@ -588,40 +591,227 @@ def render_video(
 
 
 def render_scalebar(
-    image_source: ImageSequenceSource,
-    xy_position: tuple[int],
-    pixel_size: pint.Quantity,
+    image_source: Overlay,
+    xy_position: tuple[int, int],
+    size_of_pixel: pint.Quantity,
     bar_width: pint.Quantity,
     bar_height: pint.Quantity,
+    color=(255, 255, 255),
+    font_size=25,
+    font_path=default_font,
+    background_color: tuple[int, int, int] = None,
+    background_margin_pixel=3,
+    show_text=True,
 ) -> ImageSequenceSource:
+    """Draws a scale bar on all images of an image sequence or iterable image array
 
-    # make sure that units are compatible
-    assert pixel_size.is_compatible_with(bar_height)
-    assert pixel_size.is_compatible_with(bar_width)
+    Args:
+        image_source (Overlay): image sequence or iterator over images
+        xy_position (tuple[int, int]): lower left xy position of the scale bar
+        size_of_pixel (pint.Quantity): metric size of a pixel (e.g. 0.007 * ureg.micrometer)
+        bar_width (pint.Quantity): width of the scalebar (e.g. 5 * ureg.micrometer). Also the text over the bar.
+        bar_height (pint.Quantity): height of the scalebar.
+        color (tuple, optional): Color of the scalebar and text. Defaults to (255, 255, 255).
+        font_size (int, optional): font size of the text. Defaults to 25.
+        font_path (_type_, optional): path to the font. Defaults to default_font.
+        background_color (tuple[int, int, int], optional): Color of the background. None draws no background. Defaults to None.
+        background_margin_pixel (int, optional): Margin of the background box. Defaults to 3.
+        show_text (bool, optional): If true shows the bar width as text above the bar. Defaults to True.
 
-    print(image_source, xy_position)
+    Returns:
+        ImageSequenceSource: Rendered image sequence
+    """
 
-    raise NotImplementedError()
+    # create pint quantities (values and units)
+    bar_width = ureg.Quantity(bar_width)
+    bar_height = ureg.Quantity(bar_height)
+    size_of_pixel = ureg.Quantity(size_of_pixel)
+
+    # load font
+    font = ImageFont.truetype(font_path, font_size)
+
+    # compute width and height of the scale bar in pixels (we need to round here)
+    bar_pixel_width = int(
+        np.round((bar_width / size_of_pixel).to_base_units().magnitude)
+    )
+    bar_pixel_height = int(
+        np.round((bar_height / size_of_pixel).to_base_units().magnitude)
+    )
+
+    # extract position
+    xstart, ystart = xy_position
+
+    images = []
+
+    for image in tqdm(image_source, desc="Render scale bar..."):
+
+        # do we have a wrapped image?
+        is_wrapped = isinstance(image, BaseImage)
+
+        # unwrap if necessary
+        if is_wrapped:
+            image = image.raw
+
+        image = np.copy(image)
+
+        # compute text size
+        text = f"{bar_width:~P}"
+        img_pil = Image.fromarray(image)
+        draw = ImageDraw.Draw(img_pil)
+
+        # get size of text
+        left, top, right, bottom = draw.textbbox((xstart, ystart), text, font=font)
+
+        text_width = right - left
+        text_height = bottom - top
+
+        if background_color:
+            cv2.rectangle(
+                image,
+                (xstart - background_margin_pixel, ystart + background_margin_pixel),
+                (
+                    xstart + bar_pixel_width + background_margin_pixel,
+                    ystart
+                    - text_height
+                    - bar_pixel_height
+                    - 5
+                    - background_margin_pixel,
+                ),
+                background_color,
+                -1,
+            )
+
+        # draw scale bar
+        cv2.rectangle(
+            image,
+            (xstart, ystart),
+            (xstart + bar_pixel_width, ystart - bar_pixel_height),
+            (255, 255, 255),
+            -1,
+        )
+
+        if show_text:
+            img_pil = Image.fromarray(image)
+            draw = ImageDraw.Draw(img_pil)
+
+            # draw text centered and with distance to the scale bar
+            draw.text(
+                (
+                    xstart + bar_pixel_width / 2 - text_width / 2,
+                    ystart - text_height - bar_pixel_height - 10,
+                ),
+                text,
+                fill=color,
+                font=font,
+            )
+
+            # convert PIL image back to numpy
+            image = np.array(img_pil)
+
+        images.append(image)
+
+    # combine all images
+    image_stack = np.stack(images)
+
+    if isinstance(ImageSequenceSource, np.ndarray):
+        # return as raw numpy stack
+        return image_stack
+    else:
+        # return as sequence source again
+        return InMemorySequenceSource(image_stack)
 
 
 def render_time(
     image_source: ImageSequenceSource,
     xy_position: tuple[int],
-    timepoints: list[pint.Quantity],
-    time_format="HH:MM",
+    timepoints: list[pint.Quantity | timedelta],
+    time_format="{H:02}h {M:02}m",
+    color=(255, 255, 255),
+    font_size=25,
+    font_path=default_font,
+    background_color: tuple[int, int, int] = None,
+    background_margin_pixel=3,
 ) -> ImageSequenceSource:
+    """Draw time onto images
 
-    if np.any([not isinstance(timepoint, pint.Quantity) for timepoint in timepoints]):
-        logging.warning(
-            "Timepoints should come with units! Otherwise seconds are assumed but this can lead to errors"
-        )
+    Args:
+        image_source (ImageSequenceSource): image sequence of the time-lapse
+        xy_position (tuple[int]): lower left xy position of the formatted time text
+        timepoints (list[pint.Quantity  |  timedelta]): timepoints of the individual frames
+        time_format (str, optional): Timeformat for rendering the time to the images. Defaults to "{H:02}h {M:02}m".
+        color (tuple, optional): Color of the time text. Defaults to (255, 255, 255).
+        font_size (int, optional): Fontsize of the time text. Defaults to 25.
+        font_path (_type_, optional): Path to the rendering font. Defaults to default_font.
+        background_color (tuple[int, int, int], optional): Color of the background box. None does not draw any background box. Defaults to None.
+        background_margin_pixel (int, optional): Margin of the background box. Defaults to 3.
 
-        # convert to seconds
-        timepoints = [
-            tp if isinstance(tp, pint.Quantity) else pint.Quantity(tp, ureg.second)
-            for tp in timepoints
-        ]
+    Returns:
+        ImageSequenceSource: Rendered image sequence
+    """
 
-    print(image_source, xy_position, time_format)
+    # load font
+    font = ImageFont.truetype(font_path, font_size)
 
-    raise NotImplementedError()
+    images = []
+
+    for image, timepoint in zip(tqdm(image_source, desc="Render time..."), timepoints):
+
+        if isinstance(timepoint, pint.Quantity):
+            timepoint = timedelta(seconds=float(timepoint.to(ureg.seconds).magnitude))
+
+        # do we have a wrapped image?
+        is_wrapped = isinstance(image, BaseImage)
+
+        # unwrap if necessary
+        if is_wrapped:
+            image = image.raw
+
+        image = np.copy(image)
+
+        # convert to pillow image
+        pil_image = Image.fromarray(image)
+        draw = ImageDraw.Draw(pil_image)
+
+        time_text = strfdelta(timepoint, fmt=time_format)
+
+        if background_color:
+            # get size of text
+            left, top, right, bottom = draw.textbbox(xy_position, time_text, font=font)
+
+            text_width = right - left
+            text_height = bottom - top
+
+            x, y = xy_position
+
+            cv2.rectangle(
+                image,
+                (x - background_margin_pixel, y - background_margin_pixel),
+                (
+                    x + text_width + background_margin_pixel,
+                    y + text_height + background_margin_pixel + 5,
+                ),
+                background_color,
+                -1,
+            )
+
+            # convert to pillow image
+            pil_image = Image.fromarray(image)
+            draw = ImageDraw.Draw(pil_image)
+
+        # draw on image
+        draw.text(xy_position, time_text, fill=color, font=font)
+
+        # convert PIL image back to numpy
+        image = np.array(pil_image)
+
+        images.append(image)
+
+    # combine all images
+    image_stack = np.stack(images)
+
+    if isinstance(ImageSequenceSource, np.ndarray):
+        # return as raw numpy stack
+        return image_stack
+    else:
+        # return as sequence source again
+        return InMemorySequenceSource(image_stack)
