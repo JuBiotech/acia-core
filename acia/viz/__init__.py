@@ -25,8 +25,6 @@ from .utils import strfdelta
 # loda the deja vu sans default font
 default_font = font_manager.findfont("DejaVu Sans")
 
-ureg = pint.get_application_registry()
-
 
 def draw_scale_bar(
     image_iterator,
