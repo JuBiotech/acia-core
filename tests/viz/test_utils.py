@@ -12,7 +12,7 @@ class TestUtils(unittest.TestCase):
     def test_formatting(self):
         # Check that video file exists
         self.assertEqual(
-            strfdelta(timedelta(days=2, minutes=22, hours=12, minutes=2, seconds=13)),
+            strfdelta(timedelta(days=2, hours=12, minutes=22, seconds=13)),
             "02d 12h 22m 13s",
         )
 
