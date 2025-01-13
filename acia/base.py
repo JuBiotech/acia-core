@@ -151,9 +151,29 @@ class Contour:
         return self._toMask(height=height, width=width)
 
     def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
+
+        is_numpy = isinstance(image, np.ndarray)
+
+        # Deal with numpy or PIL.Image
+        if is_numpy:
+            # convert into rgb PIL image
+            if len(image.shape) == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            image = Image.fromarray(image)
+
         if draw is None:
             draw = ImageDraw.Draw(image)
-        draw.polygon(self.coordinates, outline=outlineColor, fill=fillColor)
+
+        draw.polygon(
+            list(map(tuple, self.coordinates)), outline=outlineColor, fill=fillColor
+        )
+
+        if is_numpy:
+            # return the numpy version
+            return np.asarray(image)
+        else:
+            # return the PIL image
+            return image
 
     def scale(self, scale: float):
         """Apply scale factor to contour coordinates
