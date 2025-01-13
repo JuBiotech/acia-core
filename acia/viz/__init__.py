@@ -10,6 +10,7 @@ import cv2
 import moviepy.editor as mpy
 import networkx as nx
 import numpy as np
+import pint
 from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
@@ -20,6 +21,8 @@ from acia.segm.local import InMemorySequenceSource, LocalImage
 
 # loda the deja vu sans default font
 default_font = font_manager.findfont("DejaVu Sans")
+
+ureg = pint.get_application_registry()
 
 
 def draw_scale_bar(
@@ -377,14 +380,14 @@ class VideoExporter2:
 
 def render_segmentation(
     imageSource: ImageSequenceSource,
-    overlay: Overlay = None,
+    overlay: Overlay,
     cell_color=(255, 255, 0),
 ) -> ImageSequenceSource:
     """Render a video of the time-lapse including the segmentaiton information.
 
     Args:
         imageSource (ImageSequenceSource): Your time-lapse source object.
-        Overlay ([type]): Your source of RoIs for the image (e.g. cells). If None, no RoIs are visualized. Defaults to None.
+        Overlay ([type]): Your source of RoIs for the image (e.g. cells).
         cell_color: rgb color of the cell outlines
     """
 
@@ -398,7 +401,9 @@ def render_segmentation(
 
     images = []
 
-    for image, frame_overlay in tqdm(zip(imageSource, overlay.timeIterator())):
+    for image, frame_overlay in tqdm(
+        zip(imageSource, overlay.timeIterator()), desc="Render cell segmentation..."
+    ):
         # extract the numpy image
         if isinstance(image, BaseImage):
             image = image.raw
@@ -418,6 +423,74 @@ def render_segmentation(
 
     # return as sequence source again
     return InMemorySequenceSource(np.stack(images))
+
+
+def render_cell_centers(
+    image_source: ImageSequenceSource | np.ndarray,
+    overlay: Overlay,
+    center_color=(255, 255, 0),
+    center_size=3,
+) -> ImageSequenceSource:
+    """Render a image sequence of the time-lapse with the cell centers.
+
+    Args:
+        imageSource (ImageSequenceSource): Your time-lapse source object.
+        overlay (Overlay, optional): Your source of RoIs for the image (e.g. cells).
+        center_color (tuple, optional): RGB color of the cell center circle. Defaults to (255, 255, 0).
+        center_size (int, optional): Radius of the cell center circle (in pixels). Defaults to 3.
+
+    Raises:
+        ValueError: If we recognize unsupported image type or format
+
+    Returns:
+        ImageSequenceSource: The rendered image sequence
+    """
+
+    if overlay is None:
+        # when we have no rois -> create iterator that always returns None
+        def always_none():
+            while True:
+                yield None
+
+        overlay = iter(always_none())
+
+    images = []
+
+    for image, frame_overlay in tqdm(
+        zip(image_source, overlay.timeIterator()), desc="Render cell centers..."
+    ):
+        # extract the numpy image
+        if isinstance(image, BaseImage):
+            image = image.raw
+        elif isinstance(image, np.ndarray):
+            pass
+        else:
+            raise ValueError("Unsupported image type!")
+
+        # copy image as we draw onto it
+        image = np.copy(image)
+
+        # Draw overlay
+        if frame_overlay:
+
+            # compute all centers
+            centers = [cont.center for cont in frame_overlay]
+
+            for center in centers:
+                int_center = tuple(map(int, center))
+
+                cv2.circle(image, int_center, center_size, center_color, -1)
+
+        images.append(image)
+
+    image_stack = np.stack(images)
+
+    if isinstance(ImageSequenceSource, np.ndarray):
+        # return as raw numpy stack
+        return image_stack
+    else:
+        # return as sequence source again
+        return InMemorySequenceSource(image_stack)
 
 
 def render_tracking(
@@ -440,7 +513,9 @@ def render_tracking(
 
     contour_lookup = {cont.id: cont for cont in overlay}
 
-    for image, frame_overlay in tqdm(zip(image_source, overlay.timeIterator())):
+    for image, frame_overlay in tqdm(
+        zip(image_source, overlay.timeIterator()), desc="Render cell tracking..."
+    ):
 
         np_image = np.copy(image.raw)
 
@@ -494,6 +569,7 @@ def render_video(
     filename: str,
     framerate: int,
     codec: str,
+    ffmpeg_params: list[str] = None,
 ) -> None:
     """Render video
 
@@ -504,6 +580,48 @@ def render_video(
         codec (str): the codec for video encoding
     """
 
-    with VideoExporter2(filename, framerate=framerate, codec=codec) as ve:
-        for im in image_source:
+    with VideoExporter2(
+        filename, framerate=framerate, codec=codec, ffmpeg_params=ffmpeg_params
+    ) as ve:
+        for im in tqdm(image_source, desc="Encoding video..."):
             ve.write(im.raw)
+
+
+def render_scalebar(
+    image_source: ImageSequenceSource,
+    xy_position: tuple[int],
+    pixel_size: pint.Quantity,
+    bar_width: pint.Quantity,
+    bar_height: pint.Quantity,
+) -> ImageSequenceSource:
+
+    # make sure that units are compatible
+    assert pixel_size.is_compatible_with(bar_height)
+    assert pixel_size.is_compatible_with(bar_width)
+
+    print(image_source, xy_position)
+
+    raise NotImplementedError()
+
+
+def render_time(
+    image_source: ImageSequenceSource,
+    xy_position: tuple[int],
+    timepoints: list[pint.Quantity],
+    time_format="HH:MM",
+) -> ImageSequenceSource:
+
+    if np.any([not isinstance(timepoint, pint.Quantity) for timepoint in timepoints]):
+        logging.warning(
+            "Timepoints should come with units! Otherwise seconds are assumed but this can lead to errors"
+        )
+
+        # convert to seconds
+        timepoints = [
+            tp if isinstance(tp, pint.Quantity) else pint.Quantity(tp, ureg.second)
+            for tp in timepoints
+        ]
+
+    print(image_source, xy_position, time_format)
+
+    raise NotImplementedError()
