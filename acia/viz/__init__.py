@@ -8,16 +8,18 @@ from pathlib import Path
 
 import cv2
 import moviepy.editor as mpy
+import networkx as nx
 import numpy as np
 from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
+from tqdm.auto import tqdm
 
 from acia import ureg
-from acia.base import BaseImage
-from acia.segm.local import LocalImage
+from acia.base import BaseImage, ImageSequenceSource, Overlay
+from acia.segm.local import InMemorySequenceSource, LocalImage
 
 # loda the deja vu sans default font
-default_font = font_manager.findfont("DejaVuSans")
+default_font = font_manager.findfont("DejaVu Sans")
 
 
 def draw_scale_bar(
@@ -361,8 +363,8 @@ class VideoExporter2:
                 str(self.filename.absolute()),
                 codec=self.codec,
                 ffmpeg_params=self.ffmpeg_params,
-                verbose=False,
-                logger=None,
+                # verbose=False,
+                # logger=None,
             )
             self.images = []
 
@@ -371,3 +373,137 @@ class VideoExporter2:
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+
+def render_segmentation(
+    imageSource: ImageSequenceSource,
+    overlay: Overlay = None,
+    cell_color=(255, 255, 0),
+) -> ImageSequenceSource:
+    """Render a video of the time-lapse including the segmentaiton information.
+
+    Args:
+        imageSource (ImageSequenceSource): Your time-lapse source object.
+        Overlay ([type]): Your source of RoIs for the image (e.g. cells). If None, no RoIs are visualized. Defaults to None.
+        cell_color: rgb color of the cell outlines
+    """
+
+    if overlay is None:
+        # when we have no rois -> create iterator that always returns None
+        def always_none():
+            while True:
+                yield None
+
+        overlay = iter(always_none())
+
+    images = []
+
+    for image, frame_overlay in tqdm(zip(imageSource, overlay.timeIterator())):
+        # extract the numpy image
+        if isinstance(image, BaseImage):
+            image = image.raw
+        elif isinstance(image, np.ndarray):
+            pass
+        else:
+            raise Exception("Unsupported image type!")
+
+        # copy image as we draw onto it
+        image = np.copy(image)
+
+        # Draw overlay
+        if frame_overlay:
+            image = frame_overlay.draw(image, cell_color)  # RGB format
+
+        images.append(image)
+
+    # return as sequence source again
+    return InMemorySequenceSource(np.stack(images))
+
+
+def render_tracking(
+    image_source: ImageSequenceSource,
+    overlay: Overlay,
+    tracking_graph: nx.DiGraph,
+) -> ImageSequenceSource:
+    """Render the tracking to an image source
+
+    Args:
+        image_source (ImageSequenceSource): Image source
+        overlay (Overlay): overla of cell detections (for center points)
+        tracking_graph (nx.DiGraph): the tracking graph where every cell detection is a node in the graph.
+
+    Returns:
+        ImageSequenceSource: Rendered image source
+    """
+
+    images = []
+
+    contour_lookup = {cont.id: cont for cont in overlay}
+
+    for image, frame_overlay in tqdm(zip(image_source, overlay.timeIterator())):
+
+        np_image = np.copy(image.raw)
+
+        for cont in frame_overlay:
+            if cont.id in tracking_graph.nodes:
+                edges = tracking_graph.out_edges(cont.id)
+
+                born = tracking_graph.in_degree(cont.id) == 0
+
+                for edge in edges:
+                    source = contour_lookup[edge[0]].center
+                    target = contour_lookup[edge[1]].center
+
+                    line_color = (255, 0, 0)  # rgb: red
+
+                    if len(edges) > 1:
+                        line_color = (0, 0, 255)  # bgr: blue
+
+                    cv2.line(
+                        np_image,
+                        tuple(map(int, source)),
+                        tuple(map(int, target)),
+                        line_color,
+                        thickness=3,
+                    )
+
+                    if born:
+                        cv2.circle(
+                            np_image,
+                            tuple(map(int, source)),
+                            3,
+                            (203, 192, 255),
+                            thickness=1,
+                        )
+
+                if len(edges) == 0:
+                    cv2.rectangle(
+                        np_image,
+                        np.array(cont.center).astype(np.int32) - 2,
+                        np.array(cont.center).astype(np.int32) + 2,
+                        (203, 192, 255),
+                    )
+
+        images.append(np_image)
+
+    return InMemorySequenceSource(images)
+
+
+def render_video(
+    image_source: ImageSequenceSource,
+    filename: str,
+    framerate: int,
+    codec: str,
+) -> None:
+    """Render video
+
+    Args:
+        image_source (ImageSequenceSource): sequence of images
+        filename (str): video filename
+        framerate (int): framerate of the video
+        codec (str): the codec for video encoding
+    """
+
+    with VideoExporter2(filename, framerate=framerate, codec=codec) as ve:
+        for im in image_source:
+            ve.write(im.raw)

@@ -32,7 +32,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
+    description="The acia library provides utility functionality for analyzing 2D+t time-lapse image sequences in microfluidic live-cell imaging experiments.",
     entry_points={
         "console_scripts": [
             "acia=acia.cli:main",
@@ -43,7 +43,8 @@ setup(
         "omero": ["omero-py>=5.9.3"],
     },
     license="MIT license",
-    long_description=readme + "\n\n" + history,
+    long_description=readme,
+    long_description_content_type="text/markdown",
     include_package_data=True,
     keywords="acia",
     name="acia",
@@ -51,6 +52,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JojoDevel/acia",
-    version="0.2.32",
+    version="0.2.36",
     zip_safe=False,
 )

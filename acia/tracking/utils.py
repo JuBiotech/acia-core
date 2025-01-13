@@ -1,7 +1,10 @@
 """Utilities for tracking
 """
 
+from itertools import product
+
 import networkx as nx
+import numpy as np
 
 from acia.tracking.output import CTCTrackingHelper
 
@@ -53,3 +56,57 @@ def life_cycle_lineage(tr_graph: nx.DiGraph) -> nx.DiGraph:
         lc_graph.nodes[node]["end_frame"] = tr_graph.nodes[lc[-1]]["frame"]
 
     return lc_graph
+
+
+def delete_nodes(graph: nx.DiGraph, nodes_to_delete: list) -> nx.DiGraph:
+    """Delete nodes while maintaining the connectivity
+
+    Args:
+        graph (nx.DiGraph): _description_
+        nodes_to_delete (list): _description_
+
+    Returns:
+        nx.DiGraph: _description_
+    """
+    for node in nodes_to_delete:
+        preds = list(graph.predecessors(node))
+        succs = list(graph.successors(node))
+
+        for p, s in product(preds, succs):
+            graph.add_edge(p, s)
+
+        graph.remove_node(node)
+
+    return graph
+
+
+def subsample_lineage(lineage: nx.DiGraph, subsampling_factor: int) -> nx.DiGraph:
+    """Subsample lineage by only takeing nodes in every n-th (subsampling_factor) frame. Connectivity is maintained.
+
+    Args:
+        lineage (nx.DiGraph): lineage graph (needs the frame attributes)
+        subsampling_factor (int): n-th frame will taken into account
+
+    Returns:
+        nx.DiGraph: Returns the pruned lineage only containing nodes of every n-th frame
+    """
+
+    # copy the lineage
+    lineage = lineage.copy()
+
+    # get all the frames in the lineage
+    frames = list(sorted(np.unique([lineage.nodes[n]["frame"] for n in lineage.nodes])))
+
+    # compute what frames to keep (every n-th)
+    keep_frames = set(frames[::subsampling_factor])
+
+    # create a list of nodes that are not inside the selected frames
+    del_nodes = [
+        n for n in lineage.nodes if lineage.nodes[n]["frame"] not in keep_frames
+    ]
+
+    # delete nodes (maintain connectivity)
+    new_lineage = delete_nodes(lineage, del_nodes)
+
+    # return the new lineage
+    return new_lineage
