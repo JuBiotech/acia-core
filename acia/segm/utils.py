@@ -59,7 +59,7 @@ def length_and_area(contour: Contour) -> Tuple[float, float]:
     return length, polygon.area
 
 
-def single_cell_overlay_to_colony_blobs(overlay: Overlay, expand=10) -> Overlay:
+def merge_cells_to_colonies(overlay: Overlay, expand=10) -> Overlay:
     """Computing colony blobs from single-cell overlay
 
     Args:
