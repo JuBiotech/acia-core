@@ -1,9 +1,9 @@
-# **acia**: Automated single-cell image analysis
+# **Acia**: Automated single-cell image analysis
 
 ![pipeline](https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia/badges/master/pipeline.svg)
 ![coverage](https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia/badges/master/coverage.svg)
 
-"Accio" 🪄 - and your single-cell insights appear - Not quite but - `acia` - and your single-cell insights appear to become much easier 😉
+**Accio** 🪄 - and your single-cell insights appear - Not quite but - `acia` - and your single-cell insights appear to become much easier 😉
 
 The `acia` library provides utility functionality for analysing 2D+t time-lapse image sequences in microfluidic live-cell imaging experiments. It provides:
 - Abstraction for various image sources (local, OMERO)
