@@ -159,7 +159,7 @@ class CircularityEx(PropertyExtractor):
 
     def __init__(
         self,
-        input_unit: UnitLike | None = None,
+        input_unit: UnitLike | None = "1",
         output_unit: UnitLike | None = "1",
     ):
         PropertyExtractor.__init__(
