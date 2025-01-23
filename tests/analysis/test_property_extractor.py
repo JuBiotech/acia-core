@@ -8,12 +8,14 @@ import numpy as np
 from acia import ureg
 from acia.analysis import (
     AreaEx,
+    CircularityEx,
     DynamicTimeEx,
     ExtractorExecutor,
     FluorescenceEx,
     FrameEx,
     IdEx,
     LengthEx,
+    PerimeterEx,
     PositionEx,
     PropertyExtractor,
     TimeEx,
@@ -81,6 +83,8 @@ class TestPropertyExtractors(unittest.TestCase):
                     summarize_operator=np.mean,
                     parallel=1,
                 ),
+                PerimeterEx(input_unit=(ps * ureg.micrometer)),
+                CircularityEx(),
             ],
         )
 
@@ -93,6 +97,8 @@ class TestPropertyExtractors(unittest.TestCase):
         self.assertEqual(df["position_y"][0], 3 / 2 * ps)
         self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
         self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
+        self.assertEqual(df["perimeter"], 10 * ps)
+        self.assertEqual(df["circularity"], 10 * ps)
 
     def test_dynamic_time_extractor(self):
         # in x,y coordinates

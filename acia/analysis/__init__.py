@@ -130,6 +130,57 @@ class AreaEx(PropertyExtractor):
         return pd.DataFrame({self.name: areas}), {self.name: self.output_unit}
 
 
+class PerimeterEx(PropertyExtractor):
+    """Extract area for every contour"""
+
+    def __init__(
+        self,
+        input_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+        output_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+    ):
+        PropertyExtractor.__init__(
+            self, "perimeter", input_unit=input_unit, output_unit=output_unit
+        )
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        perimeters = []
+        for cont in overlay:
+
+            # extract the length of the polygon
+            perimeter = cont.polygon.length
+
+            perimeter.append(self.convert(perimeter))
+
+        return pd.DataFrame({self.name: perimeters}), {self.name: self.output_unit}
+
+
+class CircularityEx(PropertyExtractor):
+    """Extract area for every contour"""
+
+    def __init__(
+        self,
+        input_unit: UnitLike | None = None,
+        output_unit: UnitLike | None = "1",
+    ):
+        PropertyExtractor.__init__(
+            self, "circularity", input_unit=input_unit, output_unit=output_unit
+        )
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        circularities = []
+        for cont in overlay:
+
+            # https://stackoverflow.com/questions/74580811/circularity-calculation-with-perimeter-area-of-a-simple-circle
+            # Sample Circularity = (4 * pi * Sample Area) / (Sample Perimeter^2)
+
+            area = df[df.id == cont.id]["area"]
+            perimeter = df[df.id == cont.id]["perimeter"]
+
+            circularities.append(self.convert((4 * np.pi * area) / perimeter**2))
+
+        return pd.DataFrame({self.name: circularities}), {self.name: self.output_unit}
+
+
 class LengthEx(PropertyExtractor):
     """Extracts width of cells based on the shorter edge of a minimum rotated bbox approximation"""
 
