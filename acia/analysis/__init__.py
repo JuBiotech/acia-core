@@ -149,7 +149,7 @@ class PerimeterEx(PropertyExtractor):
             # extract the length of the polygon
             perimeter = cont.polygon.length
 
-            perimeter.append(self.convert(perimeter))
+            perimeters.append(self.convert(perimeter))
 
         return pd.DataFrame({self.name: perimeters}), {self.name: self.output_unit}
 
