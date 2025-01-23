@@ -97,8 +97,8 @@ class TestPropertyExtractors(unittest.TestCase):
         self.assertEqual(df["position_y"][0], 3 / 2 * ps)
         self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
         self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
-        self.assertEqual(df["perimeter"], 10 * ps)
-        self.assertEqual(df["circularity"], 10 * ps)
+        self.assertEqual(df["perimeter"][0], 10 * ps)
+        self.assertEqual(df["circularity"][0], 10 * ps)
 
     def test_dynamic_time_extractor(self):
         # in x,y coordinates
