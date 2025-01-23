@@ -167,16 +167,9 @@ class CircularityEx(PropertyExtractor):
         )
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
-        circularities = []
-        for cont in overlay:
-
-            # https://stackoverflow.com/questions/74580811/circularity-calculation-with-perimeter-area-of-a-simple-circle
-            # Sample Circularity = (4 * pi * Sample Area) / (Sample Perimeter^2)
-
-            area = df[df.id == cont.id]["area"]
-            perimeter = df[df.id == cont.id]["perimeter"]
-
-            circularities.append(self.convert((4 * np.pi * area) / perimeter**2))
+        circularities = (4 * np.pi * np.array(df["area"])) / np.array(
+            df["perimeter"]
+        ) ** 2
 
         return pd.DataFrame({self.name: circularities}), {self.name: self.output_unit}
 
