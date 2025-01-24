@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import torch
 from cellpose_omni import models
 
@@ -9,6 +10,12 @@ from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 
 from . import SegmentationProcessor
+
+
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx : min(ndx + n, l)]
 
 
 class OmniposeSegmenter(SegmentationProcessor):
@@ -39,7 +46,7 @@ class OmniposeSegmenter(SegmentationProcessor):
             )
 
     @staticmethod
-    def __predict(images, model):
+    def __predict(images, model, batch_size=20):
         chans = [0, 0]  # this means segment based on first channel, no second channel
 
         # define parameters
@@ -56,20 +63,27 @@ class OmniposeSegmenter(SegmentationProcessor):
         )
         cluster = True  # use DBSCAN clustering
 
-        masks, flows, styles = model.eval(
-            images,
-            channels=chans,
-            rescale=rescale,
-            mask_threshold=mask_threshold,
-            transparency=transparency,
-            flow_threshold=flow_threshold,
-            omni=omni,
-            cluster=cluster,
-            resample=resample,
-            verbose=verbose,
-        )
+        all_masks = []
 
-        return masks, flows, styles
+        for image_batch in batch(images, n=batch_size):
+
+            # Make evaluation (flows and styles are not needed)
+            masks, _, _ = model.eval(
+                image_batch,
+                channels=chans,
+                rescale=rescale,
+                mask_threshold=mask_threshold,
+                transparency=transparency,
+                flow_threshold=flow_threshold,
+                omni=omni,
+                cluster=cluster,
+                resample=resample,
+                verbose=verbose,
+            )
+
+            all_masks.append(masks)
+
+        return np.concatenate(all_masks)
 
     def predict(self, images: ImageSequenceSource) -> Overlay:
         return self(images)
@@ -80,6 +94,7 @@ class OmniposeSegmenter(SegmentationProcessor):
         for image in images:
             raw_image = image.raw
 
+            # Reduce HxWxC=1 image to HxW shape
             if len(raw_image.shape) == 3:
                 if raw_image.shape[2] != 1:
                     raise ValueError(
