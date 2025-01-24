@@ -130,6 +130,62 @@ class InMemorySequenceSource(ImageSequenceSource):
         return self.get_frame(0).num_channels
 
 
+class THWCSequenceSource(ImageSequenceSource):
+    """Image sequence for an in memory image stack [TxHxWxC]"""
+
+    def __init__(self, image_stack: np.ndarray):
+        self.image_stack = image_stack
+
+        if len(self.image_stack.shape) != 4:
+            raise ValueError(
+                f"Please make sure to have TxHxWxC image stack. Currently it is: {self.image_stack.shape}"
+            )
+
+    def get_frame(self, frame: int) -> BaseImage:
+        assert frame < len(self.image_stack)
+
+        return LocalImage(self.image_stack[frame])
+
+    def __len__(self):
+        return len(self.image_stack)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.get_frame(i)
+
+    @property
+    def num_channels(self) -> int:
+        return self.get_frame(0).num_channels
+
+    @property
+    def size_c(self) -> int:
+        """
+
+        Returns:
+            int: number of channels
+        """
+        return self.image_stack.shape[3]
+
+    def size_t(self) -> int:
+        """
+
+        Returns:
+            int: number of time slices
+        """
+        return self.image_stack.shape[0]
+
+    def to_single_channel(self, c: int) -> "InMemorySequenceSource":
+        """Converts multi-channel source into single-channel source
+
+        Args:
+            c (int): the channel to use
+
+        Returns:
+            InMemorySequenceSource: sequence with the single channel
+        """
+        return InMemorySequenceSource(self.image_stack[..., c])
+
+
 class LocalSequenceSource(ImageSequenceSource):
     """Image sequence source for files in the local file system (e.g. a tif)."""
 
