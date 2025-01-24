@@ -623,7 +623,7 @@ def render_video(
 
 def render_scalebar(
     image_source: Overlay,
-    xy_position: tuple[int, int],
+    xy_position: tuple[int | float, int | float],
     size_of_pixel: pint.Quantity,
     bar_width: pint.Quantity,
     bar_height: pint.Quantity,
@@ -669,8 +669,25 @@ def render_scalebar(
         np.round((bar_height / size_of_pixel).to_base_units().magnitude)
     )
 
+    image_height, image_width = image_source.get_frame(0).raw.shape[:2]
+
     # extract position
     xstart, ystart = xy_position
+
+    # Allow relative positioning
+    if isinstance(xstart, float):
+        if xstart > 1.0:
+            raise ValueError(
+                f"If using float (x,y) position coordinates they have to be below 1. Your x position is {xstart}"
+            )
+        xstart = int(np.round(image_width * xstart))
+
+    if isinstance(ystart, float):
+        if ystart > 1.0:
+            raise ValueError(
+                f"If using float (x,y) position coordinates they have to be below 1. Your x position is {xstart}"
+            )
+        ystart = int(np.round(image_height * ystart))
 
     images = []
 
@@ -754,7 +771,7 @@ def render_scalebar(
 
 def render_time(
     image_source: ImageSequenceSource,
-    xy_position: tuple[int],
+    xy_position: tuple[int | float, int | float],
     timepoints: list[pint.Quantity | timedelta],
     time_format="{H:02}h {M:02}m",
     color=(255, 255, 255),
@@ -785,6 +802,26 @@ def render_time(
 
     images = []
 
+    image_height, image_width = image_source.get_frame(0).raw.shape[:2]
+
+    # extract position
+    xstart, ystart = xy_position
+
+    # Allow relative positioning
+    if isinstance(xstart, float):
+        if xstart > 1.0:
+            raise ValueError(
+                f"If using float (x,y) position coordinates they have to be below 1. Your x position is {xstart}"
+            )
+        xstart = int(np.round(image_width * xstart))
+
+    if isinstance(ystart, float):
+        if ystart > 1.0:
+            raise ValueError(
+                f"If using float (x,y) position coordinates they have to be below 1. Your x position is {xstart}"
+            )
+        ystart = int(np.round(image_height * ystart))
+
     for image, timepoint in zip(tqdm(image_source, desc="Render time..."), timepoints):
 
         if isinstance(timepoint, pint.Quantity):
@@ -812,7 +849,7 @@ def render_time(
             text_width = right - left
             text_height = bottom - top
 
-            x, y = xy_position
+            x, y = (xstart, ystart)
 
             cv2.rectangle(
                 image,
