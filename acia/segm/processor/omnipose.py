@@ -65,7 +65,7 @@ class OmniposeSegmenter(SegmentationProcessor):
 
         all_masks = []
 
-        for i, image_batch in enumerate(batch(images, n=batch_size)):
+        for image_batch in batch(images, n=batch_size):
 
             # Make evaluation (flows and styles are not needed)
             masks, _, _ = model.eval(
@@ -79,7 +79,7 @@ class OmniposeSegmenter(SegmentationProcessor):
                 cluster=cluster,
                 resample=resample,
                 verbose=verbose,
-                model_loaded=i > 0,
+                model_loaded=True,
             )
 
             all_masks.append(masks)
