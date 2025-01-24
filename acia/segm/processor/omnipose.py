@@ -107,6 +107,6 @@ class OmniposeSegmenter(SegmentationProcessor):
 
             imgs.append(raw_image)
 
-        masks, _, _ = self.__predict(imgs, self.model)
+        masks = self.__predict(imgs, self.model)
 
         return overlay_from_masks(masks)
