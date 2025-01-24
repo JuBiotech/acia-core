@@ -162,15 +162,16 @@ class THWCSequenceSource(ImageSequenceSource):
         """
 
         Returns:
-            int: number of channels
+            int: size of the C dimension
         """
         return self.image_stack.shape[3]
 
+    @property
     def size_t(self) -> int:
         """
 
         Returns:
-            int: number of time slices
+            int: size of the T dimension
         """
         return self.image_stack.shape[0]
 
