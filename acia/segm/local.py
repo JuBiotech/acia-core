@@ -188,6 +188,40 @@ class THWCSequenceSource(ImageSequenceSource):
         # select channel but make it TxHxWxC immediately
         return InMemorySequenceSource(self.image_stack[..., c][..., None])
 
+    def to_rgb(self) -> "InMemorySequenceSource":
+        """Convert image source into rgb space
+
+        Raises:
+            ValueError: if has wrong format
+
+        Returns:
+            InMemorySequenceSource:
+        """
+
+        if self.image_stack.shape[3] != 1:
+            raise ValueError(
+                f"Only works for single-channel sequences for now. You have C={self.num_channels}!"
+            )
+
+        def normalize(im: np.ndarray) -> np.ndarray:
+            """Normalize image"""
+            min = np.quantile(im, 0.01)
+            max = np.quantile(im, 0.99)
+
+            return (
+                np.clip((im.astype(float) - min) / (max - min), 0.0, 1.0) * 255.0
+            ).astype(np.uint8)
+
+        # select the first channel
+        image_stack = self.image_stack[..., 0]
+
+        # apply normalization into unit8 space
+        if self.image_stack.dtype != np.uint8:
+            image_stack = normalize(image_stack)
+
+        # repeat the channels to make a grayscale rendering
+        return np.stack((image_stack,) * 3, axis=-1)
+
 
 class LocalSequenceSource(ImageSequenceSource):
     """Image sequence source for files in the local file system (e.g. a tif)."""
