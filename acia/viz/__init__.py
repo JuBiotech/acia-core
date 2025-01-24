@@ -416,6 +416,16 @@ def render_segmentation(
         # copy image as we draw onto it
         image = np.copy(image)
 
+        if len(image.shape) == 2:
+            # convert to grayscale if needed
+            image = np.stack((image,) * 3, axis=-1)
+
+        if len(image.shape) != 3 or image.shape[2] != 3:
+            logging.warning(
+                "Your images are in the wrong shape! The shape of an image is %s but we need (height, width, 3)! This is likely to cause an error!",
+                image.shape,
+            )
+
         # Draw overlay
         if frame_overlay:
             image = frame_overlay.draw(image, cell_color)  # RGB format
@@ -520,6 +530,16 @@ def render_tracking(
 
         np_image = np.copy(image.raw)
 
+        if len(image.shape) == 2:
+            # convert to grayscale if needed
+            np_image = np.stack((np_image,) * 3, axis=-1)
+
+        if len(np_image.shape) != 3 or np_image.shape[2] != 3:
+            logging.warning(
+                "Your images are in the wrong shape! The shape of an image is %s but we need (height, width, 3)! This is likely to cause an error!",
+                image.shape,
+            )
+
         for cont in frame_overlay:
             if cont.id in tracking_graph.nodes:
                 edges = tracking_graph.out_edges(cont.id)
@@ -582,10 +602,23 @@ def render_video(
     """
 
     with VideoExporter2(
-        filename, framerate=framerate, codec=codec, ffmpeg_params=ffmpeg_params
+        str(filename), framerate=framerate, codec=codec, ffmpeg_params=ffmpeg_params
     ) as ve:
         for im in tqdm(image_source, desc="Encoding video..."):
-            ve.write(im.raw)
+
+            image = im.raw
+
+            if len(image.shape) == 2:
+                # convert to grayscale if needed
+                image = np.stack((image,) * 3, axis=-1)
+
+            if len(image.shape) != 3 or image.shape[2] != 3:
+                logging.warning(
+                    "Your images are in the wrong shape! The shape of an image is %s but we need (height, width, 3)! This is likely to cause an error!",
+                    image.shape,
+                )
+
+            ve.write(image)
 
 
 def render_scalebar(

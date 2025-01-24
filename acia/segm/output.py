@@ -249,7 +249,7 @@ def fast_mask_rendering(masks, im, colors, alpha=0.5):
         retina_masks (bool): Whether to use high resolution masks or not. Defaults to False.
     """
 
-    colors = np.array(colors, dtype=np.float32) / 255.0  # shape(n,3)
+    colors = np.array(colors, dtype=float) / 255.0  # shape(n,3)
     colors = colors[:, None, None]  # shape(n,1,1,3)
 
     masks = np.expand_dims(masks, 3)  # shape(n,h,w,1)
@@ -258,7 +258,7 @@ def fast_mask_rendering(masks, im, colors, alpha=0.5):
     inv_alpha_masks = (1 - masks * alpha).cumprod(0)  # shape(n,h,w,1)
     mcs = masks_color.max(axis=0)  # shape(n,h,w,3)
 
-    im = im.astype(np.float) / 255
+    im = im.astype(float) / 255
     im = im * inv_alpha_masks[-1] + mcs
     im_mask = (im * 255).astype(np.uint8)
 
