@@ -80,6 +80,15 @@ class OmniposeSegmenter(SegmentationProcessor):
         for image in images:
             raw_image = image.raw
 
+            if len(raw_image.shape) == 3:
+                if raw_image.shape[2] != 1:
+                    raise ValueError(
+                        f"Omnipose Segmenter only accepts a single channel image. Currently it is HxWxC: {raw_image.shape}"
+                    )
+
+                # make it a grayscale image
+                raw_image = raw_image[..., 0]
+
             imgs.append(raw_image)
 
         masks, _, _ = self.__predict(imgs, self.model)
