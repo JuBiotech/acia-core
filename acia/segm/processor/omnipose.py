@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from cellpose_omni import models
+from tqdm.auto import tqdm
 
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
@@ -69,7 +70,9 @@ class OmniposeSegmenter(SegmentationProcessor):
 
         all_masks = []
 
-        for image_batch in batch(images, n=batch_size):
+        for image_batch in batch(
+            tqdm(images, desc="Batched Omnipose prediction..."), n=batch_size
+        ):
 
             # Make evaluation (flows and styles are not needed)
             masks, _, _ = model.eval(
@@ -84,6 +87,7 @@ class OmniposeSegmenter(SegmentationProcessor):
                 resample=resample,
                 verbose=verbose,
                 model_loaded=True,
+                show_progress=False,
                 **omnipose_parameters,
             )
 
