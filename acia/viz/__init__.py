@@ -398,7 +398,9 @@ def render_segmentation(
 
     images = []
 
-    for image, frame_overlay in tqdm(zip(imageSource, overlay.timeIterator())):
+    for image, frame_overlay in tqdm(
+        zip(imageSource, overlay.timeIterator()), "Render segmentation..."
+    ):
         # extract the numpy image
         if isinstance(image, BaseImage):
             image = image.raw
@@ -409,6 +411,16 @@ def render_segmentation(
 
         # copy image as we draw onto it
         image = np.copy(image)
+
+        if len(image.shape) == 2:
+            # convert to grayscale if needed
+            image = np.stack((image,) * 3, axis=-1)
+
+        if len(image.shape) != 3 or image.shape[2] != 3:
+            logging.warning(
+                "Your images are in the wrong shape! The shape of an image is %s but we need (height, width, 3)! This is likely to cause an error!",
+                image.shape,
+            )
 
         # Draw overlay
         if frame_overlay:
@@ -440,9 +452,21 @@ def render_tracking(
 
     contour_lookup = {cont.id: cont for cont in overlay}
 
-    for image, frame_overlay in tqdm(zip(image_source, overlay.timeIterator())):
+    for image, frame_overlay in tqdm(
+        zip(image_source, overlay.timeIterator()), desc="Render tracking..."
+    ):
 
         np_image = np.copy(image.raw)
+
+        if len(image.shape) == 2:
+            # convert to grayscale if needed
+            np_image = np.stack((np_image,) * 3, axis=-1)
+
+        if len(np_image.shape) != 3 or np_image.shape[2] != 3:
+            logging.warning(
+                "Your images are in the wrong shape! The shape of an image is %s but we need (height, width, 3)! This is likely to cause an error!",
+                image.shape,
+            )
 
         for cont in frame_overlay:
             if cont.id in tracking_graph.nodes:
@@ -504,6 +528,19 @@ def render_video(
         codec (str): the codec for video encoding
     """
 
-    with VideoExporter2(filename, framerate=framerate, codec=codec) as ve:
+    with VideoExporter2(str(filename), framerate=framerate, codec=codec) as ve:
         for im in image_source:
-            ve.write(im.raw)
+
+            image = im.raw
+
+            if len(image.shape) == 2:
+                # convert to grayscale if needed
+                image = np.stack((image,) * 3, axis=-1)
+
+            if len(image.shape) != 3 or image.shape[2] != 3:
+                logging.warning(
+                    "Your images are in the wrong shape! The shape of an image is %s but we need (height, width, 3)! This is likely to cause an error!",
+                    image.shape,
+                )
+
+            ve.write(image)

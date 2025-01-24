@@ -105,7 +105,7 @@ def load_ctc_segmentation(segmentation_path: Path) -> Overlay:
     return overlay
 
 
-def load_ctc_segmentation_native(segmentation_path: Path) -> Overlay:
+def read_ctc_segmentation_native(segmentation_path: Path) -> Overlay:
     """Fast loading of CTC segmentation masks into an Overlay
 
     Args:
@@ -119,16 +119,27 @@ def load_ctc_segmentation_native(segmentation_path: Path) -> Overlay:
     segmentation_path = Path(segmentation_path)
     segm_mask_files = sorted(segmentation_path.glob("*.tif"))
 
-    overlay = Overlay([], frames=list(range(len(segm_mask_files))))
+    segm_masks = [imread(segm_file) for segm_file in segm_mask_files]
+
+    return overlay_from_masks(segm_masks)
+
+
+def overlay_from_masks(segm_masks: np.ndarray) -> Overlay:
+    """Create a multi-frame overlay from an array of masks
+
+    Args:
+        segm_masks (np.ndarray): mask array [T x H x W]
+
+    Returns:
+        Overlay: returns the multi-frame overly with cell instances
+    """
+    overlay = Overlay([], frames=list(range(len(segm_masks))))
 
     # unique id for instances
     uid = 1
 
     # Iterate all the mask files
-    for frame_id, segm_file in enumerate(segm_mask_files):
-
-        # read the tif
-        mask = imread(segm_file)
+    for frame_id, mask in enumerate(segm_masks):
 
         # Find all cell labels (except 0)
         labels = np.unique(mask)[1:]

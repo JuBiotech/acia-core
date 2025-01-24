@@ -6,7 +6,7 @@
 
 # Official language image. Look for the different tagged releases at:
 # https://hub.docker.com/r/library/python/tags/
-image: jugit-registry.fz-juelich.de/ibg-1/modsim/imageanalysis/acia/python:3.8
+image: python:3.10
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
@@ -18,38 +18,21 @@ stages:
   - test
   - deploy
 
-# Pip's cache doesn't store the python packages
-# https://pip.pypa.io/en/stable/reference/pip_install/#caching
-#
-# If you want to also cache the installed packages, you have to install
-# them in a virtualenv and cache it as well.
-cache:
-  paths:
-    - .cache/pip
-    - venv/
-
-.venv:
-  before_script:
-    - python -V  # Print out python version for debugging
-    - pip install virtualenv
-    - '[ ! -d "/venv/" ] && virtualenv venv'
-    - source venv/bin/activate
-
 test:
   stage: test
-  extends: .venv
   tags:
-  - big-ram
+  - biggpu
   script:
     - pip install --upgrade pip
     - pip install .
     - pip install tox flake8  # you can also use tox
     # download data for testing
-    - wget -O output.zip https://zenodo.org/records/7260137/files/ctc_format.zip?download=1
-    - unzip output.zip
+    - mkdir test_resources
+    - wget -O test_resources/ctc_format.zip https://fz-juelich.sciebo.de/s/8dEFaTKl26H26wO/download
+    - unzip test_resources/ctc_format.zip -d test_resources/ctc_format
     - ls
     # perform the tests
-    - tox -e py38,flake8
+    - tox -e py310,flake8
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     reports:
@@ -70,7 +53,8 @@ test:
 
 run:
   stage: build
-  extends: .venv
+  tags:
+  - biggpu
   script:
     - python setup.py bdist_wheel
     # an alternative approach is to install and run:
@@ -84,7 +68,6 @@ run:
   # common config
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-  extends: .venv
 
 
 
