@@ -70,9 +70,12 @@ class OmniposeSegmenter(SegmentationProcessor):
 
         all_masks = []
 
-        for image_batch in batch(
-            tqdm(images, desc="Batched Omnipose prediction..."), n=batch_size
-        ):
+        pbar = tqdm(
+            total=int(np.ceil(len(images) / batch_size)),
+            desc="Batched Omnipose prediction...",
+        )
+
+        for image_batch in batch(images, n=batch_size):
 
             # Make evaluation (flows and styles are not needed)
             masks, _, _ = model.eval(
@@ -92,6 +95,8 @@ class OmniposeSegmenter(SegmentationProcessor):
             )
 
             all_masks.append(masks)
+
+            pbar.update(1)
 
         return np.concatenate(all_masks)
 
