@@ -220,7 +220,7 @@ class THWCSequenceSource(ImageSequenceSource):
             image_stack = normalize(image_stack)
 
         # repeat the channels to make a grayscale rendering
-        return np.stack((image_stack,) * 3, axis=-1)
+        return THWCSequenceSource(np.stack((image_stack,) * 3, axis=-1))
 
 
 class LocalSequenceSource(ImageSequenceSource):
