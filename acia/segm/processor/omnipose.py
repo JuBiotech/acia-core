@@ -46,7 +46,11 @@ class OmniposeSegmenter(SegmentationProcessor):
             )
 
     @staticmethod
-    def __predict(images, model, batch_size=20):
+    def __predict(images, model, omnipose_parameters: dict = None, batch_size=20):
+
+        if omnipose_parameters is None:
+            omnipose_parameters = {}
+
         chans = [0, 0]  # this means segment based on first channel, no second channel
 
         # define parameters
@@ -80,6 +84,7 @@ class OmniposeSegmenter(SegmentationProcessor):
                 resample=resample,
                 verbose=verbose,
                 model_loaded=True,
+                **omnipose_parameters,
             )
 
             all_masks.append(masks)
@@ -89,7 +94,9 @@ class OmniposeSegmenter(SegmentationProcessor):
     def predict(self, images: ImageSequenceSource) -> Overlay:
         return self(images)
 
-    def __call__(self, images: ImageSequenceSource) -> Overlay:
+    def __call__(
+        self, images: ImageSequenceSource, omnipose_parameters: dict = None
+    ) -> Overlay:
 
         imgs = []
         for image in images:
@@ -107,6 +114,8 @@ class OmniposeSegmenter(SegmentationProcessor):
 
             imgs.append(raw_image)
 
-        masks = self.__predict(imgs, self.model)
+        masks = self.__predict(
+            imgs, self.model, omnipose_parameters=omnipose_parameters
+        )
 
         return overlay_from_masks(masks)
