@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import json
-import re
+import logging
 from pathlib import Path
 
 import networkx as nx
 import numpy as np
 import pandas as pd
+import tifffile
 
-from acia.base import Contour, Overlay
+from acia.base import Contour, ImageSequenceSource, Overlay
+from acia.segm.formats import read_ctc_segmentation_native
 
 
 def parse_simple_tracking(file_content: str) -> tuple[Overlay, nx.DiGraph]:
@@ -95,7 +97,7 @@ def gen_simple_tracking(overlay: Overlay, tracking_graph: nx.Graph) -> str:
     return json.dumps(simpleTracking)
 
 
-def load_ctc_tracklet_graph(file: Path):
+def read_ctc_tracklet_graph(file: Path):
     colnames = ["label", "t_start", "t_end", "parent"]
 
     ctc_df = pd.read_csv(
@@ -103,7 +105,7 @@ def load_ctc_tracklet_graph(file: Path):
         names=colnames,
         header=None,
         dtype={"label": "int", "t_start": "int", "t_end": "int", "parent": "int"},
-        delim_whitespace=" ",
+        sep=" ",
     )
 
     tracklet_graph = nx.DiGraph()
@@ -116,6 +118,83 @@ def load_ctc_tracklet_graph(file: Path):
             tracklet_graph.add_edge(parent_label, label)
 
     return tracklet_graph
+
+
+def read_ctc_tracking(input_path: Path) -> tuple[Overlay, nx.DiGraph, nx.DiGraph]:
+    """Read ctc tracking information
+
+    Args:
+        input_path (Path): Path to the ctc tracking folder
+
+    Returns:
+        tuple[Overlay, nx.DiGraph, nx.DiGraph]: segmentation overlay, tracklet graph (every cell cycle is a node), tracking graph (every cell detection is a node)
+    """
+    input_path = Path(input_path)
+    track_file = input_path / "man_track.txt"
+
+    ov = read_ctc_segmentation_native(input_path)
+    tracklet_graph = read_ctc_tracklet_graph(track_file)
+
+    tracking_graph = ctc_track_graph(ov, tracklet_graph)
+
+    return ov, tracklet_graph, tracking_graph
+
+
+def write_ctc_tracking(
+    output_path: Path,
+    images: ImageSequenceSource,
+    overlay: Overlay,
+    tracklet_graph: nx.DiGraph,
+):
+    """Write ctc tracking to output folder
+
+    Args:
+        output_path (Path): output folder for writing
+        images (ImageSequenceSource): image time-lapse (only used to compute mask sizes)
+        overlay (Overlay): segmentation overlay
+        tracklet_graph (nx.DiGraph): tracklet graph (every cell cycle is a node)
+    """
+
+    output_path = Path(output_path)
+
+    # Write tracklet information
+    data = []
+    for n in tracklet_graph.nodes:
+
+        predecessors = list(tracklet_graph.predecessors(n))
+        if len(predecessors) == 0:
+            parent_label = 0
+        else:
+            parent_label = predecessors[0]
+
+            if len(predecessors) > 1:
+                logging.warning(
+                    "Tracklet has more than one parent. This indicates a malformed tracklet graph!"
+                )
+
+        data.append(
+            {
+                "label": n,
+                "t_start": tracklet_graph.nodes[n]["start_frame"],
+                "t_end": tracklet_graph.nodes[n]["end_frame"],
+                "parent": parent_label,
+            }
+        )
+
+    df_ctc = pd.DataFrame(data)
+    df_ctc.to_csv(output_path / "man_track.txt", sep=" ", header=False, index=False)
+
+    # get the image size
+    height, width = next(iter(images)).raw.shape[:2]
+
+    # Write segmentation information
+    for i, frame_overlay in enumerate(overlay.timeIterator()):
+        local_mask = np.zeros((height, width), dtype=np.uint16)
+        for cont in frame_overlay:
+            cont_mask = cont.toMask(height, width).astype(np.uint16) * cont.label
+            local_mask = np.maximum(local_mask, cont_mask)
+
+        tifffile.imwrite(output_path / f"man_track{i:04d}.tif", local_mask)
 
 
 def ctc_track_graph(ov: Overlay, tracklet_graph: nx.DiGraph):
@@ -159,36 +238,6 @@ def ctc_track_graph(ov: Overlay, tracklet_graph: nx.DiGraph):
             track_graph.add_edge(tracklet_nodes[-1].id, tracklets[succ_label][0].id)
 
     return track_graph
-
-
-def read_ctc_tracking(file: Path) -> list[dict]:
-    """Reads a tracking ctc file line by line
-
-    Args:
-        file (Path): File to ctc tracking txt file
-
-    Returns:
-        list[dict]: List of the individual lines with a dict[id, start_frame, end_frame, parent_id] containing the tracking information
-    """
-
-    # compile regex to match the file
-    regex = re.compile(
-        r"^(?P<id>\d+) (?P<start_frame>\d+) (?P<end_frame>\d+) (?P<parent_id>\d+)"
-    )
-
-    with open(str(file), encoding="utf-8") as input_file:
-        data = []
-        for line in input_file.readlines():
-            m = regex.match(line)
-
-            if m is None:
-                # no regex match for this line
-                continue
-
-            # add the extracted data
-            data.append(m.groupdict())
-
-    return data
 
 
 def tracking_to_graph(data: list[dict]) -> nx.DiGraph:

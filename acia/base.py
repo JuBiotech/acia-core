@@ -6,7 +6,7 @@ import copy
 import logging
 import multiprocessing
 from functools import partial
-from typing import Callable, Iterator
+from typing import Callable, Iterable, Iterator
 
 import cv2
 import numpy as np
@@ -66,8 +66,10 @@ class Instance:
         """
         bin_mask = self.binary_mask
         m_height, m_width = bin_mask.shape
-        assert m_height == height
-        assert m_width == width
+        if m_height != height:
+            logging.warning("Mask height %d != requested height %d!", m_height, height)
+        if m_width != width:
+            logging.warning("Mask width %s != requested width %s!", m_width, width)
 
         return bin_mask
 
@@ -261,6 +263,13 @@ class Overlay:
             new_cont.coordinates -= np.array([minx, miny])
 
             yield new_cont
+
+    def time_iterator(
+        self, start_frame=None, end_frame=None, frame_range=None
+    ) -> Iterable[Overlay]:
+        return self.timeIterator(
+            startFrame=start_frame, endFrame=end_frame, frame_range=frame_range
+        )
 
     def timeIterator(self, startFrame=None, endFrame=None, frame_range=None):
         """
