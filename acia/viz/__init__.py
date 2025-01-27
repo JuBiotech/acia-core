@@ -530,7 +530,7 @@ def render_tracking(
 
         np_image = np.copy(image.raw)
 
-        if len(image.shape) == 2:
+        if len(np_image.shape) == 2:
             # convert to grayscale if needed
             np_image = np.stack((np_image,) * 3, axis=-1)
 
