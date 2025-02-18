@@ -175,18 +175,18 @@ class THWCSequenceSource(ImageSequenceSource):
         """
         return self.image_stack.shape[0]
 
-    def to_channel(self, c: int) -> "InMemorySequenceSource":
+    def to_channel(self, c: int) -> "THWCSequenceSource":
         """Converts multi-channel source into single-channel source
 
         Args:
             c (int): the channel to use
 
         Returns:
-            InMemorySequenceSource: sequence with the single channel
+            THWCSequenceSource: sequence with the single channel
         """
 
         # select channel but make it TxHxWxC immediately
-        return InMemorySequenceSource(self.image_stack[..., c][..., None])
+        return THWCSequenceSource(self.image_stack[..., c][..., None])
 
     def to_rgb(self) -> "InMemorySequenceSource":
         """Convert image source into rgb space
