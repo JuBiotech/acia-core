@@ -51,7 +51,7 @@ test:
 #    - micromamba run -n acia pip install -e .
 #    - micromamba run -n acia python -c "import acia"
 
-run:
+build:
   image: python:$PY_VERSION
   parallel:
     matrix:
@@ -60,6 +60,7 @@ run:
   tags:
   - biggpu
   script:
+    - pip install setuptools
     - python setup.py bdist_wheel
     # an alternative approach is to install and run:
     - pip install dist/*
