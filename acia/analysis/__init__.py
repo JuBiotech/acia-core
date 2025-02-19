@@ -99,11 +99,16 @@ class ExtractorExecutor:
             extractors = []
 
         df = pd.DataFrame()
+
+        # TODO: make the id the index
+        df["id"] = [c.id for c in overlay]
+        df = df.set_index("id")
+
         for extractor in tqdm(extractors):
             print(f"Extracting: {extractor.name}...")
             result_df, units = extractor.extract(overlay, images, df)
 
-            df = pd.concat([df, result_df], ignore_index=False, sort=False, axis=1)
+            df = pd.merge(df, result_df, on="id")
 
             self.units.update(**units)
 
@@ -123,11 +128,13 @@ class AreaEx(PropertyExtractor):
         )
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
-        areas = []
+        data = []
         for cont in overlay:
-            areas.append(self.convert(cont.area))
+            data.append({"id": cont.id, self.name: self.convert(cont.area)})
 
-        return pd.DataFrame({self.name: areas}), {self.name: self.output_unit}
+        df = pd.DataFrame(data).set_index("id")
+
+        return df, {self.name: self.output_unit}
 
 
 class PerimeterEx(PropertyExtractor):
@@ -143,15 +150,17 @@ class PerimeterEx(PropertyExtractor):
         )
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
-        perimeters = []
+        data = []
         for cont in overlay:
 
             # extract the length of the polygon
             perimeter = cont.polygon.length
 
-            perimeters.append(self.convert(perimeter))
+            data.append({"id": cont.id, self.name: self.convert(perimeter)})
 
-        return pd.DataFrame({self.name: perimeters}), {self.name: self.output_unit}
+        df = pd.DataFrame(data).set_index("id")
+
+        return df, {self.name: self.output_unit}
 
 
 class CircularityEx(PropertyExtractor):
@@ -171,7 +180,9 @@ class CircularityEx(PropertyExtractor):
             df["perimeter"]
         ) ** 2
 
-        return pd.DataFrame({self.name: circularities}), {self.name: self.output_unit}
+        df = pd.DataFrame({self.name: circularities, "id": df.id}).set_index("id")
+
+        return df, {self.name: self.output_unit}
 
 
 class LengthEx(PropertyExtractor):
@@ -202,7 +213,11 @@ class LengthEx(PropertyExtractor):
                 )
             )
 
-        return pd.DataFrame({self.name: lengths}), {self.name: self.output_unit}
+        df = pd.DataFrame(
+            {self.name: lengths, "id": [c.id for c in overlay]}
+        ).set_index("id")
+
+        return df, {self.name: self.output_unit}
 
 
 class WidthEx(PropertyExtractor):
@@ -236,7 +251,11 @@ class WidthEx(PropertyExtractor):
                 )
             )
 
-        return pd.DataFrame({self.name: widths}), {self.name: self.output_unit}
+        df = pd.DataFrame({self.name: widths, "id": [c.id for c in overlay]}).set_index(
+            "id"
+        )
+
+        return df, {self.name: self.output_unit}
 
 
 class FrameEx(PropertyExtractor):
@@ -250,7 +269,11 @@ class FrameEx(PropertyExtractor):
         for cont in overlay:
             frames.append(self.convert(cont.frame))
 
-        return pd.DataFrame({self.name: frames}), {self.name: self.output_unit}
+        df = pd.DataFrame({self.name: frames, "id": [c.id for c in overlay]}).set_index(
+            "id"
+        )
+
+        return df, {self.name: self.output_unit}
 
 
 class IdEx(PropertyExtractor):
@@ -263,7 +286,11 @@ class IdEx(PropertyExtractor):
         ids = []
         for cont in overlay:
             ids.append(self.convert(cont.id))
-        return pd.DataFrame({self.name: ids}), {self.name: self.output_unit}
+
+        df = pd.DataFrame({self.name: ids}).set_index("id")
+        df["id"] = df.index
+
+        return df, {self.name: self.output_unit}
 
 
 class LabelEx(PropertyExtractor):
@@ -276,7 +303,12 @@ class LabelEx(PropertyExtractor):
         labels = []
         for cont in overlay:
             labels.append(self.convert(cont.label))
-        return pd.DataFrame({self.name: labels}), {self.name: self.output_unit}
+
+        df = pd.DataFrame({self.name: labels, "id": [c.id for c in overlay]}).set_index(
+            "id"
+        )
+
+        return df, {self.name: self.output_unit}
 
 
 class TimeEx(PropertyExtractor):
@@ -290,7 +322,11 @@ class TimeEx(PropertyExtractor):
         for _, row in df.iterrows():
             times.append(self.convert(row["frame"]))
 
-        return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
+        df = pd.DataFrame({self.name: times, "id": [c.id for c in overlay]}).set_index(
+            "id"
+        )
+
+        return df, {self.name: self.output_unit}
 
 
 class DynamicTimeEx(PropertyExtractor):
@@ -323,17 +359,23 @@ class DynamicTimeEx(PropertyExtractor):
                 f"Number of specified timepoints does not match with number of frames: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
             )
 
-        times = []
-        for _, row in df.iterrows():
-            times.append(
-                # convert to timepoint units
-                self.convert(
-                    # lookup frame timepoint
-                    self.timepoints[row["frame"]]
-                )
+        data = []
+        for id, row in df.iterrows():
+            data.append(
+                {
+                    self.name:
+                    # convert to timepoint units
+                    self.convert(
+                        # lookup frame timepoint
+                        self.timepoints[row["frame"]]
+                    ),
+                    "id": id,
+                }
             )
 
-        return pd.DataFrame({self.name: times}), {self.name: self.output_unit}
+        df = pd.DataFrame(data).set_index("id")
+
+        return df, {self.name: self.output_unit}
 
 
 class PositionEx(PropertyExtractor):
@@ -349,11 +391,15 @@ class PositionEx(PropertyExtractor):
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         positions_x = []
         positions_y = []
+        ids = []
         for cont in overlay:
             positions_x.append(self.convert(cont.center[0]))
             positions_y.append(self.convert(cont.center[1]))
+            ids.append(cont.id)
 
-        return pd.DataFrame({"position_x": positions_x, "position_y": positions_y}), {
+        return pd.DataFrame(
+            {"position_x": positions_x, "position_y": positions_y, "id": ids}
+        ), {
             "position_x": self.output_unit,
             "position_y": self.output_unit,
         }
@@ -402,7 +448,8 @@ class FluorescenceEx(PropertyExtractor):
         Returns:
             pd.DataFrame: pandas data frame containing columns of channel_names and the rows represent the extracted fluorescence
         """
-        channel_values = [[] for _ in channels]
+
+        data = []
 
         for cont in overlay:
             for ch_id, channel in enumerate(channels):
@@ -419,11 +466,11 @@ class FluorescenceEx(PropertyExtractor):
                 # compute fluorescence response
                 value = summarize_operator(masked_roi.compressed())
 
-                channel_values[ch_id].append(value)
+                data.append({"id": cont.id, channel_names[ch_id]: value})
 
         return pd.DataFrame(
-            {channel_names[i]: channel_values[i] for i in range(len(channels))}
-        )
+            data  # {channel_names[i]: channel_values[i] for i in range(len(channels))}
+        ).set_index("id")
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         assert overlay.numFrames() == len(
@@ -463,7 +510,7 @@ class FluorescenceEx(PropertyExtractor):
             )
 
         # concatenate all results
-        result = reduce(lambda a, b: pd.concat([a, b], ignore_index=True), result)
+        result = reduce(lambda a, b: pd.concat([a, b], ignore_index=False), result)
 
         return result, {
             self.channel_names[i]: self.output_unit for i in range(len(self.channels))

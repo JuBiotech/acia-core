@@ -13,7 +13,6 @@ from acia.analysis import (
     ExtractorExecutor,
     FluorescenceEx,
     FrameEx,
-    IdEx,
     LengthEx,
     PerimeterEx,
     PositionEx,
@@ -69,7 +68,6 @@ class TestPropertyExtractors(unittest.TestCase):
             overlay=overlay,
             images=image_source,
             extractors=[
-                IdEx(),
                 FrameEx(),
                 AreaEx(input_unit=(ps * ureg.micrometer) ** 2),
                 LengthEx(input_unit=ps * ureg.micrometer),
@@ -88,17 +86,17 @@ class TestPropertyExtractors(unittest.TestCase):
             ],
         )
 
-        self.assertEqual(df["area"][0], (2 * 3) * ps**2)
-        self.assertEqual(df["length"][0], 3 * ps)
-        self.assertEqual(df["id"][0], 23)
-        self.assertEqual(df["frame"][0], 0)
-        self.assertEqual(df["time"][0], 0 * 15 / 60)
-        self.assertEqual(df["position_x"][0], 2 / 2 * ps)
-        self.assertEqual(df["position_y"][0], 3 / 2 * ps)
-        self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
-        self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
-        self.assertEqual(df["perimeter"][0], 10 * ps)
-        np.testing.assert_almost_equal(df["circularity"][0], 0.7539822368615503)
+        self.assertEqual(df["area"].iloc[0], (2 * 3) * ps**2)
+        self.assertEqual(df["length"].iloc[0], 3 * ps)
+        self.assertEqual(df["id"].iloc[0], 23)
+        self.assertEqual(df["frame"].iloc[0], 0)
+        self.assertEqual(df["time"].iloc[0], 0 * 15 / 60)
+        self.assertEqual(df["position_x"].iloc[0], 2 / 2 * ps)
+        self.assertEqual(df["position_y"].iloc[0], 3 / 2 * ps)
+        self.assertEqual(df["gfp"].iloc[0], np.median(image[:3, :2]))
+        self.assertEqual(df["gfp_mean"].iloc[0], np.mean(image[:3, :2]))
+        self.assertEqual(df["perimeter"].iloc[0], 10 * ps)
+        np.testing.assert_almost_equal(df["circularity"].iloc[0], 0.7539822368615503)
 
     def test_dynamic_time_extractor(self):
         # in x,y coordinates
@@ -115,12 +113,12 @@ class TestPropertyExtractors(unittest.TestCase):
         df = ExtractorExecutor().execute(
             overlay=overlay,
             images=[LocalImageSource(None)] * 3,
-            extractors=[IdEx(), FrameEx(), DynamicTimeEx(timepoints, relative=True)],
+            extractors=[FrameEx(), DynamicTimeEx(timepoints, relative=True)],
         )
 
-        self.assertEqual(df["time"][0], 0)
-        self.assertEqual(df["time"][1], rel_timepoints[1] / 3600)
-        self.assertEqual(df["time"][2], rel_timepoints[2] / 3600)
+        self.assertEqual(df["time"].iloc[0], 0)
+        self.assertEqual(df["time"].iloc[1], rel_timepoints[1] / 3600)
+        self.assertEqual(df["time"].iloc[2], rel_timepoints[2] / 3600)
 
     def test_dynamic_time_extractor_failures(self):
         contours = [
@@ -138,7 +136,6 @@ class TestPropertyExtractors(unittest.TestCase):
                 overlay=overlay,
                 images=[LocalImageSource(None)] * 3,
                 extractors=[
-                    IdEx(),
                     FrameEx(),
                     DynamicTimeEx(timepoints=[1, 2], relative=True),
                 ],
@@ -174,8 +171,8 @@ class TestPropertyExtractors(unittest.TestCase):
             ],
         )
 
-        self.assertEqual(df["gfp"][0], np.median(image[:3, :2]))
-        self.assertEqual(df["gfp_mean"][0], np.mean(image[:3, :2]))
+        self.assertEqual(df["gfp"].iloc[0], np.median(image[:3, :2]))
+        self.assertEqual(df["gfp_mean"].iloc[0], np.mean(image[:3, :2]))
 
     def test_parallel_fluorescence_extraction(self):
         squared_num = 30
@@ -199,9 +196,12 @@ class TestPropertyExtractors(unittest.TestCase):
             overlay=overlay,
             images=image_sources,
             extractors=[
-                FluorescenceEx(channels=[0], channel_names=["fl1"]),
+                FluorescenceEx(channels=[0], channel_names=["fl1"], parallel=3),
                 FluorescenceEx(
-                    channels=[0], channel_names=["fl1_mean"], summarize_operator=np.mean
+                    channels=[0],
+                    channel_names=["fl1_mean"],
+                    summarize_operator=np.mean,
+                    parallel=3,
                 ),
             ],
         )
