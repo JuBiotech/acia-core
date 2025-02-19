@@ -52,6 +52,10 @@ test:
 #    - micromamba run -n acia python -c "import acia"
 
 run:
+  image: python:$PY_VERSION
+  parallel:
+    matrix:
+      - PY_VERSION: ['3.9', '3.10', '3.11', '3.12']
   stage: build
   tags:
   - biggpu
