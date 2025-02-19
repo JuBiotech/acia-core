@@ -188,7 +188,7 @@ class THWCSequenceSource(ImageSequenceSource):
         # select channel but make it TxHxWxC immediately
         return THWCSequenceSource(self.image_stack[..., c][..., None])
 
-    def to_rgb(self) -> "InMemorySequenceSource":
+    def to_rgb(self) -> "THWCSequenceSource":
         """Convert image source into rgb space
 
         Raises:
