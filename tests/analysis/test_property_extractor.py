@@ -14,6 +14,7 @@ from acia.analysis import (
     FluorescenceEx,
     FrameEx,
     LengthEx,
+    LengthWidthEx,
     PerimeterEx,
     PositionEx,
     PropertyExtractor,
@@ -72,6 +73,7 @@ class TestPropertyExtractors(unittest.TestCase):
                 AreaEx(input_unit=(ps * ureg.micrometer) ** 2),
                 LengthEx(input_unit=ps * ureg.micrometer),
                 WidthEx(input_unit=ps * ureg.micrometer),
+                LengthWidthEx("a_", input_unit=ps * ureg.micrometer),
                 TimeEx(input_unit="15 * minute"),  # one frame every 15 minutes
                 PositionEx(input_unit=ps * ureg.micrometer),
                 FluorescenceEx(channels=[0], channel_names=["gfp"], parallel=1),
@@ -88,6 +90,9 @@ class TestPropertyExtractors(unittest.TestCase):
 
         self.assertEqual(df["area"].iloc[0], (2 * 3) * ps**2)
         self.assertEqual(df["length"].iloc[0], 3 * ps)
+        self.assertEqual(df["a_length"].iloc[0], 3 * ps)
+        self.assertEqual(df["width"].iloc[0], 2 * ps)
+        self.assertEqual(df["a_width"].iloc[0], 2 * ps)
         self.assertEqual(df["id"].iloc[0], 23)
         self.assertEqual(df["frame"].iloc[0], 0)
         self.assertEqual(df["time"].iloc[0], 0 * 15 / 60)

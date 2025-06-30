@@ -258,6 +258,68 @@ class WidthEx(PropertyExtractor):
         return df, {self.name: self.output_unit}
 
 
+class LengthWidthEx(PropertyExtractor):
+    """Extracts length and width of cells based on the shorter edge of a minimum rotated bbox approximation"""
+
+    def __init__(
+        self,
+        prefix="",
+        input_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+        output_unit: UnitLike | None = DEFAULT_UNIT_LENGTH,
+    ):
+        self.prefix = prefix
+
+        PropertyExtractor.__init__(
+            self,
+            f"{prefix}length-width",
+            input_unit=input_unit,
+            output_unit=output_unit,
+        )
+
+    def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
+        """Extract length and width information for all contours"""
+        widths = []
+        lengths = []
+        for cont in overlay:
+
+            pd_box = pairwise_distances(
+                np.array(
+                    # bbox approaximation
+                    cont.polygon.minimum_rotated_rectangle.exterior.coords
+                )
+            )
+
+            widths.append(
+                self.convert(
+                    # shorter edge of bbox approximation
+                    np.min(
+                        # measure edge lengths of bbox approximation
+                        pd_box
+                    )
+                )
+            )
+
+            lengths.append(
+                self.convert(
+                    # longer edge of minimum roated bbox
+                    np.max(pd_box)
+                )
+            )
+
+        df = pd.DataFrame(
+            {
+                f"{self.prefix}width": widths,
+                f"{self.prefix}length": lengths,
+                "id": [c.id for c in overlay],
+            }
+        ).set_index("id")
+
+        return df, {
+            f"{self.prefix}width": self.output_unit,
+            f"{self.prefix}length": self.output_unit,
+        }
+
+
 class FrameEx(PropertyExtractor):
     """Extract the frame information for every contour"""
 
