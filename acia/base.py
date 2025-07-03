@@ -446,6 +446,10 @@ class ImageSequenceSource:
     def num_channels(self) -> int:
         raise NotImplementedError()
 
+    @property
+    def size_t(self) -> int:
+        raise NotImplementedError()
+
     def get_frame(self, frame: int) -> BaseImage:
         raise NotImplementedError()
 

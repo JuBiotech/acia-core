@@ -22,6 +22,8 @@ from acia import Q_, U_
 from acia.base import BaseImage, ImageSequenceSource, Overlay
 from acia.utils import pairwise_distances
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_UNIT_LENGTH = "micrometer"
 DEFAULT_UNIT_AREA = "micrometer ** 2"
 
@@ -414,11 +416,19 @@ class DynamicTimeEx(PropertyExtractor):
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
 
         # get the number of frames
-        num_frames = np.unique(df["frame"])
+        df_num_frames = np.unique(df["frame"])
+        num_frames = images.size_t
+
+        if len(self.timepoints) != len(df_num_frames):
+            logger.warning(
+                "Number of specified timepoints does not match with number of frames in the Dataframe: %d vs. %d timepoints",
+                len(df_num_frames),
+                len(self.timepoints),
+            )
 
         if len(self.timepoints) != len(num_frames):
             raise ValueError(
-                f"Number of specified timepoints does not match with number of frames: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
+                f"Number of specified timepoints does not match with number of frames in the time-lapse: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
             )
 
         data = []
