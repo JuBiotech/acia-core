@@ -426,7 +426,7 @@ class DynamicTimeEx(PropertyExtractor):
                 len(self.timepoints),
             )
 
-        if len(self.timepoints) != len(num_frames):
+        if len(self.timepoints) != num_frames:
             raise ValueError(
                 f"Number of specified timepoints does not match with number of frames in the time-lapse: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
             )
