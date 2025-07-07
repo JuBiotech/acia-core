@@ -7,8 +7,8 @@ from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 
 
-class CellposeSegmenter:
-    """CellposeSegmenter using Cellpose SAM: https://doi.org/10.1101/2025.04.28.651001"""
+class CellposeSAMSegmenter:
+    """CellposeSAMSegmenter using Cellpose SAM: https://doi.org/10.1101/2025.04.28.651001"""
 
     def __init__(self, use_GPU=None):
         if use_GPU is None:
