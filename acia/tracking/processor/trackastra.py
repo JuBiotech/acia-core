@@ -36,6 +36,10 @@ class TrackastraTracker(TrackingProcessor):
         masks = overlay_to_masks(segmentation, height=height, width=width)
         imgs = np.stack([im.raw for im in images])
 
+        if len(imgs.shape) == 4:
+            # strip off last because it should not be used
+            imgs = imgs[..., 0]
+
         if segmentation.numFrames() != len(masks):
             logging.warning("Number of segmented frames and masks is unequal!")
 
