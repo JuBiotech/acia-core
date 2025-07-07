@@ -91,6 +91,10 @@ class LocalImageSource(ImageSequenceSource):
     def num_frames(self) -> int:
         return 1
 
+    @property
+    def size_t(self) -> int:
+        return 1
+
     def __len__(self):
         return 1
 
@@ -124,6 +128,10 @@ class InMemorySequenceSource(ImageSequenceSource):
     def __iter__(self):
         for i in range(len(self)):
             yield self.get_frame(i)
+
+    @property
+    def size_t(self) -> int:
+        return len(self)
 
     @property
     def num_channels(self) -> int:
@@ -174,6 +182,24 @@ class THWCSequenceSource(ImageSequenceSource):
             int: size of the T dimension
         """
         return self.image_stack.shape[0]
+
+    @property
+    def size_h(self) -> int:
+        """
+
+        Returns:
+            int: size of the C dimension
+        """
+        return self.image_stack.shape[1]
+
+    @property
+    def size_w(self) -> int:
+        """
+
+        Returns:
+            int: size of the T dimension
+        """
+        return self.image_stack.shape[2]
 
     def to_channel(self, c: int) -> "THWCSequenceSource":
         """Converts multi-channel source into single-channel source
@@ -277,6 +303,10 @@ class LocalSequenceSource(ImageSequenceSource):
         assert frame < len(images)
 
         return LocalImage(prepare_image(images[frame]))
+
+    @property
+    def size_t(self):
+        return len(tifffile.imread(self.filename))
 
     @property
     def num_channels(self) -> int:
