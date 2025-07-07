@@ -18,7 +18,7 @@ from tqdm.auto import tqdm
 
 from acia import ureg
 from acia.base import BaseImage, ImageSequenceSource, Overlay
-from acia.segm.local import InMemorySequenceSource, LocalImage
+from acia.segm.local import InMemorySequenceSource, LocalImage, THWCSequenceSource
 
 from .utils import strfdelta
 
@@ -883,3 +883,115 @@ def render_time(
     else:
         # return as sequence source again
         return InMemorySequenceSource(image_stack)
+
+
+def colorize_instance_mask(instance_mask, background_color=(0, 0, 0), seed=42):
+    """
+    Convert instance mask to an RGB image with random colors per instance (no loop).
+
+    Parameters:
+        instance_mask (np.ndarray): 2D array of shape (H, W) with integer instance IDs.
+        background_color (tuple): RGB color for background (default black).
+        seed (int): Random seed for consistent coloring.
+
+    Returns:
+        np.ndarray: Colored mask of shape (H, W, 3), dtype=uint8.
+    """
+    unique_ids = np.unique(instance_mask)
+    unique_ids = unique_ids[unique_ids != 0]  # Exclude background (assumed to be 0)
+
+    # Map instance IDs to color lookup table (LUT)
+    rng = np.random.default_rng(seed)
+    color_lut = np.zeros((np.max(unique_ids) + 1, 3), dtype=np.uint8)
+    color_lut[0] = background_color
+    color_lut[unique_ids] = rng.integers(
+        0, 256, size=(len(unique_ids), 3), dtype=np.uint8
+    )
+
+    # Map colors to mask using LUT
+    colored_mask = color_lut[instance_mask]
+
+    return colored_mask
+
+
+def render_segmentation_mask(
+    source: ImageSequenceSource, overlay: Overlay, alpha=0.8
+) -> THWCSequenceSource:
+    """Render cell segmentation based on masks with random colors
+
+    Args:
+        source (ImageSequenceSource): the time-lapse sequence source
+        overlay (Overlay): the corresponding overlay. WARNING: all instances need to be based on masks!
+        alpha (float, optional): The opacity of the masked image. Defaults to 0.8.
+
+    Returns:
+        THWCSequenceSource: TxHxWx3 sequence
+    """
+    return_images = []
+
+    for im, ov in zip(tqdm(source), overlay.time_iterator()):
+        im = np.copy(im.raw)
+
+        for cont in ov:
+            # render the masks based on the first contour mask in the frame
+            colored_mask = colorize_instance_mask(cont.mask)
+            break
+
+        # Alpha blend with original image
+        overlay = cv2.addWeighted(
+            im.astype(np.float32), alpha, colored_mask.astype(np.float32), 1 - alpha, 0
+        ).astype(np.uint8)
+
+        # use the original image where no overlay is availabel
+        binary_mask = np.stack((np.max(colored_mask, axis=-1),) * 3, axis=-1)
+        overlay = np.where(binary_mask, overlay, im)
+
+        return_images.append(overlay)
+
+    # return the new time-lapse
+    return THWCSequenceSource(np.stack(return_images, axis=0))
+
+
+def render_tracking_mask(
+    source: ImageSequenceSource, overlay: Overlay, alpha=0.8
+) -> THWCSequenceSource:
+    """Render tracking and use the label colors for the masks
+
+    Args:
+        source (ImageSequenceSource): the time-lapse sequence source
+        overlay (Overlay): the corresponding overlay. WARNING: all instances need to be based on masks!
+        alpha (float, optional): The opacity of the masked image. Defaults to 0.8.
+
+    Returns:
+        THWCSequenceSource: TxHxWx3 sequence
+    """
+    return_images = []
+
+    for im, ov in zip(
+        tqdm(source, desc="Render tracking mask..."), overlay.time_iterator()
+    ):
+        im = np.copy(im.raw)
+
+        h, w = im.shape[:2]
+
+        label_mask = np.zeros((h, w), dtype=np.uint16)
+
+        for cont in ov:
+            label_mask = np.maximum(label_mask, cont.binary_mask * cont.label)
+
+        # render the masks based on the labels
+        colored_mask = colorize_instance_mask(label_mask)
+
+        # Alpha blend with original image
+        overlay = cv2.addWeighted(
+            im.astype(np.float32), alpha, colored_mask.astype(np.float32), 1 - alpha, 0
+        ).astype(np.uint8)
+
+        # use the original image where no overlay is availabel
+        binary_mask = np.stack((np.max(colored_mask, axis=-1),) * 3, axis=-1)
+        overlay = np.where(binary_mask, overlay, im)
+
+        return_images.append(overlay)
+
+    # return the new time-lapse
+    return THWCSequenceSource(np.stack(return_images, axis=0))
