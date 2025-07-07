@@ -525,7 +525,7 @@ def render_tracking(
     contour_lookup = {cont.id: cont for cont in overlay}
 
     for image, frame_overlay in tqdm(
-        zip(image_source, overlay.timeIterator()), desc="Render cell tracking..."
+        zip(image_source, overlay.timeIterator()), desc="Render cell tracking paths..."
     ):
 
         np_image = np.copy(image.raw)
@@ -885,7 +885,9 @@ def render_time(
         return InMemorySequenceSource(image_stack)
 
 
-def colorize_instance_mask(instance_mask, background_color=(0, 0, 0), seed=42):
+def colorize_instance_mask(
+    instance_mask, background_color=(0, 0, 0), seed=42, color_lut=None
+):
     """
     Convert instance mask to an RGB image with random colors per instance (no loop).
 
@@ -893,6 +895,7 @@ def colorize_instance_mask(instance_mask, background_color=(0, 0, 0), seed=42):
         instance_mask (np.ndarray): 2D array of shape (H, W) with integer instance IDs.
         background_color (tuple): RGB color for background (default black).
         seed (int): Random seed for consistent coloring.
+        color_lut (np.ndarray): Ix3 lookup map for instance colors (I)
 
     Returns:
         np.ndarray: Colored mask of shape (H, W, 3), dtype=uint8.
@@ -902,11 +905,13 @@ def colorize_instance_mask(instance_mask, background_color=(0, 0, 0), seed=42):
 
     # Map instance IDs to color lookup table (LUT)
     rng = np.random.default_rng(seed)
-    color_lut = np.zeros((np.max(unique_ids) + 1, 3), dtype=np.uint8)
-    color_lut[0] = background_color
-    color_lut[unique_ids] = rng.integers(
-        0, 256, size=(len(unique_ids), 3), dtype=np.uint8
-    )
+    if color_lut is None:
+        color_lut = np.zeros((np.max(unique_ids) + 1, 3), dtype=np.uint8)
+        # color_lut[unique_ids] = rng.integers(0, 256, size=(len(unique_ids), 3), dtype=np.uint8)
+        color_lut = rng.integers(
+            0, 256, size=(np.max(unique_ids) + 1, 3), dtype=np.uint8
+        )
+        color_lut[0] = background_color
 
     # Map colors to mask using LUT
     colored_mask = color_lut[instance_mask]
@@ -953,7 +958,11 @@ def render_segmentation_mask(
 
 
 def render_tracking_mask(
-    source: ImageSequenceSource, overlay: Overlay, alpha=0.8
+    source: ImageSequenceSource,
+    overlay: Overlay,
+    alpha=0.8,
+    show_label_numbers=False,
+    seed=42,
 ) -> THWCSequenceSource:
     """Render tracking and use the label colors for the masks
 
@@ -967,6 +976,14 @@ def render_tracking_mask(
     """
     return_images = []
 
+    # generate color LUT (persistent for labels)
+    rng = np.random.default_rng(seed)
+    unique_labels = np.unique([0] + [cont.label for cont in overlay])
+    color_lut = rng.integers(
+        0, 256, size=(np.max(unique_labels) + 1, 3), dtype=np.uint8
+    )
+    color_lut[0] = (0, 0, 0)
+
     for im, ov in zip(
         tqdm(source, desc="Render tracking mask..."), overlay.time_iterator()
     ):
@@ -974,13 +991,28 @@ def render_tracking_mask(
 
         h, w = im.shape[:2]
 
-        label_mask = np.zeros((h, w), dtype=np.uint16)
+        label_mask = np.zeros((h, w), dtype=np.uint32)
 
         for cont in ov:
-            label_mask = np.maximum(label_mask, cont.binary_mask * cont.label)
+            # print(f"Label: {cont.label}")
+            cell_mask = (cont.binary_mask * cont.label).astype(np.uint16)
+            label_mask = np.maximum(label_mask, cell_mask)
+
+            # render label numbers if necessary
+            if show_label_numbers:
+                cv2.putText(
+                    im,
+                    f"{cont.label}",
+                    np.array(cont.center).astype(int),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (255, 0, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
 
         # render the masks based on the labels
-        colored_mask = colorize_instance_mask(label_mask)
+        colored_mask = colorize_instance_mask(label_mask, color_lut=color_lut)
 
         # Alpha blend with original image
         overlay = cv2.addWeighted(
