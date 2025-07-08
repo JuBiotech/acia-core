@@ -3,6 +3,7 @@
 import celldetection as cd
 import numpy as np
 import torch
+from tqdm.auto import tqdm
 
 from acia.base import Contour, Overlay
 
@@ -24,10 +25,17 @@ class CPNSegmenter:
 
         contours = []
         max_frame = 0
-        for frame_id, img in enumerate(image_sequence):
+        for frame_id, img in enumerate(
+            tqdm(image_sequence, desc="Perform segmentation...")
+        ):
             # Load input
             img = img.raw
             print(img.dtype, img.shape, (img.min(), img.max()))
+
+            if len(img.shape) == 4:
+                # we have TxHxWxC
+                # strip of last channel to make it grayscale
+                img = img[..., 0]
 
             # convert to rgb
             img = np.stack((img,) * 3, axis=-1)
