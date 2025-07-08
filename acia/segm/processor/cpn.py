@@ -32,8 +32,8 @@ class CPNSegmenter:
             img = img.raw
             print(img.dtype, img.shape, (img.min(), img.max()))
 
-            if len(img.shape) == 4:
-                # we have TxHxWxC
+            if len(img.shape) == 3:
+                # we have HxWxC
                 # strip of last channel to make it grayscale
                 img = img[..., 0]
 
