@@ -524,8 +524,8 @@ def render_tracking(
 
     contour_lookup = {cont.id: cont for cont in overlay}
 
-    for image, frame_overlay in tqdm(
-        zip(image_source, overlay.timeIterator()), desc="Render cell tracking paths..."
+    for image, frame_overlay in zip(
+        tqdm(image_source, desc="Render cell tracking paths..."), overlay.timeIterator()
     ):
 
         np_image = np.copy(image.raw)
