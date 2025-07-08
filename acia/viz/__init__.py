@@ -934,7 +934,9 @@ def render_segmentation_mask(
     """
     return_images = []
 
-    for im, ov in zip(tqdm(source), overlay.time_iterator()):
+    for im, ov in zip(
+        tqdm(source, desc="Render segmentation masks..."), overlay.time_iterator()
+    ):
         im = np.copy(im.raw)
 
         for cont in ov:
