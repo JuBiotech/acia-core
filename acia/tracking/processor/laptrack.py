@@ -179,6 +179,9 @@ class LaptrackTracker(TrackingProcessor):
                 a = frame_label_lookup[track_sequences[parent_label][-1]].id
                 b = frame_label_lookup[track_seq[0]].id
 
+                print(f"{parent_label} -> {label}")
+                print(f"{a} -> {b}")
+
                 tracking_graph.add_edge(a, b)
 
         return segmentation, tracklet_graph, tracking_graph
