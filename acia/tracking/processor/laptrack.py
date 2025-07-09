@@ -118,14 +118,14 @@ class LaptrackTracker(TrackingProcessor):
 
     def __init__(
         self,
-        **kwargs,
+        laptrack_params,
     ):
         """Configure LAP tracker
 
         For the parameter configuration please refer to https://github.com/yfukai/laptrack/blob/main/docs/examples/overlap_tracking.ipynb
         """
         # define the overlap based tracking
-        self.olt = OverLapTrack(**kwargs)
+        self.olt = OverLapTrack(**laptrack_params)
 
     def __call__(self, images: ImageSequenceSource, segmentation: Overlay):
         image = next(iter(images)).raw
