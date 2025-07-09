@@ -15,6 +15,11 @@ class UltrackTracker(TrackingProcessor):
     """Processor for Ultrack: https://github.com/royerlab/ultrack/tree/main"""
 
     def __init__(self, config):
+        """_summary_
+
+        Args:
+            config (_type_): Ultrack configuration
+        """
 
         self.config = config
 
