@@ -118,26 +118,14 @@ class LaptrackTracker(TrackingProcessor):
 
     def __init__(
         self,
-        track_cost_cutoff=0.9,
-        track_dist_metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
-        gap_closing_dist_metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
-        gap_closing_max_frame_count=1,
-        splitting_cost_cutoff=0.9,
-        splitting_dist_metric_coefs=(1.0, 0.0, 0.0, 0.0, -1.0),
+        **kwargs,
     ):
         """Configure LAP tracker
 
         For the parameter configuration please refer to https://github.com/yfukai/laptrack/blob/main/docs/examples/overlap_tracking.ipynb
         """
         # define the overlap based tracking
-        self.olt = OverLapTrack(
-            track_cost_cutoff=track_cost_cutoff,
-            track_dist_metric_coefs=track_dist_metric_coefs,
-            gap_closing_dist_metric_coefs=gap_closing_dist_metric_coefs,
-            gap_closing_max_frame_count=gap_closing_max_frame_count,
-            splitting_cost_cutoff=splitting_cost_cutoff,
-            splitting_dist_metric_coefs=splitting_dist_metric_coefs,
-        )
+        self.olt = OverLapTrack(**kwargs)
 
     def __call__(self, images: ImageSequenceSource, segmentation: Overlay):
         image = next(iter(images)).raw
