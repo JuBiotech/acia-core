@@ -3,6 +3,7 @@
 import logging
 import tempfile
 
+import networkx as nx
 import numpy as np
 import tifffile
 from laptrack import OverLapTrack
@@ -110,3 +111,94 @@ class LAPTracker(TrackingProcessor):
             ov, tracklet_graph, tracking_graph = read_ctc_tracking(td)
 
             return ov, tracklet_graph, tracking_graph
+
+
+class LaptrackTracker(TrackingProcessor):
+    """Processor for LAP tracking according to https://github.com/yfukai/laptrack/blob/main/docs/examples/overlap_tracking.ipynb"""
+
+    def __init__(
+        self,
+        track_cost_cutoff=0.9,
+        track_dist_metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
+        gap_closing_dist_metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
+        gap_closing_max_frame_count=1,
+        splitting_cost_cutoff=0.9,
+        splitting_dist_metric_coefs=(1.0, 0.0, 0.0, 0.0, -1.0),
+    ):
+        """Configure LAP tracker
+
+        For the parameter configuration please refer to https://github.com/yfukai/laptrack/blob/main/docs/examples/overlap_tracking.ipynb
+        """
+        # define the overlap based tracking
+        self.olt = OverLapTrack(
+            track_cost_cutoff=track_cost_cutoff,
+            track_dist_metric_coefs=track_dist_metric_coefs,
+            gap_closing_dist_metric_coefs=gap_closing_dist_metric_coefs,
+            gap_closing_max_frame_count=gap_closing_max_frame_count,
+            splitting_cost_cutoff=splitting_cost_cutoff,
+            splitting_dist_metric_coefs=splitting_dist_metric_coefs,
+        )
+
+    def __call__(self, images: ImageSequenceSource, segmentation: Overlay):
+        image = next(iter(images)).raw
+        height, width = image.shape[:2]
+
+        mask_stack = overlay_to_masks(segmentation, height=height, width=width)
+
+        olt = OverLapTrack(
+            cutoff=0.9,
+            metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
+            gap_closing_metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
+            gap_closing_max_frame_count=1,
+            splitting_cutoff=0.9,
+            splitting_metric_coefs=(1.0, 0.0, 0.0, 0.0, -1.0),
+        )
+        track_df, split_df, _ = olt.predict_overlap_dataframe(mask_stack)
+
+        label_lookup = {}
+        for track_id, track_id_df in track_df.groupby("track_id"):
+            label_lookup[track_id] = track_id_df.iloc[0].name[1]
+
+        split_df["parent_track_label"] = split_df["parent_track_id"].apply(
+            lambda id: label_lookup[id]
+        )
+        split_df["child_track_label"] = split_df["child_track_id"].apply(
+            lambda id: label_lookup[id]
+        )
+
+        # create tracklet graph
+        tracklet_graph = nx.DiGraph()
+
+        for _, row in split_df.iterrows():
+            tracklet_nodes = np.unique(track_df.reset_index()["label"])
+            tracklet_graph.add_nodes_from(tracklet_nodes)
+            tracklet_graph.add_edge(row["parent_track_label"], row["child_track_label"])
+
+        # create tracking graph
+        tracking_graph = nx.DiGraph()
+
+        frame_label_lookup = {(cont.frame, cont.label): cont for cont in segmentation}
+
+        track_sequences = {}
+
+        for track_id, track_id_df in track_df.groupby("track_id"):
+            track_seq = [(frame, label) for (frame, label), _ in track_id_df.iterrows()]
+            label = track_id_df.iloc[0].name[1]
+            track_sequences[label] = track_seq
+
+        for label, track_seq in track_sequences.items():
+            # add sequence
+            for a, b in zip(track_seq[0:-1], track_seq[1:]):
+                tracking_graph.add_edge(
+                    frame_label_lookup[a].id, frame_label_lookup[b].id
+                )
+
+            # add divisions
+            for parent_label in tracklet_graph.predecessors(label):
+                # lookup the contours
+                a = frame_label_lookup[track_sequences[parent_label][-1]].id
+                b = frame_label_lookup[track_seq[0]].id
+
+                tracking_graph.add_edge(a, b)
+
+        return segmentation, tracklet_graph, tracking_graph
