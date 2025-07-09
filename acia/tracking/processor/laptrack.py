@@ -133,15 +133,7 @@ class LaptrackTracker(TrackingProcessor):
 
         mask_stack = overlay_to_masks(segmentation, height=height, width=width)
 
-        olt = OverLapTrack(
-            cutoff=0.9,
-            metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
-            gap_closing_metric_coefs=(1.0, -1.0, 0.0, 0.0, 0.0),
-            gap_closing_max_frame_count=1,
-            splitting_cutoff=0.9,
-            splitting_metric_coefs=(1.0, 0.0, 0.0, 0.0, -1.0),
-        )
-        track_df, split_df, _ = olt.predict_overlap_dataframe(mask_stack)
+        track_df, split_df, _ = self.olt.predict_overlap_dataframe(mask_stack)
 
         label_lookup = {}
         for track_id, track_id_df in track_df.groupby("track_id"):
