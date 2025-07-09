@@ -9,6 +9,7 @@ import tifffile
 from laptrack import OverLapTrack
 
 from acia.base import ImageSequenceSource, Overlay
+from acia.segm.formats import overlay_from_masks
 
 from ..formats import read_ctc_tracking
 from . import TrackingProcessor
@@ -135,6 +136,8 @@ class LaptrackTracker(TrackingProcessor):
 
         track_df, split_df, _ = self.olt.predict_overlap_dataframe(mask_stack)
 
+        tracking_ov = overlay_from_masks(mask_stack)
+
         label_lookup = {}
         for track_id, track_id_df in track_df.groupby("track_id"):
             label_lookup[track_id] = track_id_df.iloc[0].name[1]
@@ -157,7 +160,7 @@ class LaptrackTracker(TrackingProcessor):
         # create tracking graph
         tracking_graph = nx.DiGraph()
 
-        frame_label_lookup = {(cont.frame, cont.label): cont for cont in segmentation}
+        frame_label_lookup = {(cont.frame, cont.label): cont for cont in tracking_ov}
 
         track_sequences = {}
 
@@ -184,4 +187,4 @@ class LaptrackTracker(TrackingProcessor):
 
                 tracking_graph.add_edge(a, b)
 
-        return segmentation, tracklet_graph, tracking_graph
+        return tracking_ov, tracklet_graph, tracking_graph
