@@ -192,7 +192,7 @@ class LAPTracker2(TrackingProcessor):
 
         track_df, split_df, _ = self.olt.predict_overlap_dataframe(masks)
 
-        with tempfile.TemporaryDirectory as td:
+        with tempfile.TemporaryDirectory() as td:
             self.__export(td, track_df, split_df, masks)
 
             ov, tracklet_graph, tracking_graph = read_ctc_tracking(td)
