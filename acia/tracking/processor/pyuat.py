@@ -93,7 +93,7 @@ class PyUATTracker(TrackingProcessor):
             save_tracking(res[0], all_detections, output_file)
 
             # read the tracking result
-            with gzip.open("simpleTracking.json.gz") as input_file:
+            with gzip.open(output_file) as input_file:
                 tracking_overlay, tracking_graph = parse_simple_tracking(
                     input_file.read()
                 )
