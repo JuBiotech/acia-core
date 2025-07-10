@@ -374,8 +374,17 @@ class Overlay:
             for i, cont in enumerate(timeOverlay):
                 mask = cont.toMask(height=height, width=width)
                 if not binary_mask:
+
+                    label = i + 1
+                    if cont.label is not None:
+                        try:
+                            label = int(cont.label)
+                        except ValueError:
+                            # could not convert label to integer
+                            pass
+
                     mask = mask.astype(np.uint16) * (
-                        i + 1
+                        label
                     )  # convert into a non-binary mask
 
                 # combine into a single mask
