@@ -114,6 +114,92 @@ class LAPTracker(TrackingProcessor):
             return ov, tracklet_graph, tracking_graph
 
 
+class LAPTracker2(TrackingProcessor):
+    """Processor for LAP tracking"""
+
+    def __init__(
+        self,
+        laptrack_params,
+    ):
+        """Configure LAP tracker
+
+        For the parameter configuration please refer to https://github.com/yfukai/laptrack/blob/main/docs/examples/overlap_tracking.ipynb
+        """
+        # define the overlap based tracking
+        self.olt = OverLapTrack(**laptrack_params)
+
+    @staticmethod
+    def __export(output_path, track_df, split_df, labels):
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        df = track_df.reset_index()
+
+        # relabel the cells in the segmentation masks
+        new_labels = []
+
+        for frame in np.unique(df["frame"]):
+            frame_df = df[df["frame"] == frame]
+
+            new_label = np.zeros_like(labels[frame])
+            for _, row in frame_df.iterrows():
+
+                label = row["label"]
+                track_id = row["track_id"] + 1
+                mask = labels[frame] == label
+                new_label[mask] = track_id
+
+            new_labels.append(new_label)
+
+        # output the relabeled segmentation masks
+        for i, new_label in enumerate(new_labels):
+            tifffile.imwrite(
+                output_path / f"t{i:04d}.tif", new_label, compression="zlib"
+            )
+
+        # Make the cell tracking format
+
+        res = []
+
+        for track_id in np.unique(df["track_id"]):
+            frames = df[df["track_id"] == track_id]["frame"]
+            start_frame = np.min(frames)
+            last_frame = np.max(frames)
+
+            if len(split_df) > 0:
+                lookup = split_df[split_df["child_track_id"] == track_id]
+            else:
+                lookup = []
+
+            if len(lookup) > 0:
+                parent = lookup["parent_track_id"].item() + 1
+            else:
+                parent = 0
+
+            res.append((track_id + 1, start_frame, last_frame, parent))
+
+        with open(output_path / "man_track.txt", "w", encoding="utf-8") as csvfile:
+            for row in res:
+                csvfile.write(" ".join(map(str, row)) + "\n")
+
+    def __call__(self, images: ImageSequenceSource, segmentation: Overlay):
+        image = next(iter(images)).raw
+        height, width = image.shape[:2]
+
+        masks = overlay_to_masks(segmentation, height=height, width=width)
+
+        if segmentation.numFrames() != len(masks):
+            logging.warning("Number of segmented frames and masks is unequal!")
+
+        track_df, split_df, _ = self.olt.predict_overlap_dataframe(masks)
+
+        with tempfile.TemporaryDirectory as td:
+            self.__export(td, track_df, split_df, masks)
+
+            ov, tracklet_graph, tracking_graph = read_ctc_tracking(td)
+
+            return ov, tracklet_graph, tracking_graph
+
+
 class LaptrackTracker(TrackingProcessor):
     """Processor for LAP tracking according to https://github.com/yfukai/laptrack/blob/main/docs/examples/overlap_tracking.ipynb"""
 
