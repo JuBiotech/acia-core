@@ -11,7 +11,9 @@ from uatrack.core import simpleTracking
 from uatrack.utils import extract_single_cell_information, save_tracking
 
 from acia.base import ImageSequenceSource, Overlay
+from acia.segm.formats import overlay_from_masks
 from acia.tracking.formats import parse_simple_tracking
+from acia.tracking.processor.utils import overlay_to_masks
 
 from . import TrackingProcessor
 
@@ -96,5 +98,11 @@ class PyUATTracker(TrackingProcessor):
                     input_file.read()
                 )
 
+        # Convert from contour based overlay to a mask based overlay
+        height, width = images.get_frame(0).raw.shape[:2]
+        mask_stack = overlay_to_masks(tracking_overlay, height, width)
+
+        tracking_ov_new = overlay_from_masks(mask_stack)
+
         # TODO: create tracklet graph
-        return tracking_overlay, None, tracking_graph
+        return tracking_ov_new, None, tracking_graph
