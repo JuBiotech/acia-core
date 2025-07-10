@@ -83,6 +83,26 @@ class Instance:
 
         return self._polygon
 
+    @property
+    def coordinates(self) -> np.ndarray:
+        """Extract contour coordinates
+
+        Raises:
+            ValueError: if the polygon is not valid
+
+        Returns:
+            np.ndarray: Nx2 contour coordinates of the polygon
+        """
+
+        if not self.polygon.is_valid:
+            raise ValueError("Invalid Shapely polygon.")
+
+        # polygon.exterior.coords returns a coordinate sequence with first==last (closed ring)
+        coords = np.array(
+            self.polygon.exterior.coords[:-1]
+        )  # remove duplicate last point if needed
+        return coords
+
     def draw(self, image, draw=None, outlineColor=(255, 255, 0), fillColor=None):
         """Draws instance onto an image
 
