@@ -4,6 +4,7 @@ import gzip
 import tempfile
 import time
 import warnings
+from pathlib import Path
 
 from uatrack.config import setup_assignment_generators
 from uatrack.core import simpleTracking
@@ -86,7 +87,7 @@ class PyUATTracker(TrackingProcessor):
         print("time for tracking", end - start)
 
         with tempfile.TemporaryDirectory() as td:
-            output_file = td / "simpleTracking.json.gz"
+            output_file = Path(td) / "simpleTracking.json.gz"
             save_tracking(res[0], all_detections, output_file)
 
             # read the tracking result
