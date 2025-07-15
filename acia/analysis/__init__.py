@@ -532,6 +532,7 @@ class FluorescenceEx(PropertyExtractor):
         data = []
 
         for cont in overlay:
+            local_data = {"id": cont.id}
             for ch_id, channel in enumerate(channels):
                 raw_image = image.get_channel(channel)
 
@@ -546,11 +547,10 @@ class FluorescenceEx(PropertyExtractor):
                 # compute fluorescence response
                 value = summarize_operator(masked_roi.compressed())
 
-                data.append({"id": cont.id, channel_names[ch_id]: value})
+                local_data[channel_names[ch_id]] = value
+            data.append(local_data)
 
-        return pd.DataFrame(
-            data  # {channel_names[i]: channel_values[i] for i in range(len(channels))}
-        ).set_index("id")
+        return pd.DataFrame(data).set_index("id")
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         assert overlay.numFrames() == len(
@@ -590,7 +590,9 @@ class FluorescenceEx(PropertyExtractor):
             )
 
         # concatenate all results
-        result = reduce(lambda a, b: pd.merge(a, b, on="id"), result)
+        result = reduce(lambda a, b: pd.concat([a, b]), result)
+
+        print(result)
 
         return result, {
             self.channel_names[i]: self.output_unit for i in range(len(self.channels))
