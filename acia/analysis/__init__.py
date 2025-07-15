@@ -383,14 +383,22 @@ class TimeEx(PropertyExtractor):
 
     def extract(self, overlay: Overlay, images: ImageSequenceSource, df: pd.DataFrame):
         times = []
-        for _, row in df.iterrows():
+        ids = []
+        for id, row in df.iterrows():
             times.append(self.convert(row["frame"]))
+            ids.append(id)
 
-        df = pd.DataFrame({self.name: times, "id": [c.id for c in overlay]}).set_index(
-            "id"
-        )
+        local_df = df.copy()
+        # convert frame to time
+        local_df[self.name] = local_df["frame"].apply(self.convert)
 
-        return df, {self.name: self.output_unit}
+        local_df = local_df[
+            [
+                self.name,
+            ]
+        ]
+
+        return local_df, {self.name: self.output_unit}
 
 
 class DynamicTimeEx(PropertyExtractor):
