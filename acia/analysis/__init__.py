@@ -479,7 +479,7 @@ class PositionEx(PropertyExtractor):
 
         return pd.DataFrame(
             {"position_x": positions_x, "position_y": positions_y, "id": ids}
-        ), {
+        ).set_index("id"), {
             "position_x": self.output_unit,
             "position_y": self.output_unit,
         }
