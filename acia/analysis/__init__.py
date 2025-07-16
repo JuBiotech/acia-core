@@ -592,8 +592,6 @@ class FluorescenceEx(PropertyExtractor):
         # concatenate all results
         result = reduce(lambda a, b: pd.concat([a, b]), result)
 
-        print(result)
-
         return result, {
             self.channel_names[i]: self.output_unit for i in range(len(self.channels))
         }
