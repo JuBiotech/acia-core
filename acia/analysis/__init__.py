@@ -605,6 +605,7 @@ def scale(
     exist_ok=False,
     execution_naming=lambda image_id: f"execution_{image_id}",
     exist_skip=False,
+    kernel_name=None,
 ):
     """Scale an analysis notebook to several image sequences
 
@@ -617,6 +618,7 @@ def scale(
         additional_parameters (dict): Parameters to be inserted into the jupyter script
         exist_ok (Bool): True when it is okay that the directory exists, False will throw an error when the directory exists.
         exist_skip (Bool): If true existing executions are skipped.
+        kernel_name (str): specifies the notebook kernel to be used. None is the default kernel.
     """
 
     if isinstance(analysis_script, str):
@@ -672,6 +674,7 @@ def scale(
                     output_file,
                     parameters=parameters,
                     cwd=output_file.parent,
+                    kernel_name=kernel_name,
                 )
 
                 # save experiment in list
