@@ -1,6 +1,5 @@
 """Segmenter using CellposeSAM: https://doi.org/10.1101/2025.04.28.651001"""
 
-import torch
 from cellpose import core, models
 
 from acia.base import ImageSequenceSource, Overlay
@@ -25,11 +24,10 @@ class CellposeSAMSegmenter:
         if cellpose_params is None:
             cellpose_params = {}
 
-        with torch.autocast(device_type="cuda"):
-            # perform inference
-            masks, _, _ = model.eval(images, channels=chans, **cellpose_params)
+        # perform inference
+        masks, _, _ = model.eval(images, channels=chans, **cellpose_params)
 
-            return masks
+        return masks
 
     def __call__(self, images: ImageSequenceSource, cellpose_params=None) -> Overlay:
 
