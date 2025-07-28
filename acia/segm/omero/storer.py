@@ -13,7 +13,7 @@ from omero.model import LengthI
 
 from acia import ureg
 from acia.base import BaseImage, Contour, ImageSequenceSource, Overlay, RoISource
-from acia.segm.local import LocalImage
+from acia.segm.local import LocalImage, THWCSequenceSource
 from acia.segm.omero.shapeUtils import make_coordinates
 from acia.segm.utils import compute_indices
 
@@ -572,6 +572,21 @@ class OmeroSequenceSource(ImageSequenceSource, OmeroSource):
                 return min(image.getSizeT() * image.getSizeZ(), len(self.range))
             return int(image.getSizeT() * image.getSizeZ())
 
+    @property
+    def size_t(self) -> int:
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+            return image.getSizeT()
+
+    def toTHWC(self) -> THWCSequenceSource:
+        """Convert to THWCSequenceSource
+
+        Returns:
+            THWCSequenceSource: the same image sequence but as THWCSequenceSource
+        """
+        image_stack = np.stack([im.raw for im in self], axis=0)
+        return THWCSequenceSource(image_stack)
+
 
 class OmeroRawSource(ImageSequenceSource, OmeroSource):
     """Raw OMERO source: Allows to easily access raw that is, e.g. 16-bit data of your OMERO images"""
@@ -661,6 +676,12 @@ class OmeroRawSource(ImageSequenceSource, OmeroSource):
     @property
     def num_channels(self) -> int:
         return len(self.channels)
+
+    @property
+    def size_t(self) -> int:
+        with self.make_connection() as conn:
+            image = conn.getObject("Image", self.imageId)
+            return image.getSizeT()
 
 
 class OmeroRoISource(OmeroSource, RoISource):
