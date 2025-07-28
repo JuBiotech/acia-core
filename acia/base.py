@@ -25,11 +25,23 @@ def unpack(data, function):
 class Instance:
     """Cell instance based on an image mask and a label"""
 
-    def __init__(self, mask: np.ndarray, frame: int, label: int, id=None):
+    def __init__(
+        self, mask: np.ndarray, frame: int, label: int, id=None, score: float = None
+    ):
+        """Create an object instance
+
+        Args:
+            mask (np.ndarray): mask of the object where the object pixels are marked with [label] value
+            frame (int): frame in the time-lapse
+            label (int): label of the object (as marked in the mask)
+            id (_type_, optional): Unique identifier for the object. Defaults to None.
+            score (float, optional): E.g. confidence of the detection method. Defaults to None.
+        """
         self.mask = mask
         self.frame = frame
         self.label = label
         self.id = id  # id is unique in an overlay
+        self.score = score
 
         self._polygon = None
 
