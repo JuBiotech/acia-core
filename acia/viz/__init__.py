@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import logging
+from collections import deque
 from datetime import timedelta
 from pathlib import Path
 
 import cv2
+import matplotlib.pyplot as plt
 import moviepy.editor as mpy
 import networkx as nx
 import numpy as np
@@ -1029,3 +1031,246 @@ def render_tracking_mask(
 
     # return the new time-lapse
     return THWCSequenceSource(np.stack(return_images, axis=0))
+
+
+def hierarchy_pos_loop_multi(
+    G, roots, width=1.0, vert_gap=0.25, vert_loc=0, xcenter=0.5, sep=0.1
+):
+    """
+    Computes 2D positions for nodes in a forest (multiple-rooted trees) for visualization.
+
+    Parameters
+    ----------
+    G : networkx.DiGraph
+        The directed graph representing the forest or collection of trees.
+    roots : list
+        List of root node labels (each representing a separate tree).
+    width : float
+        Total horizontal span to use for plotting all trees.
+    vert_gap : float
+        Vertical gap between generations (levels).
+    vert_loc : float
+        Y-coordinate for the root nodes (typically 0).
+    xcenter : float
+        X-coordinate of the overall forest center.
+    sep : float
+        Extra horizontal gap between adjacent trees (as a fraction of total width).
+
+    Returns
+    -------
+    pos : dict
+        A dictionary mapping node labels to (x, y) positions for plotting.
+    """
+
+    def count_leaves(node):
+        """
+        Count the number of leaf nodes (tips) under a given node.
+        Used to space subtrees proportionally.
+        """
+        queue = deque([node])
+        leaves = 0
+        while queue:
+            curr = queue.popleft()
+            children = list(G.neighbors(curr))
+            if not children:
+                leaves += 1
+            else:
+                queue.extend(children)
+        return leaves
+
+    n_roots = len(roots)
+    leaf_counts = [count_leaves(root) for root in roots]
+    total_leaves = sum(leaf_counts)
+    forest_width = width - sep * (n_roots - 1)  # width minus all inter-tree gaps
+    pos = {}
+    x_left = xcenter - width / 2  # far left of forest
+
+    # Layout each tree side by side
+    for _, (root, leaves) in enumerate(zip(roots, leaf_counts)):
+        tree_width = forest_width * (leaves / total_leaves)  # wider for bigger trees
+        xcenter_tree = x_left + tree_width / 2
+        node_queue = deque()
+        node_queue.append((root, xcenter_tree, vert_loc, tree_width, 0))
+        while node_queue:
+            node, xcenter_here, y_here, width_here, depth = node_queue.popleft()
+            children = list(G.neighbors(node))
+            if not children:
+                # It's a leaf/tip: assign position directly
+                pos[node] = (xcenter_here, y_here)
+            else:
+                # Compute leaves in each child subtree to space children
+                subtree_leaves = []
+                for child in children:
+                    n_leaves = count_leaves(child)
+                    subtree_leaves.append(n_leaves)
+                total = sum(subtree_leaves)
+                x_left_child = xcenter_here - width_here / 2
+                for j, child in enumerate(children):
+                    w = width_here * (subtree_leaves[j] / total)
+                    xc = x_left_child + w / 2
+                    node_queue.append((child, xc, y_here - vert_gap, w, depth + 1))
+                    x_left_child += w
+                pos[node] = (xcenter_here, y_here)
+        x_left += tree_width + sep  # move to the right for the next tree
+    return pos
+
+
+def subtree_from_roots(G, roots):
+    """
+    Returns a subgraph containing all nodes reachable from the given root nodes.
+    """
+    nodes = set()
+    for root in roots:
+        nodes.add(root)
+        descendants = nx.descendants(G, root)
+        nodes.update(descendants)
+    return G.subgraph(nodes).copy()
+
+
+def plot_lineage_tree(
+    G,
+    pos,
+    mode="vertical",
+    flip_horizontal=False,
+    flip_vertical=False,
+    tick_length=0.02,
+    branch_color="navy",
+    tick_color="black",
+    figsize=(10, 6),
+    draw_labels=False,
+    label_fontsize=10,
+    label_offset=0.01,
+    y_attr=None,
+    ax=None,
+    label_attr=None,
+):
+    """
+    Plot a lineage tree or forest with L-shaped (90°) branches, ticks at each node,
+    and (optionally) node labels. Supports vertical/horizontal orientation and flipping.
+    Can use a custom node property (y_attr) for vertical positioning (e.g., "time").
+
+    Parameters
+    ----------
+    G : networkx.DiGraph
+        The directed graph (single tree or forest).
+    pos : dict
+        Mapping from node to (x, y) coordinates (from a hierarchy layout).
+    mode : str
+        'vertical' (roots at top, downward) or 'horizontal' (roots at left, rightwards).
+    flip_horizontal : bool
+        If True, horizontal mode is flipped (roots at right, tree grows left).
+    flip_vertical : bool
+        If True, vertical mode is flipped (roots at bottom, tree grows upward).
+    tick_length : float
+        Length of the small tick at each node.
+    branch_color : str
+        Color of tree branches.
+    tick_color : str
+        Color of node ticks.
+    figsize : tuple
+        Matplotlib figure size.
+    draw_labels : bool
+        If True, draws node names at their positions.
+    label_fontsize : int
+        Font size for node labels.
+    label_offset : float
+        Offset for label position relative to node.
+    y_attr : str or None
+        If set, uses G.nodes[node][y_attr] for y coordinate of each node. Otherwise uses layout y.
+    """
+    if ax is None:
+        plt.figure(figsize=figsize)
+        ax = plt.gca()
+
+    # If y_attr is set, override y in pos with the node's property value
+    if y_attr:
+        new_pos = {}
+        for node, (x, _) in pos.items():
+            y = G.nodes[node].get(y_attr, None)
+            if y is not None:
+                new_pos[node] = (x, y)
+            else:
+                new_pos[node] = (x, pos[node][1])  # fallback to computed y
+        pos = new_pos
+
+    x_vals = [x for x, y in pos.values()]
+    y_vals = [y for x, y in pos.values()]
+    x_max = max(x_vals) if x_vals else 0
+    y_max = max(y_vals) if y_vals else 0
+
+    for parent, child in G.subgraph(list(pos.keys())).edges():
+        x0, y0 = pos[parent]
+        x1, y1 = pos[child]
+        # Optionally flip axes for various modes
+        X0 = x_max - x0 if flip_horizontal else x0
+        X1 = x_max - x1 if flip_horizontal else x1
+        Y0 = y_max - y0 if flip_vertical else y0
+        Y1 = y_max - y1 if flip_vertical else y1
+
+        if mode == "vertical":
+            # Classic tree: root at top (or bottom if flipped), L-branches down
+            plt.plot([x0, x0], [Y0, Y1], color=branch_color, linewidth=2)
+            plt.plot([x0, x1], [Y1, Y1], color=branch_color, linewidth=2)
+        elif mode == "horizontal":
+            # Horizontal: root at left (or right if flipped), L-branches across
+            plt.plot([Y0, Y1], [X0, X0], color=branch_color, linewidth=2)
+            plt.plot([Y1, Y1], [X0, X1], color=branch_color, linewidth=2)
+        else:
+            raise ValueError("mode must be 'vertical' or 'horizontal'")
+
+    # Draw ticks and optional labels
+    for node, (x, y) in pos.items():
+        X = x_max - x if flip_horizontal else x
+        Y = y_max - y if flip_vertical else y
+
+        if label_attr is None:
+            label = str(node)
+        else:
+            label = G.nodes[node][label_attr]
+
+        if mode == "vertical":
+            if tick_color is not None:
+                plt.plot(
+                    [x - tick_length / 2, x + tick_length / 2],
+                    [Y, Y],
+                    color=tick_color,
+                    linewidth=2,
+                )
+            if draw_labels and G.out_degree(node) > 1:
+                label_x = x + tick_length + label_offset
+                ha = "left"
+                plt.text(
+                    label_x,
+                    Y,
+                    label,
+                    fontsize=label_fontsize,
+                    va="center",
+                    ha=ha,
+                    color="darkgreen",
+                )
+        elif mode == "horizontal":
+            if tick_color is not None:
+                plt.plot(
+                    [y, y],
+                    [X - tick_length / 2, X + tick_length / 2],
+                    color=tick_color,
+                    linewidth=2,
+                )
+            if draw_labels and G.out_degree(node) > 1:
+                offset = label_offset if not flip_horizontal else -label_offset
+                ha = "left" if not flip_horizontal else "right"
+                plt.text(
+                    y + offset,
+                    X,
+                    label,
+                    fontsize=label_fontsize,
+                    va="center",
+                    ha=ha,
+                    color="darkgreen",
+                )
+    # ax.axis('off')
+    flip_info = []
+    if flip_vertical:
+        flip_info.append("vertically")
+    if flip_horizontal:
+        flip_info.append("horizontally")

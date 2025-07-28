@@ -1,6 +1,7 @@
 [main]
 max-module-lines=2000
 max-branches=20
+max-statements=75
 
 [MESSAGES CONTROL]
 disable =
