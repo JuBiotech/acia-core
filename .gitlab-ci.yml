@@ -28,7 +28,7 @@ test:
   - biggpu
   script:
     # test dependencies
-    - pip install pytest pytest-sugar pytest-cov python-dotenv coverage
+    - pip install pytest pytest-sugar pytest-cov python-dotenv coverage unittest-xml-reporting
     - pip install git+https://github.com/JojoDevel/trackastra.git
     - pip install laptrack
     # unittest-xml-reporting trackastra laptrack
