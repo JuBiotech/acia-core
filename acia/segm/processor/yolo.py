@@ -16,7 +16,17 @@ class YOLOSegmenter:
         # create CellPose model
         self.model = YOLO(model)
 
-    def __call__(self, images: ImageSequenceSource, cellpose_params=None) -> Overlay:
+    def __call__(self, images: ImageSequenceSource, conf=0.25, iou=0.7) -> Overlay:
+        """Perform segmentation using yolo
+
+        Args:
+            images (ImageSequenceSource): the input image sequence
+            conf (float, optional): Minimum confidence of detection objects. Defaults to 0.25.
+            iou (float, optional): Objects with a higher IoU are supressed. Defaults to 0.7.
+
+        Returns:
+            Overlay: _description_
+        """
 
         # list of images
         imgs = [im.raw for im in images]
@@ -28,13 +38,18 @@ class YOLOSegmenter:
             )
 
         # perform prediction using yolo
-        results = self.model(imgs, retina_masks=True)
+        results = self.model(imgs, retina_masks=True, conf=conf, iou=iou)
 
         # List of all instances
         instances = []
 
         # loop over all frames
         for frame, frame_data in enumerate(results):
+
+            if frame_data.masks is None:
+                # Nothing found within the image
+                continue
+
             # loop over all masks
             for mask, box in zip(frame_data.masks, frame_data.boxes):
 
@@ -45,8 +60,10 @@ class YOLOSegmenter:
                 np_mask = (mask.data.cpu().numpy() * cls).astype(np.uint8)
 
                 # create a new instance in the overlay
-                instances.append(Instance(np_mask[0], frame, cls))
+                instances.append(
+                    Instance(np_mask[0], frame, cls, score=box.conf.item())
+                )
 
-        ov = Overlay(instances)
+        ov = Overlay(instances, frames=list(range(len(imgs))))
 
         return ov
