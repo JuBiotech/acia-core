@@ -21,12 +21,13 @@ from .utils import overlay_to_masks
 class TrackastraTracker(TrackingProcessor):
     """Processor for Trackastra: https://doi.org/10.48550/arXiv.2405.15700"""
 
-    def __init__(self):
+    def __init__(self, mode="greedy"):
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # Load a pretrained model
         self.model = Trackastra.from_pretrained("general_2d", device=device)
+        self.mode = mode
 
     def __call__(self, images: ImageSequenceSource, segmentation: Overlay):
 
@@ -44,7 +45,7 @@ class TrackastraTracker(TrackingProcessor):
             logging.warning("Number of segmented frames and masks is unequal!")
 
         # perform the actual tracking
-        track_graph = self.model.track(imgs, masks, mode="greedy")
+        track_graph = self.model.track(imgs, masks, mode=self.mode)
 
         # Write to cell tracking challenge format
         with tempfile.TemporaryDirectory() as td:
