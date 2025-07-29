@@ -19,20 +19,27 @@ stages:
   - deploy
 
 test:
+  image: python:$PY_VERSION
+  parallel:
+    matrix:
+      - PY_VERSION: ['3.9', '3.10', '3.11', '3.12', '3.13']
   stage: test
   tags:
   - biggpu
   script:
-    - pip install --upgrade pip
-    - pip install .
-    - pip install tox flake8  # you can also use tox
+    # test dependencies
+    - pip install pytest pytest-sugar pytest-cov python-dotenv coverage unittest-xml-reporting trackastra laptrack
+    - pip install build
+    - python -m build
+    - pip install dist/*.whl
     # download data for testing
     - mkdir test_resources
     - wget -O test_resources/ctc_format.zip https://fz-juelich.sciebo.de/s/8dEFaTKl26H26wO/download
     - unzip test_resources/ctc_format.zip -d test_resources/ctc_format
     - ls
     # perform the tests
-    - tox -e py310,flake8
+    - coverage run -m pytest --junitxml=report.xml --cov-report term --cov-report xml --cov=acia tests/
+    - python -m xmlrunner discover ./tests/ -o reports/
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     reports:
