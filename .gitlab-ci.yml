@@ -55,16 +55,16 @@ build:
   image: python:$PY_VERSION
   parallel:
     matrix:
-      - PY_VERSION: ['3.9', '3.10', '3.11', '3.12']
+      - PY_VERSION: ['3.9', '3.10', '3.11', '3.12', '3.13']
   stage: build
   tags:
   - biggpu
   script:
-    - pip install setuptools
-    - python setup.py bdist_wheel
+    - pip install build twine
+    - python -m build
     # an alternative approach is to install and run:
     - pip install dist/*
-    # run the command here
+    - twine check dist/*
   artifacts:
     paths:
       - dist/*.whl
