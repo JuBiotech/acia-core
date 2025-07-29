@@ -683,6 +683,15 @@ class OmeroRawSource(ImageSequenceSource, OmeroSource):
             image = conn.getObject("Image", self.imageId)
             return image.getSizeT()
 
+    def toTHWC(self) -> THWCSequenceSource:
+        """Convert to THWCSequenceSource
+
+        Returns:
+            THWCSequenceSource: the same image sequence but as THWCSequenceSource
+        """
+        image_stack = np.stack([im.raw for im in self], axis=0)
+        return THWCSequenceSource(image_stack)
+
 
 class OmeroRoISource(OmeroSource, RoISource):
     """Source for OMERO RoIs beloging to an OMERO image sequence"""
