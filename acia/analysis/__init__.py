@@ -185,7 +185,7 @@ class CircularityEx(PropertyExtractor):
             df["perimeter"]
         ) ** 2
 
-        df = pd.DataFrame({self.name: circularities, "id": df.id}).set_index("id")
+        df = pd.DataFrame({self.name: circularities, "id": df.index}).set_index("id")
 
         return df, {self.name: self.output_unit}
 
@@ -439,7 +439,7 @@ class DynamicTimeEx(PropertyExtractor):
 
         if len(self.timepoints) != num_frames:
             raise ValueError(
-                f"Number of specified timepoints does not match with number of frames in the time-lapse: {len(num_frames)=} vs. {len(self.timepoints)} timepoints"
+                f"Number of specified timepoints does not match with number of frames in the time-lapse: {num_frames=} vs. {len(self.timepoints)} timepoints"
             )
 
         data = []

@@ -93,7 +93,7 @@ class TestPropertyExtractors(unittest.TestCase):
         self.assertEqual(df["a_length"].iloc[0], 3 * ps)
         self.assertEqual(df["width"].iloc[0], 2 * ps)
         self.assertEqual(df["a_width"].iloc[0], 2 * ps)
-        self.assertEqual(df["id"].iloc[0], 23)
+        self.assertEqual(df.index[0], 23)
         self.assertEqual(df["frame"].iloc[0], 0)
         self.assertEqual(df["time"].iloc[0], 0 * 15 / 60)
         self.assertEqual(df["position_x"].iloc[0], 2 / 2 * ps)
