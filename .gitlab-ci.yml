@@ -63,7 +63,7 @@ build:
     - pip install build twine
     - python -m build
     # an alternative approach is to install and run:
-    - pip install dist/*
+    - pip install dist/*.whl
     - twine check dist/*
   artifacts:
     paths:
