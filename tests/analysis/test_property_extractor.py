@@ -22,7 +22,7 @@ from acia.analysis import (
     WidthEx,
 )
 from acia.base import Contour, Overlay
-from acia.segm.local import InMemorySequenceSource, LocalImageSource
+from acia.segm.local import InMemorySequenceSource, LocalImageSource, THWCSequenceSource
 
 
 class TestPropertyExtractors(unittest.TestCase):
@@ -117,7 +117,7 @@ class TestPropertyExtractors(unittest.TestCase):
 
         df = ExtractorExecutor().execute(
             overlay=overlay,
-            images=[LocalImageSource(None)] * 3,
+            images=THWCSequenceSource(np.zeros((3, 100, 100, 1), dtype=np.uint8)),
             extractors=[FrameEx(), DynamicTimeEx(timepoints, relative=True)],
         )
 
@@ -139,7 +139,7 @@ class TestPropertyExtractors(unittest.TestCase):
         with self.assertRaises(ValueError) as _:
             _ = ExtractorExecutor().execute(
                 overlay=overlay,
-                images=[LocalImageSource(None)] * 3,
+                images=THWCSequenceSource(np.zeros((3, 100, 100, 1), dtype=np.uint8)),
                 extractors=[
                     FrameEx(),
                     DynamicTimeEx(timepoints=[1, 2], relative=True),

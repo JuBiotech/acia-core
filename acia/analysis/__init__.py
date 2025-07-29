@@ -95,7 +95,10 @@ class ExtractorExecutor:
         self.units = {}
 
     def execute(
-        self, overlay: Overlay, images: list, extractors: list[PropertyExtractor] = None
+        self,
+        overlay: Overlay,
+        images: ImageSequenceSource,
+        extractors: list[PropertyExtractor] = None,
     ):
         if extractors is None:
             extractors = []
