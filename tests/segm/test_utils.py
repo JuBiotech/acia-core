@@ -146,7 +146,9 @@ class TestMaskPolygon(unittest.TestCase):
         self.assertEqual(polygon.area, re_polygon.area)
         self.assertEqual(polygon.centroid, re_polygon.centroid)
 
-        np.testing.assert_array_almost_equal(re_polygon.centroid, [5, 5])
+        np.testing.assert_array_almost_equal(
+            [re_polygon.centroid.x, re_polygon.centroid.y], [5, 5]
+        )
 
 
 if __name__ == "__main__":
