@@ -2,6 +2,7 @@
 
 from cellpose import core, models
 
+from acia.attribute import attribute_segmentation
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 
@@ -34,4 +35,8 @@ class CellposeSegmenter:
 
         masks = self.__predict(imgs, self.model, cellpose_params=cellpose_params)
 
-        return overlay_from_masks(masks)
+        ov = overlay_from_masks(masks)
+
+        attribute_segmentation(ov, self)
+
+        return ov

@@ -10,6 +10,7 @@ from uatrack.config import setup_assignment_generators
 from uatrack.core import simpleTracking
 from uatrack.utils import extract_single_cell_information, save_tracking
 
+from acia.attribute import attribute_tracking
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 from acia.tracking.formats import parse_simple_tracking
@@ -103,6 +104,8 @@ class PyUATTracker(TrackingProcessor):
         mask_stack = overlay_to_masks(tracking_overlay, height, width)
 
         tracking_ov_new = overlay_from_masks(mask_stack)
+
+        attribute_tracking(tracking_ov_new, None, tracking_graph, self)
 
         # TODO: create tracklet graph
         return tracking_ov_new, None, tracking_graph

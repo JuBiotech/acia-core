@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from ultralytics import YOLO
 
+from acia.attribute import attribute_segmentation
 from acia.base import ImageSequenceSource, Instance, Overlay
 
 
@@ -65,5 +66,7 @@ class YOLOSegmenter:
                 )
 
         ov = Overlay(instances, frames=list(range(len(imgs))))
+
+        attribute_segmentation(ov, self)
 
         return ov

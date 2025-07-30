@@ -9,6 +9,7 @@ import torch
 from trackastra.model import Trackastra
 from trackastra.tracking import graph_to_ctc
 
+from acia.attribute import attribute_tracking
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import read_ctc_segmentation_native
 from acia.tracking import ctc_track_graph
@@ -62,5 +63,7 @@ class TrackastraTracker(TrackingProcessor):
             tracklet_graph = read_ctc_tracklet_graph(track_file)
 
         tracking_graph = ctc_track_graph(ov, tracklet_graph)
+
+        attribute_tracking(ov, tracklet_graph, tracking_graph, self)
 
         return ov, tracklet_graph, tracking_graph

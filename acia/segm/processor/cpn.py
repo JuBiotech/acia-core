@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
+from acia.attribute import attribute_segmentation
 from acia.base import Contour, Overlay
 
 
@@ -59,5 +60,7 @@ class CPNSegmenter:
             max_frame = frame_id
 
         overlay = Overlay(contours, frames=list(range(max_frame + 1)))
+
+        attribute_segmentation(overlay, self)
 
         return overlay

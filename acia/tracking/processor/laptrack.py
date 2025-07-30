@@ -9,6 +9,7 @@ import numpy as np
 import tifffile
 from laptrack import OverLapTrack
 
+from acia.attribute import attribute_tracking
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 
@@ -111,6 +112,8 @@ class LAPTracker(TrackingProcessor):
             self.__export(td, track_df, split_df, masks)
 
             ov, tracklet_graph, tracking_graph = read_ctc_tracking(td)
+
+            attribute_tracking(ov, tracking_graph, tracking_graph, self)
 
             return ov, tracklet_graph, tracking_graph
 

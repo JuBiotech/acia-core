@@ -7,6 +7,7 @@ import torch
 from cellpose_omni import models
 from tqdm.auto import tqdm
 
+from acia.attribute import attribute_segmentation
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 
@@ -127,4 +128,8 @@ class OmniposeSegmenter(SegmentationProcessor):
             imgs, self.model, omnipose_parameters=omnipose_parameters
         )
 
-        return overlay_from_masks(masks)
+        ov = overlay_from_masks(masks)
+
+        attribute_segmentation(ov, self)
+
+        return ov

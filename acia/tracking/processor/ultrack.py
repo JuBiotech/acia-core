@@ -4,6 +4,7 @@ import networkx as nx
 from ultrack import to_tracks_layer, track, tracks_to_zarr
 from ultrack.utils import labels_to_contours
 
+from acia.attribute import attribute_tracking
 from acia.base import ImageSequenceSource, Overlay
 from acia.segm.formats import overlay_from_masks
 
@@ -80,5 +81,7 @@ class UltrackTracker(TrackingProcessor):
             for pl in parent_labels:
                 last_cont = label_contours[pl][-1]
                 tracking_graph.add_edge(last_cont.id, contours[0].id)
+
+        attribute_tracking(tracking_ov, tracklet_graph, tracking_graph, self)
 
         return tracking_ov, tracklet_graph, tracking_graph
