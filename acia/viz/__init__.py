@@ -941,6 +941,8 @@ def render_segmentation_mask(
     ):
         im = np.copy(im.raw)
 
+        colored_mask = np.zeros_like(im)
+
         for cont in ov:
             # render the masks based on the first contour mask in the frame
             colored_mask = colorize_instance_mask(cont.mask)
