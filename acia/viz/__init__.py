@@ -889,7 +889,7 @@ def render_time(
 
 def colorize_instance_mask(
     instance_mask, background_color=(0, 0, 0), seed=42, color_lut=None
-):
+) -> np.ndarray:
     """
     Convert instance mask to an RGB image with random colors per instance (no loop).
 
@@ -904,6 +904,9 @@ def colorize_instance_mask(
     """
     unique_ids = np.unique(instance_mask)
     unique_ids = unique_ids[unique_ids != 0]  # Exclude background (assumed to be 0)
+
+    if len(unique_ids) == 0:
+        return np.zeros((*instance_mask.shape, 3), dtype=np.uint8)
 
     # Map instance IDs to color lookup table (LUT)
     rng = np.random.default_rng(seed)
