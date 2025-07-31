@@ -5,8 +5,8 @@ __email__ = "j.seiffarth@fz-juelich.de"
 __version__ = "0.2.36"
 
 
-from pint import UnitRegistry
+import pint
 
-ureg = UnitRegistry()
+ureg = pint.get_application_registry()
 Q_ = ureg.Quantity
 U_ = ureg.Unit
