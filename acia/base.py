@@ -323,7 +323,9 @@ class Overlay:
             startFrame=start_frame, endFrame=end_frame, frame_range=frame_range
         )
 
-    def timeIterator(self, startFrame=None, endFrame=None, frame_range=None):
+    def timeIterator(
+        self, startFrame=None, endFrame=None, frame_range=None
+    ) -> Iterable[Overlay]:
         """
         Creates an iterator that returns an Overlay for every frame between starFrame and endFrame
 
