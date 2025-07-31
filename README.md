@@ -25,7 +25,8 @@ pip install acia
 
 1. Clone this repository
     ```bash
-    git clone https://jugit.fz-juelich.de/IBG-1/ModSim/imageanalysis/acia
+    git clone https://github.com/JuBiotech/acia-core.git
+    cd acia-core
     ```
 
 2. Create the conda environment (including dependencies) and install `acia`
