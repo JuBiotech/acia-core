@@ -86,30 +86,30 @@ build:
 
 
 
-upload_package:
-  stage: deploy
-  # dot pass artifacts from other stages
-  dependencies: []
-  cache: []
-  extends: .deploy_common
-  script:
-    - set -e
-    - pip install twine bump2version
-    - git config --global user.email "${GITLAB_USER_EMAIL}"
-    - git config --global user.name "${GITLAB_USER_NAME}"
-    - git log
-    # list tags
-    - git tag
-    - bump2version patch
-    - python setup.py sdist bdist_wheel
-    - ls -all dist/
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
-    - git remote set-url origin "https://${CI_PUSH_NAME}:${CI_PUSH_TOKEN}@jugit.fz-juelich.de/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}.git"
-    - git push -o ci.skip --tags origin HEAD:${CI_COMMIT_REF_NAME}
-    - TWINE_PASSWORD=${PYPI_API_TOKEN} TWINE_USERNAME=__token__ twine upload --repository pypi dist/*
-  artifacts:
-    paths:
-      - dist/
+#upload_package:
+#  stage: deploy
+#  # dot pass artifacts from other stages
+#  dependencies: []
+#  cache: []
+#  extends: .deploy_common
+#  script:
+#    - set -e
+#    - pip install twine bump2version
+#    - git config --global user.email "${GITLAB_USER_EMAIL}"
+#    - git config --global user.name "${GITLAB_USER_NAME}"
+#    - git log
+#    # list tags
+#    - git tag
+#    - bump2version patch
+#    - python setup.py sdist bdist_wheel
+#    - ls -all dist/
+#    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+#    - git remote set-url origin "https://${CI_PUSH_NAME}:${CI_PUSH_TOKEN}@jugit.fz-juelich.de/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}.git"
+#    - git push -o ci.skip --tags origin HEAD:${CI_COMMIT_REF_NAME}
+#    - TWINE_PASSWORD=${PYPI_API_TOKEN} TWINE_USERNAME=__token__ twine upload --repository pypi dist/*
+#  artifacts:
+#    paths:
+#      - dist/
 
 
 
