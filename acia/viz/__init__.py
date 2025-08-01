@@ -14,6 +14,7 @@ import moviepy.editor as mpy
 import networkx as nx
 import numpy as np
 import pint
+import plotly.graph_objects as go
 from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
@@ -1279,3 +1280,504 @@ def plot_lineage_tree(
         flip_info.append("vertically")
     if flip_horizontal:
         flip_info.append("horizontally")
+
+
+###########################################
+# Add new lineage rendering functionality #
+###########################################
+
+
+def compute_lineage_y(G, time_feature="t"):
+    """
+    Assign a y-position to each node using a tidy tree layout.
+
+    Parameters
+    ----------
+    G : nx.DiGraph
+        The lineage graph.
+    time_feature : str
+        The node attribute that encodes time.
+
+    Returns
+    -------
+    assigned_y : dict
+        Mapping from node to y-coordinate (float).
+    """
+    roots = [n for n in G.nodes if G.in_degree(n) == 0]
+    assigned_y = {}
+    next_y = [0]
+
+    def assign_y_iterative():
+        # Assign unique y-coordinates to all tips, then propagate up for inner nodes.
+        stack = []
+        visited = set()
+        # Start with roots (nodes with no parents), sorted by time
+        for root in sorted(roots, key=lambda n: G.nodes[n][time_feature]):
+            stack.append((root, 0))
+            while stack:
+                node, depth = stack.pop()
+                if node in visited:
+                    continue
+                children = list(G.successors(node))
+                if not children:
+                    # Assign new y to each leaf node
+                    assigned_y[node] = next_y[0]
+                    next_y[0] += 1
+                else:
+                    # Process children before parent (postorder)
+                    stack.append((node, depth))
+                    for child in reversed(children):
+                        if child not in visited:
+                            stack.append((child, depth + 1))
+                    visited.add(node)
+                    continue
+                visited.add(node)
+        # For internal nodes, set y as average of children
+        for root in roots:
+            postorder = list(nx.dfs_postorder_nodes(G, source=root))
+            for node in postorder:
+                children = list(G.successors(node))
+                if children:
+                    assigned_y[node] = sum(assigned_y[c] for c in children) / len(
+                        children
+                    )
+
+    assign_y_iterative()
+    return assigned_y
+
+
+def extract_lineage_plotdata(
+    G, assigned_y, time_feature="t", label_name=None, orientation="horizontal"
+):
+    """
+    Collect all node and edge positions and hover info for plotting.
+
+    Parameters
+    ----------
+    G : nx.DiGraph
+        The lineage graph.
+    assigned_y : dict
+        Node-to-y mapping (from compute_lineage_y).
+    time_feature : str
+        The node attribute that encodes time.
+    label_name : str or None
+        Which node attribute to use for the label (default: node name).
+    orientation : str
+        'horizontal' or 'vertical' for layout.
+
+    Returns
+    -------
+    data : dict
+        Contains:
+            - xs, ys: node x and y positions
+            - node_ids: node names
+            - node_labels: text for labels
+            - hover_texts: HTML hover text for Plotly
+            - edge_xs, edge_ys: positions for edges
+            - births_x, births_y: positions for birth nodes
+            - ends_x, ends_y: positions for end nodes
+    """
+    xs, ys, node_ids, node_labels, hover_texts = [], [], [], [], []
+    for n in G.nodes:
+        t = G.nodes[n][time_feature]
+        y = assigned_y[n]
+        xs.append(t if orientation == "horizontal" else y)
+        ys.append(y if orientation == "horizontal" else t)
+        node_ids.append(n)
+        # Node label for drawing
+        if label_name is None:
+            label = str(n)
+        else:
+            label = str(G.nodes[n][label_name]) if label_name in G.nodes[n] else str(n)
+        node_labels.append(label)
+        # Build a pseudo-table hover (as HTML using <br> for newlines)
+        features = G.nodes[n]
+        if features:
+            # For "aligned" look: pad keys to equal length
+            maxk = max((len(str(k)) for k in features), default=1)
+            fmt = lambda k, v, maxk: f"{str(k).ljust(maxk)} : {v}<br>"
+            feat_lines = "".join(fmt(k, v, maxk) for k, v in features.items())
+            hover_html = f"<b>Node:</b> {n}<br><span style='font-family:monospace'>{feat_lines}</span>"
+        else:
+            hover_html = f"<b>Node:</b> {n}"
+        hover_texts.append(hover_html)
+
+    # Edges: a list of (x0,x1), (y0,y1) for each edge
+    edge_xs, edge_ys = [], []
+    for n in G.nodes:
+        t0 = G.nodes[n][time_feature]
+        y0 = assigned_y[n]
+        for c in G.successors(n):
+            t1 = G.nodes[c][time_feature]
+            y1 = assigned_y[c]
+            if orientation == "horizontal":
+                edge_xs.append([t0, t1])
+                edge_ys.append([y0, y1])
+            else:
+                edge_xs.append([y0, y1])
+                edge_ys.append([t0, t1])
+
+    # Find birth and end nodes
+    births_x, births_y, ends_x, ends_y = [], [], [], []
+    for n in G.nodes:
+        t = G.nodes[n][time_feature]
+        y = assigned_y[n]
+        if G.in_degree(n) == 0:
+            # New/birth nodes (no parents)
+            if orientation == "horizontal":
+                births_x.append(t)
+                births_y.append(y)
+            else:
+                births_x.append(y)
+                births_y.append(t)
+        if G.out_degree(n) == 0:
+            # End nodes (no children)
+            if orientation == "horizontal":
+                ends_x.append(t)
+                ends_y.append(y)
+            else:
+                ends_x.append(y)
+                ends_y.append(t)
+    return dict(
+        xs=xs,
+        ys=ys,
+        node_ids=node_ids,
+        node_labels=node_labels,
+        hover_texts=hover_texts,
+        edge_xs=edge_xs,
+        edge_ys=edge_ys,
+        births_x=births_x,
+        births_y=births_y,
+        ends_x=ends_x,
+        ends_y=ends_y,
+    )
+
+
+def plot_cell_lineage(
+    G,
+    time_feature="t",
+    orientation="horizontal",
+    show_label=True,
+    label_name=None,
+    node_marker="o",
+    node_ms=6,
+    line_color="blue",
+    line_lw=2,
+    mark_births=False,
+    birth_color="red",
+    birth_marker=None,
+    birth_ms=12,
+    mark_ends=False,
+    end_color="orange",
+    end_marker="s",
+    end_ms=10,
+    ax=None,
+    interactive_tooltip=False,
+):
+    """
+    Draw a cell lineage tree as a static matplotlib plot.
+
+    Parameters
+    ----------
+    G : nx.DiGraph
+        The lineage graph.
+    time_feature : str
+        Node attribute for x-axis (typically time).
+    orientation : str
+        'horizontal' (time on x) or 'vertical' (time on y).
+    show_label : bool
+        Show node labels on the plot.
+    label_name : str or None
+        Node attribute to use for label (default: node name).
+    node_marker : str
+        Marker style for all nodes.
+    node_ms : int
+        Marker size for all nodes.
+    line_color : str
+        Color for edges and nodes.
+    line_lw : int or float
+        Edge line width.
+    mark_births : bool
+        Mark new tracks with a special marker/color.
+    birth_color : str
+        Color for birth marker.
+    birth_marker : str
+        Marker for birth nodes.
+    birth_ms : int
+        Size for birth marker.
+    mark_ends : bool
+        Mark track ends with a special marker/color.
+    end_color : str
+        Color for end marker.
+    end_marker : str
+        Marker for end nodes.
+    end_ms : int
+        Size for end marker.
+    ax : plt.Axes or None
+        If given, draw into this axes.
+    interactive_tooltip : bool
+        If True and mplcursors is installed, enables interactive node tooltips.
+    """
+    assigned_y = compute_lineage_y(G, time_feature)
+    data = extract_lineage_plotdata(
+        G, assigned_y, time_feature, label_name, orientation
+    )
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Draw edges
+    for x, y in zip(data["edge_xs"], data["edge_ys"]):
+        ax.plot(x, y, "-", color=line_color, lw=line_lw)
+
+    # Draw nodes
+    main_nodes = ax.scatter(
+        data["xs"], data["ys"], marker=node_marker, color=line_color, s=node_ms**2
+    )
+    if show_label:
+        for x, y, label in zip(data["xs"], data["ys"], data["node_labels"]):
+            ax.text(x, y + 0.12, label, fontsize=7, ha="center", va="bottom")
+
+    # Draw markers for births and ends
+    if mark_births and data["births_x"]:
+        marker = (
+            birth_marker
+            if birth_marker
+            else (">" if orientation == "horizontal" else "v")
+        )
+        ax.scatter(
+            data["births_x"],
+            data["births_y"],
+            marker=marker,
+            color=birth_color,
+            s=birth_ms**2,
+            zorder=5,
+            alpha=0.9,
+            edgecolor="k",
+        )
+    if mark_ends and data["ends_x"]:
+        ax.scatter(
+            data["ends_x"],
+            data["ends_y"],
+            marker=end_marker,
+            color=end_color,
+            s=end_ms**2,
+            zorder=5,
+            alpha=0.9,
+            edgecolor="k",
+        )
+
+    # Axis formatting
+    if orientation == "horizontal":
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Lineage")
+    else:
+        ax.set_ylabel("Time")
+        ax.set_xlabel("Lineage")
+        ax.invert_yaxis()
+    ax.autoscale()
+    ax.set_aspect("auto")
+    plt.tight_layout()
+
+    # Optional: interactive tooltips using mplcursors
+    if interactive_tooltip:
+        try:
+            # pylint: disable=import-outside-toplevel
+            import mplcursors
+
+            cursor = mplcursors.cursor(main_nodes, hover=True)
+            cursor.connect(
+                "add",
+                lambda sel: sel.annotation.set_text(
+                    data["hover_texts"][sel.index]
+                    .replace("<br>", "\n")
+                    .replace("<b>", "")
+                    .replace("</b>", "")
+                    .replace("<span style='font-family:monospace'>", "")
+                    .replace("</span>", "")
+                ),
+            )
+        except ImportError:
+            print("mplcursors not installed; install for interactive node tooltips.")
+
+    return fig
+
+
+def plotly_cell_lineage(
+    G,
+    time_feature="t",
+    orientation="horizontal",
+    show_label=True,
+    label_name=None,
+    node_marker="circle",
+    node_ms=10,
+    line_color="blue",
+    line_width=2,
+    mark_births=False,
+    birth_color="red",
+    birth_marker=None,
+    birth_ms=16,
+    mark_ends=False,
+    end_color="orange",
+    end_marker="square",
+    end_ms=14,
+    figure_title="Cell Lineage",
+):
+    """
+    Plot a cell lineage tree as an interactive Plotly chart.
+    Node hover shows all features as a readable (monospace) "pseudo-table".
+
+    Parameters
+    ----------
+    G : nx.DiGraph
+        The lineage graph.
+    time_feature : str
+        Node attribute for x-axis (typically time).
+    orientation : str
+        'horizontal' (time on x) or 'vertical' (time on y).
+    show_label : bool
+        Show node labels on the plot.
+    label_name : str or None
+        Node attribute to use for label (default: node name).
+    node_marker : str
+        Marker style for all nodes.
+    node_ms : int
+        Marker size for all nodes.
+    line_color : str
+        Color for edges and nodes.
+    line_width : int or float
+        Edge line width.
+    mark_births : bool
+        Mark new tracks with a special marker/color.
+    birth_color : str
+        Color for birth marker.
+    birth_marker : str
+        Marker for birth nodes.
+    birth_ms : int
+        Size for birth marker.
+    mark_ends : bool
+        Mark track ends with a special marker/color.
+    end_color : str
+        Color for end marker.
+    end_marker : str
+        Marker for end nodes.
+    end_ms : int
+        Size for end marker.
+    figure_title : str
+        Plot title.
+    """
+    assigned_y = compute_lineage_y(G, time_feature)
+    data = extract_lineage_plotdata(
+        G, assigned_y, time_feature, label_name, orientation
+    )
+
+    fig = go.Figure()
+
+    # Draw edges as separate traces for better performance (and control)
+    for x, y in zip(data["edge_xs"], data["edge_ys"]):
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                line=dict(color=line_color, width=line_width),
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
+
+    # Main node markers with pseudo-table hover (HTML with <br>, monospace)
+    fig.add_trace(
+        go.Scatter(
+            x=data["xs"],
+            y=data["ys"],
+            mode="markers+text" if show_label else "markers",
+            marker=dict(
+                symbol=node_marker, color=line_color, size=node_ms, line=dict(width=0)
+            ),
+            text=data["node_labels"] if show_label else None,
+            textposition="top center",
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=data["hover_texts"],
+            name="Cells",
+        )
+    )
+
+    # Markers for births and ends
+    if mark_births and data["births_x"]:
+        marker = (
+            birth_marker
+            if birth_marker
+            else (">" if orientation == "horizontal" else "v")
+        )
+        marker_map = {
+            ">": "triangle-right",
+            "<": "triangle-left",
+            "^": "triangle-up",
+            "v": "triangle-down",
+            "o": "circle",
+            "s": "square",
+            "d": "diamond",
+            "*": "star",
+            "x": "x",
+            "+": "cross",
+        }
+        marker_symbol = marker_map.get(
+            marker, "triangle-right" if orientation == "horizontal" else "triangle-down"
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data["births_x"],
+                y=data["births_y"],
+                mode="markers",
+                marker=dict(
+                    symbol=marker_symbol,
+                    color=birth_color,
+                    size=birth_ms,
+                    line=dict(width=1, color=birth_color),
+                ),
+                name="Cell birth",
+                hoverinfo="skip",
+                showlegend=True,
+            )
+        )
+    if mark_ends and data["ends_x"]:
+        marker_map = {
+            "s": "square",
+            "o": "circle",
+            "d": "diamond",
+            "*": "star",
+            "x": "x",
+            "+": "cross",
+            ">": "triangle-right",
+            "<": "triangle-left",
+            "^": "triangle-up",
+            "v": "triangle-down",
+        }
+        marker_symbol = marker_map.get(end_marker, "square")
+        fig.add_trace(
+            go.Scatter(
+                x=data["ends_x"],
+                y=data["ends_y"],
+                mode="markers",
+                marker=dict(
+                    symbol=marker_symbol,
+                    color=end_color,
+                    size=end_ms,
+                    line=dict(width=1, color=end_color),
+                ),
+                name="Cell end",
+                hoverinfo="skip",
+                showlegend=True,
+            )
+        )
+
+    # Axes and layout
+    if orientation == "horizontal":
+        fig.update_xaxes(title="Time")
+        fig.update_yaxes(title="Lineage")
+    else:
+        fig.update_xaxes(title="Lineage")
+        fig.update_yaxes(title="Time", autorange="reversed")
+    fig.update_layout(title=figure_title, height=500, width=1000, plot_bgcolor="white")
+    return fig
