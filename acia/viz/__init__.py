@@ -1622,6 +1622,8 @@ def plotly_cell_lineage(
     end_marker="square",
     end_ms=14,
     figure_title="Cell Lineage",
+    fig_height=500,
+    fig_width=1000,
 ):
     """
     Plot a cell lineage tree as an interactive Plotly chart.
@@ -1665,6 +1667,10 @@ def plotly_cell_lineage(
         Size for end marker.
     figure_title : str
         Plot title.
+    fig_height : str
+        Height of the plotly figure.
+    fig_width: int
+        Width of the plotly figure.
     """
     assigned_y = compute_lineage_y(G, time_feature)
     data = extract_lineage_plotdata(
@@ -1779,5 +1785,8 @@ def plotly_cell_lineage(
     else:
         fig.update_xaxes(title="Lineage")
         fig.update_yaxes(title="Time", autorange="reversed")
-    fig.update_layout(title=figure_title, height=500, width=1000, plot_bgcolor="white")
+
+    fig.update_layout(
+        title=figure_title, height=fig_height, width=fig_width, plot_bgcolor="white"
+    )
     return fig
