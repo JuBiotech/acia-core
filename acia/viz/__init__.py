@@ -1525,6 +1525,8 @@ def plot_cell_lineage(
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 6))
+    else:
+        fig = None
 
     # Draw edges
     for x, y in zip(data["edge_xs"], data["edge_ys"]):
