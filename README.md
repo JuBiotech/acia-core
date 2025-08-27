@@ -5,12 +5,15 @@
 
 **Accio** 🪄 - and your single-cell insights appear - Not quite but - `acia` - and your single-cell insights appear to become much easier 😉
 
-The `acia` library provides utility functionality for analysing 2D+t time-lapse image sequences in microfluidic live-cell imaging experiments. It provides:
+The `acia` library provides a modular image analysis pipeline utility functionality for analysing 2D+t time-lapse image sequences in microfluidic live-cell imaging experiments. It provides:
 - Abstraction for various image sources (local, OMERO)
-- automated image analysis for instance segmentation and tracking
+- automated image analysis for instance segmentation and tracking (eight SOTA AI approaches supported out of the box)
 - automated and unit-aware single-object property extraction.
+- extended visualization in videos, charts and interactive charts including segmentation masks and lineage trees
 
 Although the funtionality is developed with microfluidic applications in mind, the library can be used for any objects detected in images.
+
+**Note:** For examples of its usage please visit our application workflow collection including more than **10** real-world examples: https://github.com/JuBiotech/acia-workflows
 
 ## Installation
 
@@ -29,10 +32,8 @@ pip install acia
     cd acia-core
     ```
 
-2. Create the conda environment (including dependencies) and install `acia`
+2.Install `acia` in development mode
 
     ```bash
-    conda env create -f conda.yaml
-    conda activate acia
     pip install -e .
     ```
